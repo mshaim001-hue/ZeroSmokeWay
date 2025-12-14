@@ -78,6 +78,131 @@ export async function createEmbeddingsForChunks(chunks) {
 }
 
 /**
+ * Классифицирует чанк по типу агента на основе содержания
+ * Возвращает массив типов агентов, к которым относится чанк (может быть несколько)
+ */
+async function classifyChunkForAgents(chunkText) {
+  // Ключевые слова и фразы для каждого типа агента
+  const agentKeywords = {
+    anamnesis: [
+      'вопрос', 'спросить', 'узнать', 'выяснить', 'информация о', 'расскажи', 'как давно',
+      'сколько', 'почему куришь', 'причина', 'мотивация', 'страх', 'триггер', 'ситуация',
+      'история', 'попытка', 'пытался', 'бросал', 'зависимость', 'привычка', 'стаж курения',
+      'сигарет в день', 'когда куришь', 'где куришь', 'с кем куришь', 'что чувствуешь',
+      'анамнез', 'сбор информации', 'опрос', 'выявление', 'понимание'
+    ],
+    myth_buster: [
+      'миф', 'заблуждение', 'иллюзия', 'ложь', 'неправда', 'развенчать', 'разрушить',
+      'убеждение', 'крючок', 'никотиновый зуд', 'удовольствие', 'расслабление', 'концентрация',
+      'стресс', 'сила воли', 'жертва', 'отказ', 'заменитель', 'вейп', 'пластырь', 'кальян',
+      'одна сигарета', 'локомотив', 'врожденная зависимость', 'ничего не теряю',
+      'правильный настрой', 'аллен карр', 'карр', 'правда о', 'реальность', 'факт',
+      'не помогает', 'не снимает', 'не расслабляет', 'обман', 'самообман'
+    ],
+    support: [
+      'поддержка', 'помощь', 'свобода', 'некурящий', 'бросить', 'отказ', 'последняя сигарета',
+      'день Ч', 'подготовка', 'решение', 'дата', 'время', 'настрой', 'радость', 'гордость',
+      'якорь', 'триггер', 'тяга', 'желание', 'антисрыв', 'пауза', '10 минут', 'техника',
+      'метод', 'способ', 'поддержание', 'свобода от курения', 'не курю', 'некурящий',
+      'проснулся некурящим', 'выбросить сигареты', 'символический акт', 'переход',
+      'этап поддержания', 'долгосрочная перспектива', 'наслаждаться жизнью', 'победа',
+      'достижение', 'мотивация', 'вдохновение', 'успех'
+    ]
+  };
+
+  const chunkLower = chunkText.toLowerCase();
+  const agentScores = {
+    anamnesis: 0,
+    myth_buster: 0,
+    support: 0
+  };
+
+  // Подсчитываем совпадения ключевых слов
+  for (const [agentType, keywords] of Object.entries(agentKeywords)) {
+    for (const keyword of keywords) {
+      if (chunkLower.includes(keyword.toLowerCase())) {
+        agentScores[agentType]++;
+      }
+    }
+  }
+
+  // Определяем, к каким агентам относится чанк
+  // Чанк может относиться к нескольким агентам
+  const maxScore = Math.max(...Object.values(agentScores));
+  const relevantAgents = [];
+
+  // Если есть явные совпадения, добавляем агентов
+  for (const [agentType, score] of Object.entries(agentScores)) {
+    // Порог: минимум 2 совпадения или если это максимальный score
+    if (score >= 2 || (score > 0 && score === maxScore && maxScore >= 1)) {
+      relevantAgents.push(agentType);
+    }
+  }
+
+  // Если нет явных совпадений, используем OpenAI для классификации
+  if (relevantAgents.length === 0 && chunkText.length > 100) {
+    try {
+      const classification = await classifyChunkWithAI(chunkText);
+      return classification;
+    } catch (error) {
+      console.warn(`  ⚠️  Ошибка AI классификации, используем общий тип: ${error.message}`);
+      // Если AI классификация не удалась, относим к support (универсальный)
+      return ['support'];
+    }
+  }
+
+  // Если все еще нет совпадений, относим к support (универсальный тип)
+  if (relevantAgents.length === 0) {
+    return ['support'];
+  }
+
+  return relevantAgents;
+}
+
+/**
+ * Классифицирует чанк с помощью OpenAI
+ */
+async function classifyChunkWithAI(chunkText) {
+  const prompt = `Проанализируй следующий фрагмент текста о курении и определи, к какому типу агента он относится:
+
+Типы агентов:
+1. "anamnesis" - сбор информации, вопросы, выявление причин курения, страхов, триггеров
+2. "myth_buster" - развенчание мифов, разрушение убеждений о курении, объяснение правды
+3. "support" - поддержка, мотивация, техники отказа, поддержание свободы от курения
+
+Фрагмент текста:
+${chunkText.substring(0, 500)}...
+
+Верни JSON объект с полем "agents" содержащим массив типов агентов, к которым относится этот фрагмент (может быть несколько):
+{"agents": ["agent_type1", "agent_type2"]}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'Ты помощник для классификации текстов. Отвечай только валидным JSON объектом с полем "agents" содержащим массив строк.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    const agents = result.agents || result.types || [];
+    
+    // Валидация - убеждаемся что это массив
+    const agentsArray = Array.isArray(agents) ? agents : [];
+    const validAgents = ['anamnesis', 'myth_buster', 'support'];
+    const filtered = agentsArray.filter(agent => validAgents.includes(agent));
+    
+    return filtered.length > 0 ? filtered : ['support'];
+  } catch (error) {
+    console.warn(`  ⚠️  Ошибка AI классификации: ${error.message}`);
+    return ['support']; // Fallback
+  }
+}
+
+/**
  * Вычисляет косинусное сходство между двумя векторами
  */
 function cosineSimilarity(vecA, vecB) {
@@ -100,8 +225,11 @@ function cosineSimilarity(vecA, vecB) {
 
 /**
  * Ищет релевантные фрагменты в базе знаний
+ * @param {string} query - Поисковый запрос
+ * @param {number} topK - Количество результатов
+ * @param {string} agentType - Тип агента для фильтрации (опционально): 'anamnesis', 'myth_buster', 'support'
  */
-export async function searchKnowledgeBase(query, topK = 5) {
+export async function searchKnowledgeBase(query, topK = 5, agentType = null) {
   try {
     // Загружаем embeddings если они есть
     if (!(await fs.pathExists(EMBEDDINGS_FILE))) {
@@ -110,14 +238,28 @@ export async function searchKnowledgeBase(query, topK = 5) {
     }
     
     const embeddingsData = await fs.readJson(EMBEDDINGS_FILE);
-    const chunks = embeddingsData.chunks || [];
+    let chunks = embeddingsData.chunks || [];
     
     if (chunks.length === 0) {
       console.log('⚠️  База знаний пуста');
       return [];
     }
     
-    console.log(`🔍 Поиск в базе знаний: "${query}" (${chunks.length} чанков)`);
+    // Фильтруем по типу агента, если указан
+    if (agentType) {
+      chunks = chunks.filter(chunk => {
+        const agents = chunk.agentTypes || [];
+        return agents.includes(agentType);
+      });
+      console.log(`🔍 Поиск для агента "${agentType}": "${query}" (${chunks.length} релевантных чанков из ${embeddingsData.chunks.length})`);
+    } else {
+      console.log(`🔍 Поиск в базе знаний: "${query}" (${chunks.length} чанков)`);
+    }
+    
+    if (chunks.length === 0) {
+      console.log('⚠️  Нет чанков для указанного типа агента');
+      return [];
+    }
     
     // Создаем embedding для запроса
     const queryEmbedding = await createEmbedding(query);
@@ -132,14 +274,15 @@ export async function searchKnowledgeBase(query, topK = 5) {
     const topChunks = similarities
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, topK)
-      .filter(item => item.similarity > 0.3); // Минимальный порог релевантности (снижен для лучшего покрытия)
+      .filter(item => item.similarity > 0.3); // Минимальный порог релевантности
     
     console.log(`✅ Найдено ${topChunks.length} релевантных фрагментов`);
     
-    return topChunks.map(({ text, source, similarity }) => ({
+    return topChunks.map(({ text, source, similarity, agentTypes }) => ({
       text,
       source,
       similarity: Math.round(similarity * 100) / 100, // Округляем до 2 знаков
+      agentTypes: agentTypes || [], // Добавляем информацию о типах агентов
     }));
   } catch (error) {
     console.error('❌ Ошибка при поиске в базе знаний:', error);
@@ -166,13 +309,64 @@ export async function indexKnowledgeBase() {
     return;
   }
   
-  console.log(`\n📊 Этап 2: Создание embeddings для ${chunks.length} чанков...`);
+  console.log(`\n🏷️  Этап 2: Классификация чанков по типам агентов...`);
+  console.log(`   Классифицирую ${chunks.length} чанков...`);
+  
+  // Классифицируем чанки по агентам
+  const chunksWithAgents = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (i % 100 === 0) {
+      console.log(`   Обработано ${i}/${chunks.length} чанков...`);
+    }
+    
+    try {
+      const agentTypes = await classifyChunkForAgents(chunk.text);
+      chunksWithAgents.push({
+        ...chunk,
+        agentTypes: agentTypes.length > 0 ? agentTypes : ['support'], // По умолчанию support
+      });
+    } catch (error) {
+      console.warn(`   ⚠️  Ошибка классификации чанка ${chunk.id}: ${error.message}`);
+      chunksWithAgents.push({
+        ...chunk,
+        agentTypes: ['support'], // Fallback
+      });
+    }
+  }
+  
+  // Статистика по агентам
+  const agentStats = {
+    anamnesis: 0,
+    myth_buster: 0,
+    support: 0,
+    multiple: 0
+  };
+  
+  chunksWithAgents.forEach(chunk => {
+    if (chunk.agentTypes.length > 1) {
+      agentStats.multiple++;
+    }
+    chunk.agentTypes.forEach(agent => {
+      if (agentStats.hasOwnProperty(agent)) {
+        agentStats[agent]++;
+      }
+    });
+  });
+  
+  console.log(`\n📊 Статистика классификации:`);
+  console.log(`   anamnesis: ${agentStats.anamnesis} чанков`);
+  console.log(`   myth_buster: ${agentStats.myth_buster} чанков`);
+  console.log(`   support: ${agentStats.support} чанков`);
+  console.log(`   multiple (несколько типов): ${agentStats.multiple} чанков`);
+  
+  console.log(`\n📊 Этап 3: Создание embeddings для ${chunksWithAgents.length} чанков...`);
   console.log('Это может занять время и стоить денег (~$0.02-0.10 для 4 книг)');
   
   // Создаем embeddings батчами
-  const chunksWithEmbeddings = await createEmbeddingsForChunks(chunks);
+  const chunksWithEmbeddings = await createEmbeddingsForChunks(chunksWithAgents);
   
-  console.log(`\n💾 Этап 3: Сохранение embeddings...`);
+  console.log(`\n💾 Этап 4: Сохранение embeddings...`);
   
   // Сохраняем embeddings по частям для экономии памяти
   const embeddingsData = {

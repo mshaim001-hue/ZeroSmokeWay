@@ -260,7 +260,8 @@ export async function handleAgentRequest({ message, agentType, conversationHisto
   try {
     // Формируем запрос для поиска: текущее сообщение + контекст агента
     const searchQuery = `${message} ${agentType === 'myth_buster' ? 'мифы о курении развенчание' : agentType === 'support' ? 'поддержка отказ от курения' : 'сбор информации о курении'}`;
-    const relevantChunks = await searchKnowledgeBase(searchQuery, 3);
+    // Передаем тип агента для фильтрации релевантных чанков
+    const relevantChunks = await searchKnowledgeBase(searchQuery, 3, agentType);
     
     if (relevantChunks.length > 0) {
       console.log(`📚 Найдено ${relevantChunks.length} релевантных фрагментов из базы знаний`);

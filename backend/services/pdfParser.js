@@ -77,15 +77,45 @@ export function chunkText(text, chunkSize = 1000, overlap = 200) {
 }
 
 /**
- * Получает список всех PDF файлов в корне проекта
+ * Получает список всех PDF файлов в директории knowledge-base
+ * Исключает файлы, которые не должны индексироваться
  */
 export async function getPDFFiles() {
   const projectRoot = path.resolve(__dirname, '../..');
-  const files = await fs.readdir(projectRoot);
+  const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
+  
+  // Список файлов для исключения (по части имени или полному имени)
+  const excludedFiles = [
+    'Pravda_o_sigarete.pdf', // Исключена из-за религиозного контента
+    'pravda_o_sigarete.pdf',
+    'Правда_о_сигарете.pdf',
+  ];
+  
+  // Проверяем существование директории
+  if (!(await fs.pathExists(knowledgeBaseDir))) {
+    console.log(`⚠️  Директория knowledge-base не найдена: ${knowledgeBaseDir}`);
+    return [];
+  }
+  
+  const files = await fs.readdir(knowledgeBaseDir);
   
   return files
-    .filter(file => file.endsWith('.pdf'))
-    .map(file => path.join(projectRoot, file));
+    .filter(file => {
+      // Фильтруем только PDF файлы
+      if (!file.endsWith('.pdf')) {
+        return false;
+      }
+      // Исключаем файлы из списка исключений
+      const isExcluded = excludedFiles.some(excluded => 
+        file.toLowerCase().includes(excluded.toLowerCase())
+      );
+      if (isExcluded) {
+        console.log(`  ⏭️  Пропущен файл: ${file} (в списке исключений)`);
+        return false;
+      }
+      return true;
+    })
+    .map(file => path.join(knowledgeBaseDir, file));
 }
 
 /**
