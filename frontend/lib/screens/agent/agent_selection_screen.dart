@@ -30,7 +30,7 @@ class AgentSelectionScreen extends StatelessWidget {
                     _AgentCard(
                       title: 'Агент 1: Собиратель информации',
                       description:
-                          'Помогу выявить твои убеждения, страхи и триггеры, которые составляют психологическую зависимость.',
+                          'Выявляю твои убеждения, страхи и триггеры курения.',
                       icon: Icons.search,
                       color: Colors.blue,
                       onTap: () {
@@ -48,7 +48,7 @@ class AgentSelectionScreen extends StatelessWidget {
                     _AgentCard(
                       title: 'Агент 2: Развенчатель мифов',
                       description:
-                          'Разрушу иллюзии и убеждения о курении, опираясь на логику и факты. Помогу увидеть правду.',
+                          'Разрушаю иллюзии о курении, опираясь на логику и факты.',
                       icon: Icons.lightbulb,
                       color: Colors.orange,
                       onTap: () {
@@ -66,7 +66,7 @@ class AgentSelectionScreen extends StatelessWidget {
                     _AgentCard(
                       title: 'Агент 3: Поддержка и опора',
                       description:
-                          'Буду твоим помощником в поддержании свободы от курения. Поддержу позитивный настрой.',
+                          'Поддерживаю тебя в поддержании свободы от курения.',
                       icon: Icons.favorite,
                       color: Colors.green,
                       onTap: () {

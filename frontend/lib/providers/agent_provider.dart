@@ -54,8 +54,16 @@ class AgentProvider with ChangeNotifier {
     _anamnesisData = null;
     notifyListeners();
 
+    // Начальное сообщение согласно сценарию
     await _sendMessage(
-      'Привет! Я помогу тебе избавиться от курения. Давай начнем с того, что я узнаю о тебе больше. Расскажи, как давно ты куришь?',
+      'Привет 🙂\n\nЯ здесь, чтобы помочь тебе разобраться с курением.\n\nБез моралей, без давления, без «надо». Просто честный разговор.',
+      agentType: Constants.agent1Type,
+    );
+    
+    // Второе сообщение с вопросом об имени
+    await Future.delayed(const Duration(milliseconds: 800));
+    await _sendMessage(
+      'Для начала — как я могу к тебе обращаться?',
       agentType: Constants.agent1Type,
     );
   }
