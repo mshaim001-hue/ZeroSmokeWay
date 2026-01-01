@@ -1,6 +1,10 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { searchKnowledgeBase } from './knowledgeBase.js';
+import { getAgentPrompt } from './agentConfig.js';
+import { handleAdaptiveAnamnesis, isAnamnesisComplete } from './adaptiveAnamnesisService.js';
+import { analyzeResponseWithSubAgents } from './subAgentService.js';
+import { createCompactContext } from './contextManagerService.js';
 
 dotenv.config();
 
@@ -8,50 +12,43 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ПРАВИЛА ЖИВОГО ОБЩЕНИЯ (Убираем ИИ-вежливость)
-const NATURAL_TEXT_RULES = `
-- Пиши как в Telegram: короткими фразами, без лишних знаков препинания в конце.
-- Сначала РЕАКЦИЯ на слова человека (эмпатия), потом — следующий вопрос. Если юзер говорит, что выкуривает 2 пачки, не пиши "Понял", напиши "Ого, это мощно".
-- Никакого сервиса: забудь фразы "Чем я могу помочь?", "Благодарю за ответ". Используй: "Ага", "Ясно", "Слушай", "Ну это классика", "Ого".
-- Не извиняйся за вопросы и не объясняй, зачем ты их задаешь. Просто спрашивай.
-- Если спросят "ты бот?" — отвечай честно: "Ну да, я ИИ-агент, но я тут не для лекций, а чтобы реально подсказать по делу, как бросить. Так что забей и погнали дальше".
-`;
-
-const AGENT_PROMPTS = {
-  anamnesis: `Ты — Алекс. Ты не консультант, ты просто чувак, который "шарит" в теме отказа от курения. Твоя цель — за 10 шагов понять ситуацию человека, не превращая это в допрос.
-
-### ТВОЙ ПЛАН (Иди строго по порядку, но не озвучивай номера шагов):
-1. Знакомство (на "ты") + Имя.
-2. Город/страна (для контекста).
-3. Правило честности: "Слушай, тут нет правильных ответов. Чем честнее скажешь — тем быстрее разберемся. Ок?"
-4. Стаж: Курит сейчас или в процессе? Сколько штук в день улетает?
-5. Что нравится? (Напитки, ритуалы, кайф). Важно: сначала согласись, что это приятно, прежде чем идти дальше.
-6. Что бесит? (Деньги, запах, одышка, зависимость).
-7. Страхи: "Если бросишь — чего боишься? Набрать вес, психовать или что станет скучно?"
-8. Ситуации-ловушки: Когда тянет сильнее всего? (Стресс, кофе, алкоголь).
-9. Прошлый опыт: Пробовал раньше? Что было самым сложным?
-10. Финал: Представь, что сигарет нет в мире. Что в этой жизни без дыма тебе нравится больше всего? (Образ свободы).
-
-${NATURAL_TEXT_RULES}
-
-ФОРМАТ ОТВЕТА (ВСЕГДА JSON):
-{
-  "message": "твой текст",
-  "currentStep": 1,
-  "extractedProfile": { "name": "...", "location": "..." },
-  "extractedData": { "smokingStatus": "...", "cigarettesPerDay": 0, "likes": [], "dislikes": [], "fears": [], "triggers": [], "previousAttempts": "", "motivation": "" }
-}`,
-
-  myth_buster: `Ты — Алекс. Ты развенчиваешь мифы. Используй базу знаний, но пересказывай идеи Карра своими словами. 
-  Например: "Сигарета не снимает стресс, она просто убирает ломку, которую сама же и создала 20 минут назад".
-  ${NATURAL_TEXT_RULES}`,
-
-  support: `Ты — Алекс. Твоя задача — поддержка. Будь позитивным, но без пафоса. "Красава, первый день — самый важный".
-  ${NATURAL_TEXT_RULES}`
-};
-
-export async function handleAgentRequest({ message, agentType, conversationHistory, anamnesisData, userProfile }) {
-  const systemPrompt = AGENT_PROMPTS[agentType];
+/**
+ * Основной обработчик запросов к агентам
+ * Для anamnesis использует адаптивный режим с function calling (если включен)
+ */
+export async function handleAgentRequest({ 
+  message, 
+  agentType, 
+  conversationHistory, 
+  anamnesisData, 
+  userProfile,
+  useAdaptiveMode = false // Новый параметр для включения адаптивного режима
+}) {
+  // Для anamnesis с адаптивным режимом используем специальный обработчик
+  if (agentType === 'anamnesis' && useAdaptiveMode) {
+    // Извлекаем coverage из anamnesisData если есть
+    const previousCoverage = anamnesisData?.coverage || null;
+    const previousExtractedData = anamnesisData?.extractedData || anamnesisData || null;
+    
+    const result = await handleAdaptiveAnamnesis({
+      message,
+      conversationHistory,
+      previousExtractedData,
+      previousCoverage
+    });
+    
+    // Проверяем, завершен ли анамнез
+    const complete = isAnamnesisComplete(result.coverage);
+    
+    return {
+      ...result,
+      isComplete: complete,
+      extractedData: result.extractedData || previousExtractedData
+    };
+  }
+  
+  // Стандартный обработчик для остальных агентов или anamnesis без адаптивного режима
+  const systemPrompt = await getAgentPrompt(agentType);
   
   if (!systemPrompt) throw new Error(`Unknown agent: ${agentType}`);
 
@@ -66,6 +63,12 @@ export async function handleAgentRequest({ message, agentType, conversationHisto
     console.warn('KB search failed', e.message);
   }
 
+  // Используем компактный контекст для длинных диалогов
+  const useCompactContext = conversationHistory.length > 20;
+  const contextData = useCompactContext 
+    ? createCompactContext(conversationHistory, agentType)
+    : { messages: conversationHistory };
+
   const messages = [
     { role: 'system', content: systemPrompt + knowledgeContext }
   ];
@@ -78,8 +81,9 @@ export async function handleAgentRequest({ message, agentType, conversationHisto
     messages.push({ role: 'system', content: `Анамнез: ${JSON.stringify(anamnesisData)}` });
   }
 
-  // Ограничиваем историю, чтобы модель не "зацикливалась" на старых приветствиях
-  conversationHistory.slice(-8).forEach((msg) => {
+  // Используем компактную историю или обычную
+  const historyToUse = useCompactContext ? contextData.messages : conversationHistory;
+  historyToUse.slice(-8).forEach((msg) => {
     messages.push({ role: msg.isUser ? 'user' : 'assistant', content: msg.text });
   });
 
@@ -93,12 +97,36 @@ export async function handleAgentRequest({ message, agentType, conversationHisto
     });
 
     const parsed = JSON.parse(completion.choices[0].message.content);
+    
+    let finalResponse = parsed.message;
+    let analysisResults = null;
+
+    // Опционально: используем sub-агентов для анализа и улучшения ответа
+    const useSubAgents = process.env.USE_SUB_AGENTS === 'true';
+    if (useSubAgents) {
+      const analysis = await analyzeResponseWithSubAgents({
+        agentResponse: finalResponse,
+        agentType,
+        userMessage: message,
+        extractedData: parsed.extractedData,
+        conversationHistory: historyToUse
+      });
+      
+      if (analysis.wasImproved) {
+        finalResponse = analysis.improvedResponse;
+        analysisResults = analysis.analysis;
+        console.log('✅ Sub-агенты улучшили ответ');
+      }
+    }
 
     return {
-      response: parsed.message,
+      response: finalResponse,
       extractedData: parsed.extractedData,
       extractedProfile: parsed.extractedProfile,
-      currentStep: parsed.currentStep
+      currentStep: parsed.currentStep,
+      analysis: analysisResults,
+      contextCompacted: useCompactContext,
+      contextStats: useCompactContext ? contextData.stats : null
     };
   } catch (error) {
     console.error('AI Error:', error);
