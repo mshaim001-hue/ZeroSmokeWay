@@ -22,7 +22,8 @@ export async function handleAgentRequest({
   conversationHistory, 
   anamnesisData, 
   userProfile,
-  useAdaptiveMode = false // Новый параметр для включения адаптивного режима
+  useAdaptiveMode = false, // Новый параметр для включения адаптивного режима
+  orchestratorInstruction = null, // Инструкция от оркестратора: на чём сфокусироваться в этом ответе
 }) {
   // Для anamnesis с адаптивным режимом используем специальный обработчик
   if (agentType === 'anamnesis' && useAdaptiveMode) {
@@ -86,6 +87,15 @@ export async function handleAgentRequest({
   historyToUse.slice(-8).forEach((msg) => {
     messages.push({ role: msg.isUser ? 'user' : 'assistant', content: msg.text });
   });
+
+  // Инструкция оркестратора — последним системным блоком, чтобы агент её не проигнорировал
+  if (orchestratorInstruction) {
+    let instruction = `НА ЭТОТ ОТВЕТ СДЕЛАЙ ТОЛЬКО СЛЕДУЮЩЕЕ (не пиши общее приветствие типа "Привет, рад познакомиться" — сделай именно то, что ниже):\n${orchestratorInstruction}`;
+    if (agentType === 'myth_buster') {
+      instruction += '\n\nНе утверждай "это иллюзия" или "учёные доказали" — веди одним вопросом или аналогией из его опыта. Закончи вопросом или приглашением ("как тебе мысль?", "хочешь с другой стороны посмотреть?"), чтобы он понимал, что писать дальше.';
+    }
+    messages.push({ role: 'system', content: instruction });
+  }
 
   messages.push({ role: 'user', content: message });
 

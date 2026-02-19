@@ -9,6 +9,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { agentRouter } from './routes/agent.js';
+import { orchestratorRouter } from './routes/orchestrator.js';
 import { knowledgeRouter } from './routes/knowledge.js';
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/agent', agentRouter);
+app.use('/api/orchestrator', orchestratorRouter);
 app.use('/api/knowledge', knowledgeRouter);
 
 // Health check

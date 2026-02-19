@@ -22,5 +22,11 @@ class Constants {
   static const String stagePreparation = 'preparation';
   static const String stageQuitDay = 'quit_day';
   static const String stageMaintenance = 'maintenance';
+
+  // Orchestrator phases (путь по методике)
+  static const String phaseWelcome = 'welcome';
+  static const String phaseAnamnesis = 'anamnesis';
+  static const String phaseMythBusting = 'myth_busting';
+  static const String phaseSupport = 'support';
 }
 

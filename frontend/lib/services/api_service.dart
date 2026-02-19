@@ -37,5 +37,41 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
+
+  /// Запрос к оркестратору: ведёт диалог по методике, сам выбирает агента и фокус ответа.
+  /// [currentPlan] — план на 3 шага от прошлого ответа (оркестратор сравнивает и при сбое строит новый).
+  Future<Map<String, dynamic>> sendOrchestratorMessage({
+    required String message,
+    required List<AgentMessage> conversationHistory,
+    Map<String, dynamic>? anamnesisData,
+    required String phase,
+    Map<String, dynamic>? userProfile,
+    Map<String, dynamic>? currentPlan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${Constants.apiBaseUrl}/api/orchestrator'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': message,
+          'conversationHistory': conversationHistory.map((m) => m.toJson()).toList(),
+          'anamnesisData': anamnesisData,
+          'phase': phase,
+          'userProfile': userProfile,
+          'currentPlan': currentPlan,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to send message: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
 }
 

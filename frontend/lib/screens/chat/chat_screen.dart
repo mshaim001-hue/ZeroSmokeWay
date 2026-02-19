@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/agent_provider.dart';
@@ -14,7 +15,9 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  final _inputFocusNode = FocusNode();
   bool _isInitialized = false;
+  bool _wasLoading = false;
 
   // Цвета в стиле скриншота
   static const Color _headerColor = Color(0xFF1E3A5F); // Темно-синий
@@ -36,7 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _isInitialized = true;
       final agentProvider = Provider.of<AgentProvider>(context, listen: false);
       if (agentProvider.currentAgentType == null) {
-        agentProvider.startAgent1();
+        agentProvider.startGuidedJourney();
       }
     }
   }
@@ -45,6 +48,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     super.dispose();
   }
 
@@ -62,6 +66,16 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Consumer<AgentProvider>(
       builder: (context, agentProvider, _) {
+        // После ответа бота возвращаем фокус в поле ввода
+        if (_wasLoading && !agentProvider.isLoading) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_inputFocusNode.canRequestFocus) {
+              _inputFocusNode.requestFocus();
+            }
+          });
+        }
+        _wasLoading = agentProvider.isLoading;
+
         // Автоматическая прокрутка при новых сообщениях
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _scrollToBottom();
@@ -96,13 +110,29 @@ class _ChatScreenState extends State<ChatScreen> {
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       Expanded(
-                        child: Text(
-                          _getAgentName(agentProvider.currentAgentType),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _getAgentName(agentProvider.currentAgentType),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (agentProvider.orchestratorMode &&
+                                agentProvider.phase != null &&
+                                _getPhaseLabel(agentProvider.phase).isNotEmpty)
+                              Text(
+                                _getPhaseLabel(agentProvider.phase),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.85),
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -168,50 +198,65 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: _inputFieldColor,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: TextField(
-                              controller: _messageController,
-                              decoration: const InputDecoration(
-                                hintText: 'Type your message...',
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                hintStyle: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 15,
-                                ),
+                          child: Focus(
+                            onKeyEvent: (_, event) {
+                              if (event is KeyDownEvent &&
+                                  event.logicalKey == LogicalKeyboardKey.enter &&
+                                  !HardwareKeyboard.instance.isShiftPressed) {
+                                _sendMessage(agentProvider);
+                                return KeyEventResult.handled;
+                              }
+                              return KeyEventResult.ignored;
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _inputFieldColor,
+                                borderRadius: BorderRadius.circular(24),
                               ),
-                              style: const TextStyle(fontSize: 15),
-                              maxLines: null,
-                              textCapitalization: TextCapitalization.sentences,
-                              enabled: !agentProvider.isLoading,
-                              onSubmitted: (_) => _sendMessage(agentProvider),
+                              child: TextField(
+                                focusNode: _inputFocusNode,
+                                controller: _messageController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Напишите сообщение...',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                style: const TextStyle(fontSize: 15),
+                                maxLines: null,
+                                textCapitalization: TextCapitalization.sentences,
+                                enabled: !agentProvider.isLoading,
+                                onSubmitted: (_) => _sendMessage(agentProvider),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: _sendButtonColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            onPressed: agentProvider.isLoading
+                        Material(
+                          color: agentProvider.isLoading
+                              ? _sendButtonColor.withOpacity(0.5)
+                              : _sendButtonColor,
+                          borderRadius: BorderRadius.circular(24),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: agentProvider.isLoading
                                 ? null
                                 : () => _sendMessage(agentProvider),
-                            icon: const Icon(
-                              Icons.send,
-                              color: Colors.white,
-                              size: 20,
+                            child: const SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Icon(
+                                Icons.send,
+                                color: Colors.white,
+                                size: 22,
+                              ),
                             ),
-                            padding: const EdgeInsets.all(12),
-                            constraints: const BoxConstraints(),
                           ),
                         ),
                       ],
@@ -239,12 +284,34 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  String _getPhaseLabel(String? phase) {
+    switch (phase) {
+      case 'welcome':
+        return 'Знакомство';
+      case 'anamnesis':
+        return 'Твоя ситуация';
+      case 'myth_busting':
+        return 'Разбираем мифы';
+      case 'support':
+        return 'Поддержка';
+      default:
+        return '';
+    }
+  }
+
   void _sendMessage(AgentProvider agentProvider) {
     final text = _messageController.text.trim();
     if (text.isEmpty || agentProvider.isLoading) return;
 
-    agentProvider.sendUserMessage(text);
+    // Снимаем фокус до отправки, чтобы на Web не падало из-за размонтирования TextField
+    // (Flutter Web assertion: "The DOM element of this text editing strategy is not currently active")
+    FocusScope.of(context).unfocus();
     _messageController.clear();
+    // Отправка в следующем кадре, после того как текстовое соединение закроется
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      agentProvider.sendUserMessage(text);
+    });
   }
 }
 
@@ -283,7 +350,7 @@ class _MessageBubble extends StatelessWidget {
                       color: userBubbleColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(
+                    child: SelectableText(
                       message.text,
                       style: const TextStyle(
                         color: Colors.black87,
@@ -348,7 +415,7 @@ class _MessageBubble extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: Text(
+                    child: SelectableText(
                       message.text,
                       style: const TextStyle(
                         color: Colors.black87,
