@@ -1,15 +1,17 @@
 // Vercel Serverless Function: оркестратор диалога
 import { getOrchestratorDecision, PHASES } from '../services/orchestratorService.js';
 import { handleAgentRequest } from '../services/agentService.js';
+import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
+import { saveOrchestratorConversation } from '../services/conversationStore.js';
+
+const CORS_HEADERS =
+  'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Headers', CORS_HEADERS);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -52,6 +54,19 @@ export default async function handler(req, res) {
       useAdaptiveMode: decision.nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
       orchestratorInstruction: decision.instructionToAgent,
     });
+
+    const userId = await getUserIdFromAuthHeader(req.headers.authorization);
+    if (userId) {
+      const finalMessages = [
+        ...conversationHistory,
+        {
+          text: agentResult.response,
+          isUser: false,
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      await saveOrchestratorConversation(userId, finalMessages);
+    }
 
     res.status(200).json({
       response: agentResult.response,

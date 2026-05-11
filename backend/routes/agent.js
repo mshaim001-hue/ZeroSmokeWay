@@ -1,5 +1,7 @@
 import express from 'express';
 import { handleAgentRequest } from '../services/agentService.js';
+import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
+import { saveAgentConversation } from '../services/conversationStore.js';
 
 const router = express.Router();
 
@@ -26,6 +28,15 @@ router.post('/', async (req, res) => {
       anamnesisData: anamnesisData || null,
       userProfile: userProfile || null,
     });
+
+    const userId = await getUserIdFromAuthHeader(req.headers.authorization);
+    if (userId) {
+      const hist = conversationHistory || [];
+      await saveAgentConversation(userId, agentType, [
+        ...hist,
+        { text: result.response, isUser: false, timestamp: new Date().toISOString() },
+      ]);
+    }
 
     console.log('\n=== API Response ===');
     console.log('Response length:', result.response?.length || 0);

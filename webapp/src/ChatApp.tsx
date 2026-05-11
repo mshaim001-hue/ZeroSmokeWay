@@ -8,7 +8,11 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-export function ChatApp() {
+type Props = {
+  guest?: boolean;
+};
+
+export function ChatApp({ guest = false }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +20,6 @@ export function ChatApp() {
   const [phase, setPhase] = useState(PHASE_WELCOME);
   const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
-  const started = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const scrollDown = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,10 +48,63 @@ export function ChatApp() {
   }, []);
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    startJourney();
-  }, [startJourney]);
+    let cancelled = false;
+
+    async function init() {
+      if (guest || !supabase) {
+        startJourney();
+        return;
+      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token || cancelled) {
+        startJourney();
+        return;
+      }
+      const { data, error: qErr } = await supabase
+        .from('conversations')
+        .select('messages')
+        .eq('user_id', session.user.id)
+        .eq('agent_type', 'orchestrator')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (qErr || !data?.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
+        startJourney();
+        return;
+      }
+      const normalized = (data.messages as unknown[]).filter(
+        (m): m is ChatMessage =>
+          Boolean(m) &&
+          typeof m === 'object' &&
+          'text' in m &&
+          typeof (m as ChatMessage).text === 'string' &&
+          typeof (m as ChatMessage).isUser === 'boolean' &&
+          typeof (m as ChatMessage).timestamp === 'string',
+      );
+      if (normalized.length === 0) {
+        startJourney();
+        return;
+      }
+      setMessages(normalized);
+    }
+
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, [guest, startJourney]);
+
+  async function getAccessToken(): Promise<string | null> {
+    if (guest || !supabase) return null;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }
 
   async function onSend(e: FormEvent) {
     e.preventDefault();
@@ -63,14 +119,18 @@ export function ChatApp() {
     setError(null);
 
     try {
-      const data = await postOrchestrator({
-        message: text,
-        conversationHistory: history,
-        anamnesisData: anamnesis,
-        phase,
-        userProfile: null,
-        currentPlan: plan,
-      });
+      const token = await getAccessToken();
+      const data = await postOrchestrator(
+        {
+          message: text,
+          conversationHistory: history,
+          anamnesisData: anamnesis,
+          phase,
+          userProfile: null,
+          currentPlan: plan,
+        },
+        token,
+      );
 
       const bot: ChatMessage = {
         text: data.response,
@@ -91,7 +151,7 @@ export function ChatApp() {
   }
 
   async function signOut() {
-    await supabase?.auth.signOut();
+    if (!guest && supabase) await supabase.auth.signOut();
     window.location.reload();
   }
 

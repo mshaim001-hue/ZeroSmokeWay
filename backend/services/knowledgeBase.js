@@ -4,6 +4,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { processAllPDFs } from './pdfParser.js';
+import { hasSupabaseAdmin } from '../lib/supabaseServer.js';
 
 dotenv.config();
 
@@ -231,7 +232,16 @@ function cosineSimilarity(vecA, vecB) {
  */
 export async function searchKnowledgeBase(query, topK = 5, agentType = null) {
   try {
-    // Загружаем embeddings если они есть
+    if (hasSupabaseAdmin()) {
+      const { searchKnowledgeFromSupabase } = await import('./knowledgeSupabase.js');
+      const fromDb = await searchKnowledgeFromSupabase(query, topK, agentType);
+      if (fromDb.length > 0) {
+        console.log(`✅ KB (Supabase): ${fromDb.length} фрагментов`);
+        return fromDb;
+      }
+    }
+
+    // Загружаем embeddings если есть локальный файл (fallback)
     if (!(await fs.pathExists(EMBEDDINGS_FILE))) {
       console.log('⚠️  База знаний не индексирована. Запустите: npm run index-knowledge');
       return [];

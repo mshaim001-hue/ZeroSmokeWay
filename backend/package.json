@@ -8,6 +8,7 @@
     "dev": "node --watch index.js",
     "start": "node index.js",
     "index-knowledge": "node --max-old-space-size=8192 scripts/index-knowledge.js",
+    "sync-knowledge": "node scripts/sync-knowledge-to-supabase.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -19,6 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
     "express": "^4.18.2",
     "@openai/agents": "^0.1.0",
     "openai": "^4.20.0",

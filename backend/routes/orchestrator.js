@@ -1,6 +1,8 @@
 import express from 'express';
 import { getOrchestratorDecision, PHASES } from '../services/orchestratorService.js';
 import { handleAgentRequest } from '../services/agentService.js';
+import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
+import { saveOrchestratorConversation } from '../services/conversationStore.js';
 
 const router = express.Router();
 
@@ -58,6 +60,18 @@ router.post('/', async (req, res) => {
       useAdaptiveMode: decision.nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
       orchestratorInstruction: decision.instructionToAgent,
     });
+
+    const userId = await getUserIdFromAuthHeader(req.headers.authorization);
+    if (userId) {
+      await saveOrchestratorConversation(userId, [
+        ...conversationHistory,
+        {
+          text: agentResult.response,
+          isUser: false,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
 
     res.json({
       response: agentResult.response,

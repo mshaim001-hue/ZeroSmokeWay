@@ -6,14 +6,17 @@ export type ChatMessage = {
 
 const apiRoot = () => (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-export async function postOrchestrator(body: {
+export async function postOrchestrator(
+  body: {
   message: string;
   conversationHistory: ChatMessage[];
   anamnesisData: Record<string, unknown> | null;
   phase: string;
   userProfile: unknown;
   currentPlan: Record<string, unknown> | null;
-}): Promise<{
+  },
+  accessToken: string | null,
+): Promise<{
   response: string;
   extractedData?: Record<string, unknown> | null;
   phase?: string | null;
@@ -21,9 +24,11 @@ export async function postOrchestrator(body: {
   plan?: Record<string, unknown> | null;
 }> {
   const base = apiRoot();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const res = await fetch(`${base}/api/orchestrator`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) {

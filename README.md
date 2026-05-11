@@ -60,8 +60,10 @@ npm run dev
 
 1. Зарегистрируйтесь на [vercel.com](https://vercel.com), **Import** репозитория с GitHub или GitLab (поддерживается импорт GitLab).
 2. В настройках проекта Vercel → **Environment Variables** добавьте `OPENAI_API_KEY` (и при необходимости `OPENAI_MODEL`).
-3. В тех же переменных добавьте для **сборки фронта**: `VITE_SUPABASE_URL` и один из ключей — `VITE_SUPABASE_ANON_KEY` или `VITE_SUPABASE_PUBLISHABLE_KEY` (Supabase → Settings → API).
-4. Каждый **push** в подключённую ветку (например `main`) даёт **новый деплой** фронта и функций.
+3. Для **serverless API** (сохранение диалогов, RAG из БД): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, и для проверки JWT от фронта — `SUPABASE_ANON_KEY` или `SUPABASE_PUBLISHABLE_KEY` (тот же, что в `VITE_*`, но без префикса `VITE_`). Локально скопируйте `backend/env.example` в `backend/.env` и заполните те же переменные.
+4. В Supabase выполните SQL-миграции из `supabase/migrations/` (в т.ч. `vector` и таблица `knowledge_chunks`). После этого из каталога `backend/` один раз: `npm run sync-knowledge` — загрузка эмбеддингов из `knowledge-base/embeddings.json` в БД (перед этим при необходимости `npm run index-knowledge`).
+5. В тех же переменных Vercel добавьте для **сборки фронта**: `VITE_SUPABASE_URL` и один из ключей — `VITE_SUPABASE_ANON_KEY` или `VITE_SUPABASE_PUBLISHABLE_KEY` (Supabase → Settings → API).
+6. Каждый **push** в подключённую ветку (например `main`) даёт **новый деплой** фронта и функций.
 
 **Если на сайте 404 NOT_FOUND:** в Vercel → **Settings → General** оставьте **Root Directory пустым**. В **Build & Output Settings** снимите переопределения **Install / Build / Output Directory**, если задавали вручную — для этого репозитория команды заданы в корневом **`vercel.json`** (`installCommand`, `buildCommand`, `outputDirectory`). Функции API лежат в **`api/*.js`** (современный формат Vercel).
 

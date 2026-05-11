@@ -51,5 +51,5 @@ export default function App() {
     );
   }
 
-  return <ChatApp />;
+  return <ChatApp guest={guest} />;
 }
