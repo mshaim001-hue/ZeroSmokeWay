@@ -6,6 +6,7 @@ import { supabase, supabaseConfigured } from './supabaseClient';
 export default function App() {
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState(false);
+  const [guest, setGuest] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) {
@@ -38,8 +39,13 @@ export default function App() {
     return <p style={{ padding: 24 }}>Загрузка…</p>;
   }
 
-  if (!session) {
-    return <AuthPanel onAuthed={() => setSession(true)} />;
+  if (!session && !guest) {
+    return (
+      <AuthPanel
+        onAuthed={() => setSession(true)}
+        onGuest={__GUEST_LOGIN_ENABLED__ ? () => setGuest(true) : undefined}
+      />
+    );
   }
 
   return <ChatApp />;

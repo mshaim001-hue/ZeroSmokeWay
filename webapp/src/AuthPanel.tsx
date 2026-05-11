@@ -3,9 +3,11 @@ import { supabase } from './supabaseClient';
 
 type Props = {
   onAuthed: () => void;
+  /** Только dev / Vercel Preview (см. vite.config). */
+  onGuest?: () => void;
 };
 
-export function AuthPanel({ onAuthed }: Props) {
+export function AuthPanel({ onAuthed, onGuest }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -59,6 +61,28 @@ export function AuthPanel({ onAuthed }: Props) {
         </button>
       </form>
       {error && <p style={{ color: '#b00020', marginTop: 12 }}>{error}</p>}
+      {onGuest && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13, color: '#666' }}>
+            Локально или на Preview: можно войти без аккаунта (только для теста).
+          </p>
+          <button
+            type="button"
+            onClick={onGuest}
+            style={{
+              width: '100%',
+              padding: 10,
+              background: 'transparent',
+              color: '#2e7d32',
+              border: '1px solid #2e7d32',
+              borderRadius: 8,
+              cursor: 'pointer',
+            }}
+          >
+            Пропустить вход
+          </button>
+        </div>
+      )}
     </div>
   );
 }
