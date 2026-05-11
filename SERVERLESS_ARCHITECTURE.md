@@ -5,7 +5,7 @@
 1. **Backend API** - Vercel Serverless Functions (`backend/api/agent.js`)
 2. **База данных** - Supabase (PostgreSQL) - полностью serverless
 3. **Аутентификация** - Supabase Auth - serverless
-4. **Frontend (Web)** - Flutter Web компилируется в статические файлы
+4. **Frontend (Web)** — React/Vite в `webapp/` → статика в `webapp/dist` (Flutter в `frontend/` — опционально)
 
 ## 🔄 Что нужно изменить для полной serverless архитектуры
 
@@ -18,7 +18,7 @@
 #### Вариант 1: Полностью Serverless (Рекомендуется)
 ```
 ✅ Vercel Serverless Functions для API
-✅ Flutter Web как статические файлы на Vercel/Netlify
+✅ Веб (`webapp/`) как статические файлы на Vercel (или Netlify / Cloudflare Pages)
 ✅ Supabase для БД и Auth
 ✅ Никаких постоянных серверов
 ```

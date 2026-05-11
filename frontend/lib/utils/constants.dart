@@ -5,9 +5,13 @@ class Constants {
   static const String supabaseAnonKey = 'sb_publishable_luXacOL3lA_KUoG7DUHEKg_fp-UdsQI'; // Publishable key (безопасен для клиента)
   
   // API Configuration
-  // Для локальной разработки используйте: http://localhost:3000
-  // Для продакшена замените на URL вашего Vercel проекта
-  static const String apiBaseUrl = 'http://localhost:3000';
+  // По умолчанию — локальный backend. Для просмотра с телефона через cloudflared
+  // поднимите туннель на порт backend и передайте URL:
+  // flutter run ... --dart-define=API_BASE_URL=https://xxxx.trycloudflare.com
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000',
+  );
   
   // App Constants
   static const String appName = 'ZeroSmokeWay';

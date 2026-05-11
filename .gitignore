@@ -26,6 +26,10 @@ frontend/android/.settings/
 frontend/android/.classpath
 frontend/android/.project
 
+# Web (Vite)
+webapp/node_modules/
+webapp/dist/
+
 # Node.js
 backend/node_modules/
 backend/.env

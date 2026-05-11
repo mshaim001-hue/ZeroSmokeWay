@@ -4,22 +4,29 @@
 
 ## 🚀 Быстрый старт (Локально)
 
-**Для локального тестирования см. [LOCAL_SETUP.md](./LOCAL_SETUP.md)**
+**Веб (рекомендуется):** папка `webapp/` — React + Vite, деплой на Vercel вместе с API.
 
-Краткая версия:
-1. Настройте Supabase (см. LOCAL_SETUP.md)
-2. Настройте backend: `cd backend && npm install && cp env.example .env` (добавьте OpenAI ключ)
-3. Настройте frontend: обновите `frontend/lib/utils/constants.dart` с Supabase credentials
-4. Запустите backend: `cd backend && npm run dev`
-5. Запустите frontend: `cd frontend && flutter run -d chrome`
+```bash
+cd backend && npm install && cp env.example .env   # добавьте OPENAI_API_KEY
+npm run dev
+```
+
+В другом терминале:
+
+```bash
+cd webapp && npm install && cp .env.example .env   # VITE_SUPABASE_* из Supabase
+npm run dev
+```
+
+Откройте адрес из вывода Vite (обычно `http://localhost:5173`). Запросы к `/api/*` проксируются на `http://127.0.0.1:3000`.
+
+**Flutter (опционально):** см. [LOCAL_SETUP.md](./LOCAL_SETUP.md) — `cd frontend && flutter run`.
 
 ## Технологический стек
 
 ### Frontend
-- **Flutter** - кроссплатформенный фреймворк
-- **Dart** (SDK >=3.0.0 <4.0.0)
-- **Provider** (^6.1.1) - управление состоянием
-- **Material Design**
+- **webapp/** — **React 18 + Vite + TypeScript** (основной веб для продакшена на Vercel)
+- **frontend/** — **Flutter** (мобильные / десктоп при необходимости)
 
 ### Backend
 - **Node.js** (v22.x)
@@ -45,19 +52,20 @@
 - **[SERVERLESS_ARCHITECTURE.md](./SERVERLESS_ARCHITECTURE.md)** - Описание serverless архитектуры
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Руководство по разработке
 
-## Деплой
+## Деплой (бесплатный хостинг + деплой из Git)
 
-**Полностью Serverless архитектура:**
-- Frontend: Flutter Web (статические файлы) на Vercel
-- Backend: Vercel Serverless Functions
-- База данных: Supabase (serverless PostgreSQL)
-- Аутентификация: Supabase Auth (serverless)
+**Стек:** React из `webapp/dist` + serverless API (`backend/api/*.js`) на **Vercel**, БД и логин — **Supabase** (free tier). OpenAI — по расходу токенов.
 
-Подробнее см. [SERVERLESS_ARCHITECTURE.md](./SERVERLESS_ARCHITECTURE.md)
+1. Зарегистрируйтесь на [vercel.com](https://vercel.com), **Import** репозитория с GitHub или GitLab (поддерживается импорт GitLab).
+2. В настройках проекта Vercel → **Environment Variables** добавьте `OPENAI_API_KEY` (и при необходимости `OPENAI_MODEL`).
+3. В тех же переменных добавьте для **сборки фронта**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (значения из Supabase → Settings → API).
+4. Каждый **push** в подключённую ветку (например `main`) даёт **новый деплой** фронта и функций.
+
+**Почему не Firebase в этом репозитории:** у вас уже данные и Auth в **Supabase**; перенос на Firebase = новая БД, новые правила и перепись бэкенда. Текущая схема уже serverless и бесплатна на старте. Если принципиально нужен Firebase — это отдельный проект миграции.
+
+Подробнее см. [SERVERLESS_ARCHITECTURE.md](./SERVERLESS_ARCHITECTURE.md) (там ещё упоминается Flutter Web — для продакшена теперь приоритет **`webapp/`**).
 
 ## Поддерживаемые платформы
 
-- Web (Flutter Web)
-- iOS
-- Android
-- Desktop (Linux, macOS, Windows)
+- Web — **React** (`webapp/`), деплой на Vercel
+- Мобильные / десктоп — **Flutter** (`frontend/`) при необходимости

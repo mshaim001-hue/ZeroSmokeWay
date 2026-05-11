@@ -42,3 +42,7 @@ export default async function handler(req, res) {
   }
 }
 
+/** Лимит времени функции (Vercel); не через vercel.json `functions` — конфликтует с `builds`. */
+export const config = {
+  maxDuration: 30,
+};
