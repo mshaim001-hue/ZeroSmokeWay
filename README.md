@@ -20,7 +20,7 @@ npm run dev
 
 Откройте адрес из вывода Vite (обычно `http://localhost:5173`). Запросы к `/api/*` проксируются на `http://127.0.0.1:3000`.
 
-На **локальном dev** и на **Vercel Preview** на экране входа есть **«Пропустить вход»** (гостевой режим для теста). На **Production** (`vercel --prod` / основной домен продакшена) этой кнопки **нет**.
+На **локальном dev** и на **Vercel Preview** на экране входа есть **«Пропустить вход»**. На **Production** по умолчанию кнопки нет; чтобы включить гостя и на проде (например для своего теста), в Vercel → **Environment Variables** добавьте **`VITE_ALLOW_GUEST`** = **`true`** для Production и сделайте **Redeploy** (значение подставляется при сборке Vite).
 
 **Flutter (опционально):** см. [LOCAL_SETUP.md](./LOCAL_SETUP.md) — `cd frontend && flutter run`.
 

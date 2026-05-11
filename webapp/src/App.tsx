@@ -39,11 +39,14 @@ export default function App() {
     return <p style={{ padding: 24 }}>Загрузка…</p>;
   }
 
+  const guestSkipAllowed =
+    __GUEST_LOGIN_ENABLED__ || import.meta.env.VITE_ALLOW_GUEST === 'true';
+
   if (!session && !guest) {
     return (
       <AuthPanel
         onAuthed={() => setSession(true)}
-        onGuest={__GUEST_LOGIN_ENABLED__ ? () => setGuest(true) : undefined}
+        onGuest={guestSkipAllowed ? () => setGuest(true) : undefined}
       />
     );
   }
