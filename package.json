@@ -1,0 +1,6 @@
+{
+  "name": "zerosmokeway",
+  "private": true,
+  "type": "module",
+  "description": "Root package.json enables ESM for Vercel api/*.js re-exports."
+}

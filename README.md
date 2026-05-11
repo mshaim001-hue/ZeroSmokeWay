@@ -61,7 +61,7 @@ npm run dev
 3. В тех же переменных добавьте для **сборки фронта**: `VITE_SUPABASE_URL` и один из ключей — `VITE_SUPABASE_ANON_KEY` или `VITE_SUPABASE_PUBLISHABLE_KEY` (Supabase → Settings → API).
 4. Каждый **push** в подключённую ветку (например `main`) даёт **новый деплой** фронта и функций.
 
-**Если на сайте 404 NOT_FOUND:** в Vercel → Project → **Settings → General** проверьте, что **Root Directory пустой** (корень репозитория), а в **Build & Output Settings** нет ручного **Output Directory**, который перекрывает сборку из `vercel.json`. Должен использоваться `vercel.json` в корне проекта.
+**Если на сайте 404 NOT_FOUND:** в Vercel → **Settings → General** оставьте **Root Directory пустым**. В **Build & Output Settings** снимите переопределения **Install / Build / Output Directory**, если задавали вручную — для этого репозитория команды заданы в корневом **`vercel.json`** (`installCommand`, `buildCommand`, `outputDirectory`). Функции API лежат в **`api/*.js`** (современный формат Vercel).
 
 **Почему не Firebase в этом репозитории:** у вас уже данные и Auth в **Supabase**; перенос на Firebase = новая БД, новые правила и перепись бэкенда. Текущая схема уже serverless и бесплатна на старте. Если принципиально нужен Firebase — это отдельный проект миграции.
 

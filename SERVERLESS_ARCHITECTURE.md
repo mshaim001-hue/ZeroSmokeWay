@@ -2,7 +2,7 @@
 
 ## ✅ Что УЖЕ Serverless
 
-1. **Backend API** - Vercel Serverless Functions (`backend/api/agent.js`)
+1. **Backend API** - Vercel Serverless Functions (`api/agent.js` → `backend/api/agent.js`, то же для orchestrator)
 2. **База данных** - Supabase (PostgreSQL) - полностью serverless
 3. **Аутентификация** - Supabase Auth - serverless
 4. **Frontend (Web)** — React/Vite в `webapp/` → статика в `webapp/dist` (Flutter в `frontend/` — опционально)

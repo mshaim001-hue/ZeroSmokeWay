@@ -1,17 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "backend/api/agent.js", "use": "@vercel/node" },
-    { "src": "backend/api/orchestrator.js", "use": "@vercel/node" },
-    { "src": "webapp/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
-  ],
-  "routes": [
-    { "src": "/api/agent", "dest": "backend/api/agent.js" },
-    { "src": "/api/orchestrator", "dest": "backend/api/orchestrator.js" },
-    { "src": "/", "dest": "/index.html" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ],
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd backend && npm ci && cd ../webapp && npm ci",
+  "buildCommand": "cd webapp && npm run build",
+  "outputDirectory": "webapp/dist",
   "env": {
     "OPENAI_MODEL": "gpt-4o-mini"
   }
