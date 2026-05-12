@@ -5,6 +5,11 @@ import { getAgentPrompt } from './agentConfig.js';
 import { handleAdaptiveAnamnesis, isAnamnesisComplete } from './adaptiveAnamnesisService.js';
 import { analyzeResponseWithSubAgents } from './subAgentService.js';
 import { createCompactContext } from './contextManagerService.js';
+import {
+  formatAuthContextForPrompt,
+  formatAnamnesisAuthRules,
+  formatSecondaryAgentAuthRules,
+} from './authContext.js';
 
 dotenv.config();
 
@@ -23,19 +28,27 @@ export async function handleAgentRequest({
   anamnesisData, 
   userProfile,
   useAdaptiveMode = false, // Новый параметр для включения адаптивного режима
-  orchestratorInstruction = null, // Инструкция от оркестратора: на чём сфокусироваться в этом ответе
+  orchestratorInstruction = null,
+  authContext = null,
 }) {
+  const auth = authContext ?? {
+    isAuthenticated: false,
+    userTurnCount: conversationHistory.filter((m) => m.isUser).length,
+    assistantTurnCount: conversationHistory.filter((m) => !m.isUser).length,
+  };
+  const authSystemBlock = `${formatAuthContextForPrompt(auth)}${agentType === 'anamnesis' ? formatAnamnesisAuthRules(auth) : formatSecondaryAgentAuthRules(agentType, auth)}`;
+
   // Для anamnesis с адаптивным режимом используем специальный обработчик
   if (agentType === 'anamnesis' && useAdaptiveMode) {
-    // Извлекаем coverage из anamnesisData если есть
     const previousCoverage = anamnesisData?.coverage || null;
     const previousExtractedData = anamnesisData?.extractedData || anamnesisData || null;
-    
+
     const result = await handleAdaptiveAnamnesis({
       message,
       conversationHistory,
       previousExtractedData,
-      previousCoverage
+      previousCoverage,
+      authSystemBlock,
     });
     
     // Проверяем, завершен ли анамнез
@@ -71,7 +84,8 @@ export async function handleAgentRequest({
     : { messages: conversationHistory };
 
   const messages = [
-    { role: 'system', content: systemPrompt + knowledgeContext }
+    { role: 'system', content: systemPrompt + knowledgeContext },
+    { role: 'system', content: authSystemBlock },
   ];
 
   if (userProfile) {

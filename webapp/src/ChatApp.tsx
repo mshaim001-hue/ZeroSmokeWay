@@ -1,5 +1,9 @@
+import type { Session } from '@supabase/supabase-js';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { ChatMessage, postOrchestrator } from './api';
+import { ChatMessage, fetchOrchestratorSession, postOrchestrator } from './api';
+import { AuthModal } from './AuthModal';
+import { parseStoredOrchestratorSession } from './orchestratorSessionRestore';
+import { getSupabase } from './supabaseClient';
 import { ProgressQuitScreen } from './ProgressQuitScreen';
 import { HealthMilestonesScreen } from './HealthMilestonesScreen';
 import { SettingsQuitScreen } from './SettingsQuitScreen';
@@ -88,7 +92,11 @@ export function ChatApp() {
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('progress');
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const accessToken = session?.access_token ?? null;
 
   const scrollDown = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 
@@ -116,12 +124,75 @@ export function ChatApp() {
     setToolPanelOpen(false);
   }, []);
 
+  const restoreChatFromServer = useCallback(
+    async (token: string) => {
+      try {
+        const stored = await fetchOrchestratorSession(token);
+        if (!stored) {
+          startJourney();
+          return;
+        }
+        const parsed = parseStoredOrchestratorSession(stored);
+        if (!parsed.messages?.length) {
+          startJourney();
+          return;
+        }
+        setMessages(parsed.messages);
+        if (parsed.phase) setPhase(parsed.phase);
+        if (parsed.plan) setPlan(parsed.plan);
+        setAnamnesis(parsed.anamnesis);
+        setError(null);
+      } catch {
+        startJourney();
+      }
+    },
+    [startJourney],
+  );
+
+  /** Первая загрузка: либо диалог из Supabase (GET), либо гостевой приветствие. */
   useEffect(() => {
-    startJourney();
-  }, [startJourney]);
+    const sb = getSupabase();
+    if (!sb) {
+      startJourney();
+      setBootstrapping(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    sb.auth.getSession().then(async ({ data: { session: initial } }) => {
+      if (cancelled) return;
+      setSession(initial);
+      if (initial?.access_token) {
+        await restoreChatFromServer(initial.access_token);
+      } else {
+        startJourney();
+      }
+      if (!cancelled) setBootstrapping(false);
+    });
+
+    const {
+      data: { subscription },
+    } = sb.auth.onAuthStateChange(async (event, nextSession) => {
+      setSession(nextSession);
+      if (cancelled) return;
+      if (event === 'SIGNED_IN' && nextSession?.access_token) {
+        await restoreChatFromServer(nextSession.access_token);
+      }
+      if (event === 'SIGNED_OUT') {
+        startJourney();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [restoreChatFromServer, startJourney]);
 
   async function onSend(e: FormEvent) {
     e.preventDefault();
+    if (bootstrapping) return;
     const text = input.trim();
     if (!text || loading) return;
 
@@ -142,7 +213,7 @@ export function ChatApp() {
           userProfile: null,
           currentPlan: plan,
         },
-        null,
+        accessToken,
       );
 
       const bot: ChatMessage = {
@@ -188,7 +259,25 @@ export function ChatApp() {
               <span className="chat-header-tagline">Честный разговор о курении</span>
             </div>
           </div>
-          <div className="chat-header-actions">
+          <div className="chat-header-actions chat-header-auth">
+            {accessToken ? (
+              <button
+                type="button"
+                className="chat-header-user"
+                title={session?.user?.email ?? 'Аккаунт'}
+                onClick={() => setAuthModalOpen(true)}
+              >
+                {session?.user?.email?.split('@')[0] ?? 'Аккаунт'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--secondary btn--pill"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                Войти
+              </button>
+            )}
             <button type="button" className="btn btn--secondary btn--pill" onClick={startJourney}>
               Сначала
             </button>
@@ -201,8 +290,12 @@ export function ChatApp() {
           <div className="chat-main-inner">
             <div className="chat-content">
               {!toolPanelOpen && (
-                <main className="chat-thread" aria-busy={loading}>
-                  {messages.map((m, i) => {
+                <main className="chat-thread" aria-busy={loading || bootstrapping}>
+                  {bootstrapping ? (
+                    <div className="chat-bootstrap-hint">Загрузка…</div>
+                  ) : null}
+                  {!bootstrapping &&
+                    messages.map((m, i) => {
                     const showBotName = !m.isUser && (i === 0 || messages[i - 1]?.isUser);
                     const timeStr = formatMsgTime(m.timestamp);
 
@@ -240,7 +333,7 @@ export function ChatApp() {
                       </div>
                     );
                   })}
-                  {loading && (
+                  {!bootstrapping && loading && (
                     <div className="typing-row">
                       <BotAvatar />
                       <div className="typing-block">
@@ -334,7 +427,7 @@ export function ChatApp() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={loading ? 'Ждём ответ…' : 'Сообщение'}
-                    disabled={loading}
+                    disabled={loading || bootstrapping}
                     aria-label="Сообщение"
                     autoComplete="off"
                   />
@@ -342,7 +435,7 @@ export function ChatApp() {
                 <button
                   type="submit"
                   className="btn btn--primary btn--icon btn-send"
-                  disabled={loading}
+                  disabled={loading || bootstrapping}
                   title={loading ? 'Отправка…' : 'Отправить'}
                   aria-label={loading ? 'Отправка…' : 'Отправить'}
                 >
@@ -408,6 +501,8 @@ export function ChatApp() {
           </div>
         </aside>
       </div>
+
+      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </div>
   );
 }

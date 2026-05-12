@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { formatAuthContextForPrompt } from './authContext.js';
 
 dotenv.config();
 
@@ -86,6 +87,7 @@ function normalizePlan(parsed) {
  * @param {Object|null} params.anamnesisData — собранный анамнез
  * @param {Object|null} params.userProfile — профиль пользователя
  * @param {Object|null} params.currentPlan — текущий план { steps: [{ focus, agent }] } (от прошлого ответа)
+ * @param {{ isAuthenticated: boolean, userTurnCount?: number, assistantTurnCount?: number }|null} [params.authContext]
  * @returns {Promise<{ nextAgent, phaseUpdate, instructionToAgent, plan, onTrack, planUpdated, reasonOffTrack }>}
  */
 export async function getOrchestratorDecision({
@@ -95,13 +97,14 @@ export async function getOrchestratorDecision({
   anamnesisData = null,
   userProfile = null,
   currentPlan = null,
+  authContext = null,
 }) {
   const recentMessages = conversationHistory.slice(-12);
   const historyText = recentMessages
     .map((m) => (m.isUser ? 'Пользователь' : 'Алекс') + ': ' + (m.text || ''))
     .join('\n');
 
-  const userPrompt = `Текущая фаза: ${phase}
+  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}Текущая фаза: ${phase}
 Собранный анамнез: ${anamnesisData ? JSON.stringify(anamnesisData, null, 0) : 'пока нет'}
 Профиль пользователя: ${userProfile ? JSON.stringify(userProfile, null, 0) : 'нет'}
 

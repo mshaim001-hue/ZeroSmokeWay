@@ -106,28 +106,30 @@ const ANAMNESIS_FUNCTIONS = [
  * Обрабатывает запрос с адаптивным анамнезом
  * Поддерживает function calling для динамических вопросов
  */
-export async function handleAdaptiveAnamnesis({ 
-  message, 
-  conversationHistory, 
+export async function handleAdaptiveAnamnesis({
+  message,
+  conversationHistory,
   previousExtractedData = null,
-  previousCoverage = null 
+  previousCoverage = null,
+  authSystemBlock = '',
 }) {
   const systemPrompt = await getAgentPrompt('anamnesis');
-  
+
   let knowledgeContext = '';
   try {
     const searchQuery = `${message} психология курильщика анамнез`;
     const relevantChunks = await searchKnowledgeBase(searchQuery, 2, 'anamnesis');
     if (relevantChunks.length > 0) {
-      knowledgeContext = '\n\nИНФОРМАЦИЯ ИЗ КНИГ ДЛЯ ТЕБЯ:\n' + relevantChunks.map(c => c.text).join('\n---\n');
+      knowledgeContext = '\n\nИНФОРМАЦИЯ ИЗ КНИГ ДЛЯ ТЕБЯ:\n' + relevantChunks.map((c) => c.text).join('\n---\n');
     }
   } catch (e) {
     console.warn('KB search failed', e.message);
   }
 
-  const messages = [
-    { role: 'system', content: systemPrompt + knowledgeContext }
-  ];
+  const messages = [{ role: 'system', content: systemPrompt + knowledgeContext }];
+  if (authSystemBlock) {
+    messages.push({ role: 'system', content: authSystemBlock });
+  }
 
   // Добавляем информацию о уже собранных данных
   if (previousExtractedData) {

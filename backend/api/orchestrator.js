@@ -1,21 +1,40 @@
-// Vercel Serverless Function: оркестратор диалога
-import { getOrchestratorDecision, PHASES } from '../services/orchestratorService.js';
-import { handleAgentRequest } from '../services/agentService.js';
+// Vercel Serverless Function: оркестратор диалога + восстановление сессии
+import { runOrchestrationRequest } from '../services/orchestratorPipeline.js';
+import { PHASES } from '../services/orchestratorService.js';
 import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
-import { saveOrchestratorConversation } from '../services/conversationStore.js';
+import { getOrchestratorSession } from '../services/conversationStore.js';
 
 const CORS_HEADERS =
   'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization';
 
-export default async function handler(req, res) {
+function setCors(res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', CORS_HEADERS);
+}
+
+export default async function handler(req, res) {
+  setCors(res);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
+  }
+
+  if (req.method === 'GET') {
+    try {
+      const auth = req.headers.authorization;
+      const userId = await getUserIdFromAuthHeader(auth);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const session = await getOrchestratorSession(userId);
+      return res.status(200).json(session ?? { messages: [], orchestrator_state: {} });
+    } catch (error) {
+      console.error('Orchestrator GET session:', error);
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 
   if (req.method !== 'POST') {
@@ -23,68 +42,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const {
-      message,
-      conversationHistory = [],
-      anamnesisData = null,
-      phase = PHASES.WELCOME,
-      userProfile = null,
-      currentPlan = null,
-    } = req.body;
+    const { message, conversationHistory = [], phase = PHASES.WELCOME } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ error: 'message is required' });
     }
 
-    const decision = await getOrchestratorDecision({
-      message: message.trim(),
-      conversationHistory,
-      phase,
-      anamnesisData,
-      userProfile,
-      currentPlan,
+    const payload = await runOrchestrationRequest({
+      body: req.body,
+      authorizationHeader: req.headers.authorization,
     });
 
-    const agentResult = await handleAgentRequest({
-      message: message.trim(),
-      agentType: decision.nextAgent,
-      conversationHistory,
-      anamnesisData,
-      userProfile,
-      useAdaptiveMode: decision.nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
-      orchestratorInstruction: decision.instructionToAgent,
-    });
-
-    const userId = await getUserIdFromAuthHeader(req.headers.authorization);
-    if (userId) {
-      const finalMessages = [
-        ...conversationHistory,
-        {
-          text: agentResult.response,
-          isUser: false,
-          timestamp: new Date().toISOString(),
-        },
-      ];
-      await saveOrchestratorConversation(userId, finalMessages);
-    }
-
-    res.status(200).json({
-      response: agentResult.response,
-      extractedData: agentResult.extractedData,
-      extractedProfile: agentResult.extractedProfile,
-      currentStep: agentResult.currentStep,
-      phase: decision.phaseUpdate,
-      nextAgent: decision.nextAgent,
-      plan: decision.plan,
-      onTrack: decision.onTrack,
-      planUpdated: decision.planUpdated,
-      isComplete: agentResult.isComplete,
-      contextCompacted: agentResult.contextCompacted,
-      contextStats: agentResult.contextStats,
-    });
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('Orchestrator request error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: error.message || 'Internal server error',
     });
   }
