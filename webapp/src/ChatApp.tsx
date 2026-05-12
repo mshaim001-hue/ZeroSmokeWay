@@ -293,30 +293,60 @@ export function ChatApp() {
 
   /** Подгонка под visual viewport при открытой клавиатуре — шапка остаётся сверху видимой области. */
   useEffect(() => {
-    const doc = document.documentElement;
+    const docEl = document.documentElement;
+
+    const layoutHeightFallback = (): number => {
+      const ih = typeof window.innerHeight === 'number' ? window.innerHeight : 0;
+      const dc = typeof docEl.clientHeight === 'number' ? docEl.clientHeight : 0;
+      return Math.max(ih > 48 ? ih : 0, dc > 48 ? dc : 0, 568);
+    };
+
     const sync = () => {
-      const vv = window.visualViewport;
-      if (vv) {
-        doc.style.setProperty('--zsw-chat-vh', `${vv.height}px`);
-        doc.style.setProperty('--zsw-chat-offset-top', `${vv.offsetTop}px`);
-      } else {
-        doc.style.setProperty('--zsw-chat-vh', `${window.innerHeight}px`);
-        doc.style.removeProperty('--zsw-chat-offset-top');
+      try {
+        const inner = layoutHeightFallback();
+        const vv = window.visualViewport;
+        if (vv) {
+          let h =
+            typeof vv.height === 'number' && Number.isFinite(vv.height) ? vv.height : inner;
+          if (h <= 48) {
+            h = inner;
+          }
+          const top =
+            typeof vv.offsetTop === 'number' && Number.isFinite(vv.offsetTop) ? vv.offsetTop : 0;
+          docEl.style.setProperty('--zsw-chat-vh', `${Math.round(Math.max(h, 1))}px`);
+          docEl.style.setProperty('--zsw-chat-offset-top', `${Math.round(Math.max(0, top))}px`);
+        } else {
+          docEl.style.setProperty('--zsw-chat-vh', `${Math.round(inner)}px`);
+          docEl.style.removeProperty('--zsw-chat-offset-top');
+        }
+      } catch {
+        docEl.style.removeProperty('--zsw-chat-vh');
+        docEl.style.removeProperty('--zsw-chat-offset-top');
       }
     };
 
     sync();
+    const rafId = window.requestAnimationFrame(() => sync());
+    let vvCleanup: Window['visualViewport'] | null = null;
     const vv = window.visualViewport;
+    vvCleanup = vv;
     vv?.addEventListener('resize', sync);
     vv?.addEventListener('scroll', sync);
     window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+    window.addEventListener('load', sync);
+    window.addEventListener('pageshow', sync);
 
     return () => {
-      vv?.removeEventListener('resize', sync);
-      vv?.removeEventListener('scroll', sync);
+      window.cancelAnimationFrame(rafId);
+      vvCleanup?.removeEventListener('resize', sync);
+      vvCleanup?.removeEventListener('scroll', sync);
       window.removeEventListener('resize', sync);
-      doc.style.removeProperty('--zsw-chat-vh');
-      doc.style.removeProperty('--zsw-chat-offset-top');
+      window.removeEventListener('orientationchange', sync);
+      window.removeEventListener('load', sync);
+      window.removeEventListener('pageshow', sync);
+      docEl.style.removeProperty('--zsw-chat-vh');
+      docEl.style.removeProperty('--zsw-chat-offset-top');
     };
   }, []);
 
