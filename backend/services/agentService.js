@@ -10,6 +10,7 @@ import {
   formatAnamnesisAuthRules,
   formatSecondaryAgentAuthRules,
 } from './authContext.js';
+import { buildGuestAnamnesisGateResult } from './guestAnamnesisGate.js';
 
 dotenv.config();
 
@@ -37,6 +38,13 @@ export async function handleAgentRequest({
     assistantTurnCount: conversationHistory.filter((m) => !m.isUser).length,
   };
   const authSystemBlock = `${formatAuthContextForPrompt(auth)}${agentType === 'anamnesis' ? formatAnamnesisAuthRules(auth) : formatSecondaryAgentAuthRules(agentType, auth)}`;
+
+  if (agentType === 'anamnesis' && !auth.isAuthenticated) {
+    return buildGuestAnamnesisGateResult({
+      conversationHistory,
+      userTurnCount: auth.userTurnCount,
+    });
+  }
 
   // Для anamnesis с адаптивным режимом используем специальный обработчик
   if (agentType === 'anamnesis' && useAdaptiveMode) {

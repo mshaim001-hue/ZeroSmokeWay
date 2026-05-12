@@ -106,7 +106,7 @@ export async function getOrchestratorDecision({
 
   const isGuest = Boolean(authContext && !authContext.isAuthenticated);
 
-  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${isGuest ? 'ВАЖНО: пользователь не вошёл в аккаунт. Не переводи к myth_buster или support. Сейчас только сценарий до входа (имя → что делаем → просьба войти); вопросы анамнеза про сигареты до входа запрещены.\n\n' : ''}Текущая фаза: ${phase}
+  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${isGuest ? 'Пользователь без входа в аккаунт: не переводи к myth_buster или support; оставайся в welcome; не добавляй в instructionToAgent вопросов про сигареты до авторизации.\n\n' : ''}Текущая фаза: ${phase}
 Собранный анамнез: ${anamnesisData ? JSON.stringify(anamnesisData, null, 0) : 'пока нет'}
 Профиль пользователя: ${userProfile ? JSON.stringify(userProfile, null, 0) : 'нет'}
 
@@ -162,7 +162,7 @@ ${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: отв�
     nextAgent = 'anamnesis';
     phaseUpdate = PHASES.WELCOME;
     instructionToAgent =
-      'Гость: сервер отдаёт фиксированные ответы до входа. Не требуй ответов про курение до авторизации.';
+      'Гость: ответы до входа формирует бэкенд; в instruction не добавляй вопросы про курение.';
   }
 
   const plan = isGuest
