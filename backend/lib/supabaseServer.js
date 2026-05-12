@@ -1,26 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const anonKey =
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+/** Читаем env при вызове: скрипты успевают вызвать dotenv.config() до импорта этого модуля не помогает (ESM). */
+function supabaseUrl() {
+  return process.env.SUPABASE_URL;
+}
+
+function serviceRoleKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+function anonOrPublishableKey() {
+  return (
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 
 export function hasSupabaseAdmin() {
-  return Boolean(url && serviceKey);
+  return Boolean(supabaseUrl() && serviceRoleKey());
 }
 
 /** Достаточно для проверки JWT (anon / publishable). */
 export function hasSupabaseAuth() {
-  return Boolean(url && anonKey);
+  return Boolean(supabaseUrl() && anonOrPublishableKey());
 }
 
 export function getSupabaseAdmin() {
-  if (!url || !serviceKey) {
+  const url = supabaseUrl();
+  const key = serviceRoleKey();
+  if (!url || !key) {
     throw new Error('SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY обязательны для операций с БД');
   }
-  return createClient(url, serviceKey, {
+  return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
@@ -33,6 +45,8 @@ export async function getUserIdFromAuthHeader(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const jwt = authHeader.slice(7).trim();
   if (!jwt || !hasSupabaseAuth()) return null;
+  const url = supabaseUrl();
+  const anonKey = anonOrPublishableKey();
   const supabase = createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });

@@ -169,7 +169,10 @@ export function ChatApp({ guest = false }: Props) {
         </div>
       </header>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+      <main
+        style={{ flex: 1, overflowY: 'auto', padding: 16 }}
+        aria-busy={loading}
+      >
         {messages.map((m, i) => (
           <div
             key={i}
@@ -193,6 +196,23 @@ export function ChatApp({ guest = false }: Props) {
             </div>
           </div>
         ))}
+        {loading && (
+          <div className="typing-row">
+            <div
+              className="typing-bubble"
+              role="status"
+              aria-live="polite"
+              aria-label="Алекс формирует ответ"
+            >
+              <span className="typing-label">Алекс отвечает</span>
+              <span className="typing-dots" aria-hidden>
+                <span />
+                <span />
+                <span />
+              </span>
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </main>
 
@@ -206,11 +226,30 @@ export function ChatApp({ guest = false }: Props) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Напишите сообщение…"
-          style={{ flex: 1, padding: 12, borderRadius: 8, border: '1px solid #ccc' }}
+          placeholder={loading ? 'Ждём ответ…' : 'Напишите сообщение…'}
+          disabled={loading}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderRadius: 8,
+            border: '1px solid #ccc',
+            opacity: loading ? 0.72 : 1,
+          }}
         />
-        <button type="submit" disabled={loading} style={{ padding: '0 20px', borderRadius: 8, border: 'none', background: '#2e7d32', color: '#fff', cursor: 'pointer' }}>
-          {loading ? '…' : 'Отправить'}
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            padding: '0 20px',
+            borderRadius: 8,
+            border: 'none',
+            background: loading ? '#6b9080' : '#2e7d32',
+            color: '#fff',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            minWidth: 108,
+          }}
+        >
+          {loading ? 'Отправка…' : 'Отправить'}
         </button>
       </form>
     </div>
