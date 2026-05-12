@@ -130,6 +130,47 @@ export function ChatApp() {
 
   const guestComposerLocked = !bootstrapping && !accessToken && guestAuthReminder === 3;
 
+  const startJourney = useCallback(() => {
+    setMessages([
+      {
+        text:
+          'Привет, я Алекс. Можно просто поговорить — про сигареты, никотин и всё что с этим связано.\n\nКак вас зовут?',
+        isUser: false,
+        timestamp: nowIso(),
+      },
+    ]);
+    setPhase(PHASE_WELCOME);
+    setPlan(null);
+    setAnamnesis(null);
+    setError(null);
+    setToolPanelOpen(false);
+  }, []);
+
+  const restoreChatFromServer = useCallback(
+    async (token: string) => {
+      try {
+        const stored = await fetchOrchestratorSession(token);
+        if (!stored) {
+          startJourney();
+          return;
+        }
+        const parsed = parseStoredOrchestratorSession(stored);
+        if (!parsed.messages?.length) {
+          startJourney();
+          return;
+        }
+        setMessages(parsed.messages);
+        if (parsed.phase) setPhase(parsed.phase);
+        if (parsed.plan) setPlan(parsed.plan);
+        setAnamnesis(parsed.anamnesis);
+        setError(null);
+      } catch {
+        startJourney();
+      }
+    },
+    [startJourney],
+  );
+
   const hydrateOrchestratorAfterSignIn = useCallback(
     async (token: string) => {
       const snap = orchestratorHydrateSnapRef.current;
@@ -183,47 +224,6 @@ export function ChatApp() {
   useEffect(() => {
     scrollDown();
   }, [messages, loading]);
-
-  const startJourney = useCallback(() => {
-    setMessages([
-      {
-        text:
-          'Привет, я Алекс. Можно просто поговорить — про сигареты, никотин и всё что с этим связано.\n\nКак вас зовут?',
-        isUser: false,
-        timestamp: nowIso(),
-      },
-    ]);
-    setPhase(PHASE_WELCOME);
-    setPlan(null);
-    setAnamnesis(null);
-    setError(null);
-    setToolPanelOpen(false);
-  }, []);
-
-  const restoreChatFromServer = useCallback(
-    async (token: string) => {
-      try {
-        const stored = await fetchOrchestratorSession(token);
-        if (!stored) {
-          startJourney();
-          return;
-        }
-        const parsed = parseStoredOrchestratorSession(stored);
-        if (!parsed.messages?.length) {
-          startJourney();
-          return;
-        }
-        setMessages(parsed.messages);
-        if (parsed.phase) setPhase(parsed.phase);
-        if (parsed.plan) setPlan(parsed.plan);
-        setAnamnesis(parsed.anamnesis);
-        setError(null);
-      } catch {
-        startJourney();
-      }
-    },
-    [startJourney],
-  );
 
   /** Первая загрузка: либо диалог из Supabase (GET), либо гостевой приветствие. */
   useEffect(() => {
