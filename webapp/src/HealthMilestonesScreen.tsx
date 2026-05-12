@@ -28,12 +28,7 @@ function formatHoursLabel(hours: number): string {
   return `${hours} часов`;
 }
 
-type Props = {
-  onBack?: () => void;
-  embedInOverlay?: boolean;
-};
-
-export function HealthMilestonesScreen({ onBack, embedInOverlay = false }: Props) {
+export function HealthMilestonesScreen() {
   const [now, setNow] = useState(() => Date.now());
   const [storageRev, setStorageRev] = useState(0);
 
@@ -59,16 +54,6 @@ export function HealthMilestonesScreen({ onBack, embedInOverlay = false }: Props
     <div className="health-screen" data-storage-rev={storageRev}>
       <div className="health-screen-bg" aria-hidden />
       <div className="health-screen-dim" aria-hidden />
-
-      {!embedInOverlay && (
-        <header className="settings-app-header health-screen-topbar">
-          <button type="button" className="btn-toolbar" onClick={() => onBack?.()} aria-label="Назад">
-            ←
-          </button>
-          <span className="settings-bar-title">Здоровье</span>
-          <span className="settings-bar-spacer" aria-hidden />
-        </header>
-      )}
 
       {!quitAt ? (
         <div className="health-empty-overlay">

@@ -7,45 +7,10 @@ import { SupportProjectScreen } from './SupportProjectScreen';
 
 const PHASE_WELCOME = 'welcome';
 
-const PHASE_LABELS: Record<string, string> = {
-  welcome: 'Знакомство',
-  anamnesis: 'Анамнез',
-  myth_busting: 'Разбор мифов',
-  support: 'Поддержка',
-};
-
-/** Индекс активного «агента» в шкале 0…2 (оркестратор → anamnesis | myth_buster | support). */
-function agentProgressIndex(phase: string): number {
-  if (phase === 'support') return 2;
-  if (phase === 'myth_busting') return 1;
-  return 0;
-}
-
-const AGENT_STEPS = [
-  { id: 'anamnesis', short: 'Анамнез', hint: 'Собираем контекст мягко, по одному вопросу' },
-  { id: 'myth_buster', short: 'Мифы', hint: 'Вопросы и мысли из твоего опыта' },
-  { id: 'support', short: 'Поддержка', hint: 'После инсайта — закрепление и опора' },
-] as const;
-
 type SidebarTab = 'progress' | 'health' | 'settings' | 'support_project';
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function phaseLabel(phase: string): string {
-  return PHASE_LABELS[phase] ?? phase;
-}
-
-function firstPlanFocus(plan: Record<string, unknown> | null): string | null {
-  const steps = plan?.steps;
-  if (!Array.isArray(steps) || steps.length === 0) return null;
-  const s0 = steps[0];
-  if (s0 && typeof s0 === 'object' && s0 !== null && 'focus' in s0) {
-    const f = (s0 as { focus: unknown }).focus;
-    if (typeof f === 'string' && f.trim()) return f.trim();
-  }
-  return null;
 }
 
 function formatMsgTime(iso: string): string {
@@ -83,41 +48,6 @@ function LogoMark() {
       />
       <path d="M18 26c4-1 8-4 10-8" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" />
     </svg>
-  );
-}
-
-function AgentProgressBar({ phase }: { phase: string }) {
-  const active = agentProgressIndex(phase);
-  return (
-    <div className="agent-progress" role="group" aria-label="Прогресс по этапам консультантов">
-      <div className="agent-progress-track">
-        {AGENT_STEPS.map((step, i) => (
-          <div
-            key={step.id}
-            className={
-              'agent-progress-seg' +
-              (i < active ? ' agent-progress-seg--done' : '') +
-              (i === active ? ' agent-progress-seg--active' : '') +
-              (i > active ? ' agent-progress-seg--todo' : '')
-            }
-          />
-        ))}
-      </div>
-      <div className="agent-progress-labels">
-        {AGENT_STEPS.map((s, i) => (
-          <div
-            key={s.id}
-            className={
-              'agent-progress-label' +
-              (i === active ? ' agent-progress-label--active' : '') +
-              (i < active ? ' agent-progress-label--done' : '')
-            }
-          >
-            <span className="agent-progress-name">{s.short}</span>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -221,8 +151,6 @@ export function ChatApp() {
     }
   }
 
-  const nextFocus = firstPlanFocus(plan);
-
   const overlayToolTitle = TOOL_OVERLAY_TITLE[sidebarTab];
 
   return (
@@ -241,9 +169,6 @@ export function ChatApp() {
               Сначала
             </button>
           </div>
-        </div>
-        <div className="chat-header-progress">
-          <AgentProgressBar phase={phase} />
         </div>
       </header>
 
@@ -327,41 +252,35 @@ export function ChatApp() {
                   <div className="chat-tool-overlay-header">
                     <button
                       type="button"
-                      className="btn-toolbar btn-toolbar--narrow chat-tool-back"
+                      className="btn btn--secondary btn--compact chat-tool-back"
                       onClick={() => setToolPanelOpen(false)}
                     >
-                      ← Чат
+                      Чат
                     </button>
-                    <span className="chat-tool-overlay-title" id="chat-tool-overlay-heading">
+                    <h2 className="chat-tool-overlay-title" id="chat-tool-overlay-heading">
                       {overlayToolTitle}
-                    </span>
-                    <span className="settings-bar-spacer" aria-hidden />
+                    </h2>
+                    <span className="chat-tool-overlay-trail" aria-hidden />
                   </div>
                   <div className="chat-tool-overlay-scroll">
                     {sidebarTab === 'progress' && (
                       <div className="sidebar-panel sidebar-panel--flush">
-                        <ProgressQuitScreen
-                          chatPhaseLabel={phaseLabel(phase)}
-                          agentShort={AGENT_STEPS[agentProgressIndex(phase)].short}
-                          agentHint={AGENT_STEPS[agentProgressIndex(phase)].hint}
-                          nextFocus={nextFocus}
-                          embedInOverlay
-                        />
+                        <ProgressQuitScreen />
                       </div>
                     )}
                     {sidebarTab === 'health' && (
                       <div className="sidebar-panel sidebar-panel--health-flush">
-                        <HealthMilestonesScreen embedInOverlay onBack={() => setToolPanelOpen(false)} />
+                        <HealthMilestonesScreen />
                       </div>
                     )}
                     {sidebarTab === 'settings' && (
                       <div className="sidebar-panel sidebar-panel--settings-flush">
-                        <SettingsQuitScreen embedInOverlay onBack={() => setToolPanelOpen(false)} />
+                        <SettingsQuitScreen />
                       </div>
                     )}
                     {sidebarTab === 'support_project' && (
                       <div className="sidebar-panel sidebar-panel--support-flush">
-                        <SupportProjectScreen embedInOverlay onBack={() => setToolPanelOpen(false)} />
+                        <SupportProjectScreen />
                       </div>
                     )}
                   </div>
@@ -369,8 +288,9 @@ export function ChatApp() {
               )}
             </div>
 
-            {error && <div className="chat-error">{error}</div>}
+            {!toolPanelOpen && error && <div className="chat-error">{error}</div>}
 
+            {!toolPanelOpen && (
             <div className="chat-composer-wrap">
               <form className="chat-form" onSubmit={onSend}>
                 <div className="chat-form-input-wrap">
@@ -403,6 +323,7 @@ export function ChatApp() {
                 </button>
               </form>
             </div>
+            )}
           </div>
         </div>
 

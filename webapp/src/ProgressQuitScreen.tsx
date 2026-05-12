@@ -18,22 +18,7 @@ import {
 const RING_R = 38;
 const RING_C = 2 * Math.PI * RING_R;
 
-type Props = {
-  chatPhaseLabel: string;
-  agentShort: string;
-  agentHint: string;
-  nextFocus: string | null;
-  /** Когда экран открыт поверх чата — шапка уже в оверлее, внутренняя «Прогресс» скрыта */
-  embedInOverlay?: boolean;
-};
-
-export function ProgressQuitScreen({
-  chatPhaseLabel,
-  agentShort,
-  agentHint,
-  nextFocus,
-  embedInOverlay = false,
-}: Props) {
+export function ProgressQuitScreen() {
   const [now, setNow] = useState(() => Date.now());
   const [quitAt, setQuitAt] = useState<number | null>(() => readQuitAtMs());
 
@@ -68,32 +53,6 @@ export function ProgressQuitScreen({
 
   return (
     <div className="progress-quit-root">
-      <div className="progress-chat-strip">
-        <div className="progress-chat-strip-row">
-          <span className="progress-chat-phase">{chatPhaseLabel}</span>
-          <span className="progress-chat-agent">{agentShort}</span>
-        </div>
-        <p className="progress-chat-hint">{agentHint}</p>
-        {nextFocus && (
-          <p className="progress-chat-focus">
-            <strong>Фокус:</strong> {nextFocus}
-          </p>
-        )}
-      </div>
-
-      {!embedInOverlay && (
-        <div className="progress-app-header">
-          <span className="progress-app-title">Прогресс</span>
-          <span className="progress-app-header-icons" aria-hidden>
-            <span className="progress-app-icon-btn" title="">
-              📓
-            </span>
-            <span className="progress-app-icon-btn">🎯</span>
-            <span className="progress-app-icon-btn">⋮</span>
-          </span>
-        </div>
-      )}
-
       {!quitAt ? (
         <div className="progress-empty-card">
           <p className="progress-empty-text">
@@ -133,38 +92,23 @@ export function ProgressQuitScreen({
           <div className="progress-stats-wrap">
             <div className="progress-stats-grid">
               <div className="progress-stat-cell">
-                <span className="progress-stat-icon" aria-hidden>
-                  ⚑
-                </span>
                 <div className="progress-stat-value">{formatDurationRu(metrics.elapsed)}</div>
                 <div className="progress-stat-caption">Не курю</div>
               </div>
               <div className="progress-stat-cell">
-                <span className="progress-stat-icon" aria-hidden>
-                  💵
-                </span>
                 <div className="progress-stat-value">{formatMoneyRu(metrics.moneySaved)} ₸</div>
                 <div className="progress-stat-caption">Денег сэкономлено</div>
               </div>
               <div className="progress-stat-cell">
-                <span className="progress-stat-icon" aria-hidden>
-                  ⏱
-                </span>
                 <div className="progress-stat-value">{formatDurationRu(metrics.lifeRegainedMs)}</div>
                 <div className="progress-stat-caption">Жизнь возвращена</div>
               </div>
               <div className="progress-stat-cell">
-                <span className="progress-stat-icon" aria-hidden>
-                  🚭
-                </span>
                 <div className="progress-stat-value">
                   {metrics.cigsAvoided.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}
                 </div>
                 <div className="progress-stat-caption">Сигарет не выкурено</div>
               </div>
-            </div>
-            <div className="progress-stats-center-sync" aria-hidden>
-              ↻
             </div>
           </div>
 

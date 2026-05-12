@@ -307,10 +307,6 @@ input {
   flex-shrink: 0;
 }
 
-.chat-header-progress {
-  min-width: 0;
-}
-
 .chat-header::before {
   display: none;
 }
@@ -370,27 +366,45 @@ input {
 
 .chat-tool-overlay-header {
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
   align-items: center;
-  gap: 8px;
-  padding: 11px 10px 12px;
-  padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  border-bottom: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  column-gap: 8px;
+  padding: 10px 10px 11px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: color-mix(in srgb, var(--zsw-primary) 7%, var(--zsw-bg-card));
+  border-bottom: 1px solid var(--zsw-border);
+  box-shadow: var(--zsw-shadow-sm);
 }
 
 .chat-tool-overlay-title {
-  flex: 1;
-  min-width: 0;
+  grid-column: 2;
+  justify-self: center;
+  margin: 0;
+  max-width: min(220px, 70vw);
   text-align: center;
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #fff;
+  color: var(--zsw-primary-dark);
   line-height: 1.2;
 }
 
 .chat-tool-back {
-  flex-shrink: 0;
+  grid-column: 1;
+  justify-self: start;
+}
+
+.chat-tool-overlay-trail {
+  grid-column: 3;
+  justify-self: end;
+  min-width: 72px;
+  min-height: 1px;
+  pointer-events: none;
+}
+
+.chat-tool-back:focus-visible {
+  outline: none;
 }
 
 .btn-toolbar--narrow {
@@ -593,77 +607,6 @@ input {
   border-top: 1px solid var(--zsw-danger-border);
 }
 
-/* Прогресс по трём агентам */
-.agent-progress {
-  width: 100%;
-}
-
-.chat-header-progress .agent-progress-track {
-  margin-bottom: 4px;
-}
-
-.chat-header-progress .agent-progress-label {
-  font-size: 0.58rem;
-}
-
-.agent-progress-track {
-  display: flex;
-  gap: 4px;
-  height: 7px;
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 7px;
-}
-
-.agent-progress-seg {
-  flex: 1;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--zsw-border) 85%, transparent);
-  transition:
-    background 0.25s,
-    box-shadow 0.25s;
-}
-
-.agent-progress-seg--done {
-  background: linear-gradient(90deg, var(--zsw-primary-muted), var(--zsw-primary-soft));
-}
-
-.agent-progress-seg--active {
-  background: linear-gradient(90deg, var(--zsw-primary-dark), var(--zsw-primary));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--zsw-primary) 42%, transparent);
-}
-
-.agent-progress-seg--todo {
-  background: var(--zsw-border);
-}
-
-.agent-progress-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.agent-progress-label {
-  flex: 1;
-  text-align: center;
-  font-size: 0.65rem;
-  color: var(--chat-muted);
-  line-height: 1.25;
-}
-
-.agent-progress-label--active {
-  color: var(--chat-green);
-  font-weight: 700;
-}
-
-.agent-progress-label--done {
-  color: var(--zsw-primary-muted);
-}
-
-.agent-progress-name {
-  display: block;
-}
-
 /* Панели контента (в оверлее): общие стили блоков */
 .sidebar-panel-scroll {
   flex: 1;
@@ -810,89 +753,6 @@ input {
   min-height: 120px;
 }
 
-.progress-chat-strip {
-  padding: 12px 14px 10px;
-  background: color-mix(in srgb, var(--zsw-primary) 7%, var(--zsw-bg-card));
-  border-bottom: 1px solid var(--zsw-border);
-}
-
-.progress-chat-strip-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.progress-chat-phase {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--zsw-primary-dark);
-  padding: 4px 9px;
-  border-radius: var(--zsw-radius-pill);
-  background: color-mix(in srgb, var(--zsw-primary) 12%, var(--zsw-bg-card));
-  border: 1px solid color-mix(in srgb, var(--zsw-primary) 22%, var(--zsw-border));
-}
-
-.progress-chat-agent {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--zsw-text-secondary);
-  padding: 4px 9px;
-  border-radius: var(--zsw-radius-pill);
-  background: var(--zsw-bg-subtle);
-  border: 1px solid var(--zsw-border);
-}
-
-.progress-chat-hint {
-  font-size: 0.75rem;
-  color: var(--zsw-text-secondary);
-  margin: 8px 0 0;
-  line-height: 1.35;
-}
-
-.progress-chat-focus {
-  font-size: 0.75rem;
-  color: var(--zsw-text);
-  margin: 8px 0 0;
-  line-height: 1.35;
-}
-
-.progress-app-header,
-.settings-app-header,
-.chat-tool-overlay-header {
-  background: linear-gradient(180deg, var(--zsw-primary-dark) 0%, var(--zsw-primary) 100%);
-  color: #fff;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--zsw-primary-dark) 22%, transparent);
-}
-
-.progress-app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-}
-
-.progress-app-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.progress-app-header-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.progress-app-icon-btn {
-  opacity: 0.95;
-  font-size: 1rem;
-  padding: 4px 6px;
-  cursor: default;
-}
-
 .progress-empty-card {
   margin: 14px;
   padding: 18px 16px;
@@ -984,7 +844,6 @@ input {
 }
 
 .progress-stats-wrap {
-  position: relative;
   margin-bottom: 10px;
 }
 
@@ -998,7 +857,7 @@ input {
 }
 
 .progress-stat-cell {
-  padding: 14px 10px 12px;
+  padding: 16px 10px 12px;
   text-align: center;
   background: var(--zsw-bg-subtle);
 }
@@ -1016,12 +875,6 @@ input {
   border-right: 1px solid var(--zsw-border);
 }
 
-.progress-stat-icon {
-  display: block;
-  font-size: 1.1rem;
-  margin-bottom: 6px;
-  opacity: 0.85;
-}
 
 .progress-stat-value {
   font-size: 0.8125rem;
@@ -1038,24 +891,6 @@ input {
   line-height: 1.25;
 }
 
-.progress-stats-center-sync {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--zsw-bg-card);
-  border: 1px solid var(--zsw-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-  color: var(--zsw-text-soft);
-  z-index: 1;
-  box-shadow: var(--zsw-shadow-sm);
-}
 
 .progress-reset-actions {
   display: block;
@@ -1295,11 +1130,8 @@ input {
   margin: 0;
 }
 
-.support-footnote {
-  font-size: 0.75rem;
-  line-height: 1.5;
-  color: #64748b;
-  margin: 18px 4px 10px;
+.support-about-inner {
+  padding: 14px 12px 16px;
 }
 
 .sidebar-panel--settings-flush {
@@ -1321,6 +1153,9 @@ input {
   align-items: center;
   gap: 8px;
   padding: 12px 10px 14px;
+  background: linear-gradient(180deg, var(--zsw-primary-dark) 0%, var(--zsw-primary) 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--zsw-primary-dark) 22%, transparent);
 }
 
 .settings-bar-title {
@@ -1329,6 +1164,7 @@ input {
   font-size: 1.125rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  color: inherit;
 }
 
 .settings-bar-spacer {
@@ -1428,14 +1264,6 @@ input {
   font-size: 0.75rem;
   color: #78909c;
   line-height: 1.35;
-}
-
-.settings-row-chevron {
-  flex-shrink: 0;
-  font-size: 1.25rem;
-  color: #b0bec5;
-  line-height: 1.4;
-  padding-left: 4px;
 }
 
 .settings-subcard {

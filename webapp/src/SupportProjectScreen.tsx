@@ -27,17 +27,11 @@ function SupportRow({ icon, title, desc, onClick, muted }: RowProps) {
         <span className="settings-row-title">{title}</span>
         {desc ? <span className="settings-row-desc">{desc}</span> : null}
       </span>
-      {onClick ? <span className="settings-row-chevron">›</span> : null}
     </button>
   );
 }
 
-type Props = {
-  onBack?: () => void;
-  embedInOverlay?: boolean;
-};
-
-export function SupportProjectScreen({ onBack, embedInOverlay = false }: Props) {
+export function SupportProjectScreen() {
   async function onShare() {
     const quit = readQuitAtMs();
     const text =
@@ -62,10 +56,6 @@ export function SupportProjectScreen({ onBack, embedInOverlay = false }: Props) 
     }
   }
 
-  function onRate() {
-    window.alert('Оценка в каталоге приложений — когда появится отдельная публикация. Спасибо за намерение помочь.');
-  }
-
   function onDonate() {
     window.alert('Пожертвования и подписка — позже. Сейчас лучшая помощь — рассказать о ZeroSmokeWay тем, кому это актуально.');
   }
@@ -80,16 +70,6 @@ export function SupportProjectScreen({ onBack, embedInOverlay = false }: Props) 
 
   return (
     <div className="settings-screen support-screen">
-      {!embedInOverlay && (
-        <header className="settings-app-header">
-          <button type="button" className="btn-toolbar" onClick={() => onBack?.()} aria-label="Назад">
-            ←
-          </button>
-          <span className="settings-bar-title">Поддержка проекта</span>
-          <span className="settings-bar-spacer" aria-hidden />
-        </header>
-      )}
-
       <div className="settings-body">
         <div className="support-hero">
           <span className="support-hero-icon" aria-hidden>
@@ -111,13 +91,6 @@ export function SupportProjectScreen({ onBack, embedInOverlay = false }: Props) 
             onClick={onShare}
           />
           <SupportRow
-            icon="⭐"
-            title="Оценить приложение"
-            desc="Позже — в магазине приложений или на странице проекта"
-            onClick={onRate}
-            muted
-          />
-          <SupportRow
             icon="✉️"
             title="Написать нам"
             desc="Идея, вопрос или замечание — откроется почта"
@@ -136,9 +109,17 @@ export function SupportProjectScreen({ onBack, embedInOverlay = false }: Props) 
           />
         </div>
 
-        <p className="support-footnote">
-          Отдельное спасибо за терпение к ранней версии и за честный диалог в чате — это тоже часть сообщества.
-        </p>
+        <h3 className="settings-section-title">О нас</h3>
+        <div className="settings-card">
+          <div className="support-about-inner">
+            <p className="support-hero-lead">
+              Мы — студенты Tomorrow School. Это наш первый социальный проект. Хотим дать людям спокойное место для
+              разговора о курении: без морали, без давления и без обещаний «волшебной таблетки». Верим, что честность,
+              внимание и уважение к своему темпу помогают сильнее, чем стыд и жёсткие дедлайны. Если ZeroSmokeWay
+              окажется полезен вам или близким — для нас это уже большой смысл.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
