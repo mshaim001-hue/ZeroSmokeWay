@@ -1134,6 +1134,10 @@ input {
   padding: 14px 12px 16px;
 }
 
+.support-about-inner .support-hero-lead + .support-hero-lead {
+  margin-top: 10px;
+}
+
 .sidebar-panel--settings-flush {
   padding: 0;
 }

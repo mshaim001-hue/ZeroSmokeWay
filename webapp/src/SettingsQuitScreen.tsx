@@ -57,10 +57,6 @@ export function SettingsQuitScreen() {
     refresh();
   }
 
-  function onPremium() {
-    window.alert('Премиум — позже. Сейчас всё бесплатно.');
-  }
-
   async function onShare() {
     const quit = readQuitAtMs();
     const text =
@@ -92,8 +88,6 @@ export function SettingsQuitScreen() {
   return (
     <div className="settings-screen" data-rev={rev}>
       <div className="settings-body">
-        <SettingsRow icon="👑" title="Перейти на премиум" desc="Увеличьте свои шансы на успех" onClick={onPremium} />
-
         <h3 className="settings-section-title">Мой прогресс</h3>
         <div className="settings-card">
           <SettingsRow icon="📅" title="Начать заново" desc={quitDateText} onClick={onStartOver} />
