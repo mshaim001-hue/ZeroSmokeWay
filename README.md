@@ -14,13 +14,11 @@ npm run dev
 В другом терминале:
 
 ```bash
-cd webapp && npm install && cp .env.example .env   # VITE_SUPABASE_* из Supabase
+cd webapp && npm install && cp .env.example .env   # опционально VITE_API_BASE_URL
 npm run dev
 ```
 
-Откройте адрес из вывода Vite (обычно `http://localhost:5173`). Запросы к `/api/*` проксируются на `http://127.0.0.1:3000`.
-
-На **локальном dev** и на **Vercel Preview** на экране входа есть **«Пропустить вход»**. На **Production** по умолчанию кнопки нет; чтобы включить гостя и на проде (например для своего теста), в Vercel → **Environment Variables** добавьте **`VITE_ALLOW_GUEST`** = **`true`** для Production и сделайте **Redeploy** (значение подставляется при сборке Vite).
+Откройте адрес из вывода Vite (обычно `http://localhost:5173`). Запросы к `/api/*` проксируются на `http://127.0.0.1:3000`. Вход и регистрация на фронте отключены — чат открывается сразу.
 
 **Flutter (опционально):** см. [LOCAL_SETUP.md](./LOCAL_SETUP.md) — `cd frontend && flutter run`.
 
@@ -56,13 +54,13 @@ npm run dev
 
 ## Деплой (бесплатный хостинг + деплой из Git)
 
-**Стек:** React из `webapp/dist` + serverless API (`backend/api/*.js`) на **Vercel**, БД и логин — **Supabase** (free tier). OpenAI — по расходу токенов.
+**Стек:** React из `webapp/dist` + serverless API (`backend/api/*.js`) на **Vercel**, БД — **Supabase** (free tier). OpenAI — по расходу токенов.
 
 1. Зарегистрируйтесь на [vercel.com](https://vercel.com), **Import** репозитория с GitHub или GitLab (поддерживается импорт GitLab).
 2. В настройках проекта Vercel → **Environment Variables** добавьте `OPENAI_API_KEY` (и при необходимости `OPENAI_MODEL`).
-3. Для **serverless API** (сохранение диалогов, RAG из БД): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, и для проверки JWT от фронта — `SUPABASE_ANON_KEY` или `SUPABASE_PUBLISHABLE_KEY` (тот же, что в `VITE_*`, но без префикса `VITE_`). Локально скопируйте `backend/env.example` в `backend/.env` и заполните те же переменные.
+3. Для **serverless API** (RAG из БД и опц. сохранение диалогов): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; при проверке JWT — `SUPABASE_ANON_KEY` или `SUPABASE_PUBLISHABLE_KEY`. Локально скопируйте `backend/env.example` в `backend/.env` и заполните те же переменные.
 4. В Supabase выполните SQL-миграции из `supabase/migrations/` (в т.ч. `vector` и таблица `knowledge_chunks`). После этого из каталога `backend/` один раз: `npm run sync-knowledge` — загрузка эмбеддингов из `knowledge-base/embeddings.json` в БД (перед этим при необходимости `npm run index-knowledge`).
-5. В тех же переменных Vercel добавьте для **сборки фронта**: `VITE_SUPABASE_URL` и один из ключей — `VITE_SUPABASE_ANON_KEY` или `VITE_SUPABASE_PUBLISHABLE_KEY` (Supabase → Settings → API).
+5. При необходимости для фронта укажите **отдельный URL API**: `VITE_API_BASE_URL` (пусто = тот же домен, что и сайт).
 6. Каждый **push** в подключённую ветку (например `main`) даёт **новый деплой** фронта и функций.
 
 **Если на сайте 404 NOT_FOUND:** в Vercel → **Settings → General** оставьте **Root Directory пустым**. В **Build & Output Settings** снимите переопределения **Install / Build / Output Directory**, если задавали вручную — для этого репозитория команды заданы в корневом **`vercel.json`** (`installCommand`, `buildCommand`, `outputDirectory`). Функции API лежат в **`api/*.js`** (современный формат Vercel).

@@ -1,5 +1,4 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from './supabaseClient';
 import { ChatMessage, postOrchestrator } from './api';
 
 const PHASE_WELCOME = 'welcome';
@@ -8,11 +7,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-type Props = {
-  guest?: boolean;
-};
-
-export function ChatApp({ guest = false }: Props) {
+export function ChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,63 +43,8 @@ export function ChatApp({ guest = false }: Props) {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      if (guest || !supabase) {
-        startJourney();
-        return;
-      }
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token || cancelled) {
-        startJourney();
-        return;
-      }
-      const { data, error: qErr } = await supabase
-        .from('conversations')
-        .select('messages')
-        .eq('user_id', session.user.id)
-        .eq('agent_type', 'orchestrator')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (qErr || !data?.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
-        startJourney();
-        return;
-      }
-      const normalized = (data.messages as unknown[]).filter(
-        (m): m is ChatMessage =>
-          Boolean(m) &&
-          typeof m === 'object' &&
-          'text' in m &&
-          typeof (m as ChatMessage).text === 'string' &&
-          typeof (m as ChatMessage).isUser === 'boolean' &&
-          typeof (m as ChatMessage).timestamp === 'string',
-      );
-      if (normalized.length === 0) {
-        startJourney();
-        return;
-      }
-      setMessages(normalized);
-    }
-
-    void init();
-    return () => {
-      cancelled = true;
-    };
-  }, [guest, startJourney]);
-
-  async function getAccessToken(): Promise<string | null> {
-    if (guest || !supabase) return null;
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
-  }
+    startJourney();
+  }, [startJourney]);
 
   async function onSend(e: FormEvent) {
     e.preventDefault();
@@ -119,7 +59,6 @@ export function ChatApp({ guest = false }: Props) {
     setError(null);
 
     try {
-      const token = await getAccessToken();
       const data = await postOrchestrator(
         {
           message: text,
@@ -129,7 +68,7 @@ export function ChatApp({ guest = false }: Props) {
           userProfile: null,
           currentPlan: plan,
         },
-        token,
+        null,
       );
 
       const bot: ChatMessage = {
@@ -150,23 +89,13 @@ export function ChatApp({ guest = false }: Props) {
     }
   }
 
-  async function signOut() {
-    if (!guest && supabase) await supabase.auth.signOut();
-    window.location.reload();
-  }
-
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fff' }}>
       <header style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <strong>ZeroSmokeWay</strong>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button type="button" onClick={startJourney} style={{ padding: '6px 10px' }}>
-            Сначала
-          </button>
-          <button type="button" onClick={() => void signOut()} style={{ padding: '6px 10px' }}>
-            Выйти
-          </button>
-        </div>
+        <button type="button" onClick={startJourney} style={{ padding: '6px 10px' }}>
+          Сначала
+        </button>
       </header>
 
       <main
