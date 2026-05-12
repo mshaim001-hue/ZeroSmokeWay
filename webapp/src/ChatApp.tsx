@@ -48,6 +48,24 @@ function firstPlanFocus(plan: Record<string, unknown> | null): string | null {
   return null;
 }
 
+function formatMsgTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+function BotAvatar() {
+  return (
+    <div className="msg-avatar" aria-hidden>
+      <span className="msg-avatar-letter">А</span>
+    </div>
+  );
+}
+
 function LogoMark() {
   return (
     <svg className="header-logo-icon" width="40" height="40" viewBox="0 0 40 40" aria-hidden>
@@ -222,25 +240,62 @@ export function ChatApp() {
       <div className="chat-body">
         <div className="chat-main">
           <main className="chat-thread" aria-busy={loading}>
-            {messages.map((m, i) => (
-              <div key={i} className={m.isUser ? 'msg-row msg-row--user' : 'msg-row'}>
-                <div className={m.isUser ? 'msg-bubble msg-bubble--user' : 'msg-bubble msg-bubble--bot'}>{m.text}</div>
-              </div>
-            ))}
+            {messages.map((m, i) => {
+              const showBotName = !m.isUser && (i === 0 || messages[i - 1]?.isUser);
+              const timeStr = formatMsgTime(m.timestamp);
+
+              if (m.isUser) {
+                return (
+                  <div key={i} className="msg-row msg-row--user">
+                    <div className="msg-column msg-column--user">
+                      <div className="msg-bubble msg-bubble--user">
+                        <p className="msg-text">{m.text}</p>
+                        {timeStr ? (
+                          <div className="msg-meta">
+                            <span className="msg-time">{timeStr}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={i} className="msg-row msg-row--bot">
+                  <BotAvatar />
+                  <div className="msg-column msg-column--bot">
+                    {showBotName ? <span className="msg-sender">Алекс</span> : null}
+                    <div className="msg-bubble msg-bubble--bot">
+                      <p className="msg-text">{m.text}</p>
+                      {timeStr ? (
+                        <div className="msg-meta">
+                          <span className="msg-time">{timeStr}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
             {loading && (
               <div className="typing-row">
-                <div
-                  className="typing-bubble"
-                  role="status"
-                  aria-live="polite"
-                  aria-label="Алекс формирует ответ"
-                >
-                  <span className="typing-label">Алекс отвечает</span>
-                  <span className="typing-dots" aria-hidden>
-                    <span />
-                    <span />
-                    <span />
-                  </span>
+                <BotAvatar />
+                <div className="typing-block">
+                  <span className="msg-sender msg-sender--typing">Алекс</span>
+                  <div
+                    className="typing-bubble"
+                    role="status"
+                    aria-live="polite"
+                    aria-label="Алекс формирует ответ"
+                  >
+                    <span className="typing-label">печатает</span>
+                    <span className="typing-dots" aria-hidden>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -251,15 +306,33 @@ export function ChatApp() {
 
           <div className="chat-composer-wrap">
             <form className="chat-form" onSubmit={onSend}>
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={loading ? 'Ждём ответ…' : 'Напишите сообщение…'}
+              <div className="chat-form-input-wrap">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={loading ? 'Ждём ответ…' : 'Сообщение'}
+                  disabled={loading}
+                  aria-label="Сообщение"
+                  autoComplete="off"
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-send"
                 disabled={loading}
-                aria-label="Сообщение"
-              />
-              <button type="submit" className="btn-send" disabled={loading}>
-                {loading ? 'Отправка…' : 'Отправить'}
+                title={loading ? 'Отправка…' : 'Отправить'}
+                aria-label={loading ? 'Отправка…' : 'Отправить'}
+              >
+                {loading ? (
+                  <span className="btn-send-spinner" aria-hidden />
+                ) : (
+                  <svg className="btn-send-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden>
+                    <path
+                      fill="currentColor"
+                      d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"
+                    />
+                  </svg>
+                )}
               </button>
             </form>
           </div>
