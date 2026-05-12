@@ -483,6 +483,56 @@ input {
   display: none;
 }
 
+.guest-auth-reminder {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 10px 12px;
+  padding-right: calc(12px + env(safe-area-inset-right, 0px));
+  padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--zsw-primary) 12%, var(--zsw-bg-card)),
+    var(--zsw-bg-card)
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--zsw-primary) 22%, var(--zsw-border));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--zsw-primary-dark) 8%, transparent);
+}
+
+.guest-auth-reminder__inner {
+  max-width: min(720px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guest-auth-reminder__text {
+  margin: 0;
+  flex: 1 1 220px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--zsw-primary-dark);
+}
+
+.guest-auth-reminder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.guest-auth-reminder--final {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--zsw-primary-dark) 14%, #fff8f0),
+    color-mix(in srgb, #b71c1c 6%, var(--zsw-bg-card))
+  );
+  border-bottom-color: color-mix(in srgb, var(--zsw-primary-dark) 35%, var(--zsw-border));
+}
+
 .chat-body {
   flex: 1;
   min-height: 0;

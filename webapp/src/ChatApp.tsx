@@ -11,6 +11,16 @@ import { SupportProjectScreen } from './SupportProjectScreen';
 
 const PHASE_WELCOME = 'welcome';
 
+/** Гостевая сессия: напоминания о входе (от момента готовности чата без JWT). */
+const GUEST_AUTH_REMINDER_MS = {
+  /** Первое уведомление */
+  first: 5 * 60 * 1000,
+  /** Второе: через 3 мин после первого (5 + 3 от старта) */
+  second: 8 * 60 * 1000,
+  /** Финальное: ещё +1 мин (9 мин от старта), без кнопки закрытия */
+  third: 9 * 60 * 1000,
+} as const;
+
 type SidebarTab =
   | 'progress'
   | 'health'
@@ -95,8 +105,13 @@ export function ChatApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [guestAuthReminder, setGuestAuthReminder] = useState<0 | 1 | 2 | 3>(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const guestReminderGuestRef = useRef(false);
+
   const accessToken = session?.access_token ?? null;
+
+  guestReminderGuestRef.current = bootstrapping ? false : !accessToken;
 
   const scrollDown = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 
@@ -185,6 +200,31 @@ export function ChatApp() {
       subscription.unsubscribe();
     };
   }, [restoreChatFromServer, startJourney]);
+
+  /** Для незалогиненных: три отложенных напоминания о входе (5 мин → +3 мин → +1 мин). */
+  useEffect(() => {
+    if (bootstrapping || accessToken) {
+      setGuestAuthReminder(0);
+      return;
+    }
+
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const show = (stage: 1 | 2 | 3) => {
+      if (!guestReminderGuestRef.current) return;
+      setGuestAuthReminder(stage);
+    };
+
+    timeouts.push(
+      window.setTimeout(() => show(1), GUEST_AUTH_REMINDER_MS.first),
+      window.setTimeout(() => show(2), GUEST_AUTH_REMINDER_MS.second),
+      window.setTimeout(() => show(3), GUEST_AUTH_REMINDER_MS.third),
+    );
+
+    return () => {
+      timeouts.forEach((id) => window.clearTimeout(id));
+    };
+  }, [accessToken, bootstrapping]);
 
   async function onSend(e: FormEvent) {
     e.preventDefault();
@@ -280,6 +320,45 @@ export function ChatApp() {
           </div>
         </div>
       </header>
+
+      {!bootstrapping && !accessToken && guestAuthReminder > 0 ? (
+        <aside
+          className={
+            'guest-auth-reminder' +
+            (guestAuthReminder === 3 ? ' guest-auth-reminder--final' : '')
+          }
+          role={guestAuthReminder === 3 ? 'alert' : 'status'}
+          aria-live="polite"
+        >
+          <div className="guest-auth-reminder__inner">
+            <p className="guest-auth-reminder__text">
+              {guestAuthReminder === 1
+                ? 'Вы в чате уже какое-то время. Чтобы сохранять историю и прогресс между заходами, войдите или зарегистрируйтесь.'
+                : guestAuthReminder === 2
+                  ? 'Напоминание: без аккаунта переписка хранится только в этом браузере. Регистрация займёт пару минут.'
+                  : 'Чтобы продолжать без риска потерять диалог, нужно войти в аккаунт. Это последнее напоминание.'}
+            </p>
+            <div className="guest-auth-reminder__actions">
+              {(guestAuthReminder === 1 || guestAuthReminder === 2) && (
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--compact"
+                  onClick={() => setGuestAuthReminder(0)}
+                >
+                  Позже
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn--primary btn--compact"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                Войти
+              </button>
+            </div>
+          </div>
+        </aside>
+      ) : null}
 
       <div className="chat-body">
         <div className="chat-main">
