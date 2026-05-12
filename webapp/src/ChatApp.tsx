@@ -7,7 +7,14 @@ import { SupportProjectScreen } from './SupportProjectScreen';
 
 const PHASE_WELCOME = 'welcome';
 
-type SidebarTab = 'progress' | 'health' | 'settings' | 'support_project';
+type SidebarTab =
+  | 'progress'
+  | 'health'
+  | 'settings'
+  | 'support_project'
+  | 'sponsor_1'
+  | 'sponsor_2'
+  | 'sponsor_3';
 
 function nowIso() {
   return new Date().toISOString();
@@ -58,12 +65,17 @@ const RAIL_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
   { id: 'support_project', icon: '🙏', label: 'Проект' },
 ];
 
+const SPONSOR_SLOT_IDS = ['sponsor_1', 'sponsor_2', 'sponsor_3'] as const satisfies readonly SidebarTab[];
+
 /** Заголовок в общей зелёной шапке оверлея (как во встроенных экранах без дубля) */
 const TOOL_OVERLAY_TITLE: Record<SidebarTab, string> = {
   progress: 'Прогресс',
   health: 'Здоровье',
   settings: 'Настройки',
   support_project: 'Поддержка проекта',
+  sponsor_1: 'Наши спонсоры',
+  sponsor_2: 'Наши спонсоры',
+  sponsor_3: 'Наши спонсоры',
 };
 
 export function ChatApp() {
@@ -152,6 +164,18 @@ export function ChatApp() {
   }
 
   const overlayToolTitle = TOOL_OVERLAY_TITLE[sidebarTab];
+
+  function toggleRailTab(id: SidebarTab) {
+    if (sidebarTab === id && toolPanelOpen) {
+      setToolPanelOpen(false);
+    } else {
+      setSidebarTab(id);
+      setToolPanelOpen(true);
+    }
+  }
+
+  const sponsorStubSlot: 1 | 2 | 3 | null =
+    sidebarTab === 'sponsor_1' ? 1 : sidebarTab === 'sponsor_2' ? 2 : sidebarTab === 'sponsor_3' ? 3 : null;
 
   return (
     <div className="chat-app">
@@ -283,6 +307,18 @@ export function ChatApp() {
                         <SupportProjectScreen />
                       </div>
                     )}
+                    {sponsorStubSlot != null && (
+                      <div className="sidebar-panel sidebar-panel--sponsor-placeholder">
+                        <div className="sponsor-slot-stub">
+                          <p className="sponsor-slot-stub-tag">Заглушка</p>
+                          <p className="sponsor-slot-stub-title">Слот спонсора {sponsorStubSlot}</p>
+                          <p className="sponsor-slot-stub-desc">
+                            Здесь позже будет логотип, короткий текст или ссылка на партнёра. Раздел пока офлайн —
+                            добавим, когда появятся согласованные материалы.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -337,14 +373,7 @@ export function ChatApp() {
                   'rail-tab' +
                   (sidebarTab === t.id && toolPanelOpen ? ' rail-tab--active' : '')
                 }
-                onClick={() => {
-                  if (sidebarTab === t.id && toolPanelOpen) {
-                    setToolPanelOpen(false);
-                  } else {
-                    setSidebarTab(t.id);
-                    setToolPanelOpen(true);
-                  }
-                }}
+                onClick={() => toggleRailTab(t.id)}
                 aria-pressed={sidebarTab === t.id && toolPanelOpen}
                 aria-label={t.label}
               >
@@ -354,6 +383,28 @@ export function ChatApp() {
                 <span className="rail-tab__label">{t.label}</span>
               </button>
             ))}
+            <div className="chat-rail-sponsors">
+              <p className="chat-rail-sponsors-title">Наши спонсоры</p>
+              <div className="chat-rail-sponsors-slots">
+                {SPONSOR_SLOT_IDS.map((slotId, i) => (
+                  <button
+                    key={slotId}
+                    type="button"
+                    className={
+                      'rail-tab rail-tab--sponsor-slot' +
+                      (sidebarTab === slotId && toolPanelOpen ? ' rail-tab--active' : '')
+                    }
+                    onClick={() => toggleRailTab(slotId)}
+                    aria-pressed={sidebarTab === slotId && toolPanelOpen}
+                    aria-label={`Слот спонсора ${i + 1}`}
+                  >
+                    <span className="rail-tab__icon rail-tab__icon--plus" aria-hidden>
+                      +
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </aside>
       </div>

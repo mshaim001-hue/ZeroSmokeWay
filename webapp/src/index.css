@@ -531,6 +531,105 @@ input {
   color: var(--zsw-primary-dark);
 }
 
+.chat-rail-sponsors {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--zsw-border) 65%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-rail-sponsors-title {
+  margin: 0;
+  padding: 0 2px;
+  width: 100%;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.25;
+  color: var(--zsw-primary-dark);
+  opacity: 0.92;
+}
+
+.chat-rail-sponsors-slots {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.rail-tab--sponsor-slot {
+  gap: 0;
+  padding-bottom: 4px;
+}
+
+.rail-tab--sponsor-slot .rail-tab__icon--plus {
+  font-family: inherit;
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+  color: color-mix(in srgb, var(--zsw-primary-dark) 52%, var(--chat-muted));
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--zsw-primary) 22%, var(--zsw-border));
+  background: color-mix(in srgb, var(--zsw-bg-card) 82%, transparent);
+}
+
+.rail-tab--sponsor-slot.rail-tab--active .rail-tab__icon--plus {
+  border-style: solid;
+}
+
+.sidebar-panel--sponsor-placeholder {
+  padding: 16px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.sponsor-slot-stub {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  padding: 18px 16px;
+  border-radius: var(--zsw-radius-md);
+  background: var(--zsw-bg-card);
+  border: 1px dashed color-mix(in srgb, var(--zsw-primary) 28%, var(--zsw-border));
+  box-shadow: var(--zsw-shadow-sm);
+}
+
+.sponsor-slot-stub-tag {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 3px 8px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  color: var(--zsw-primary-dark);
+  background: color-mix(in srgb, var(--zsw-primary) 14%, transparent);
+}
+
+.sponsor-slot-stub-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.sponsor-slot-stub-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
 .chat-composer-wrap {
   flex-shrink: 0;
   padding: 8px 10px 12px;
