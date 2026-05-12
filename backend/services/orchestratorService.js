@@ -106,7 +106,11 @@ export async function getOrchestratorDecision({
 
   const isGuest = Boolean(authContext && !authContext.isAuthenticated);
 
-  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${isGuest ? 'Пользователь без входа в аккаунт: не переводи к myth_buster или support; оставайся в welcome; не добавляй в instructionToAgent вопросов про сигареты до авторизации.\n\n' : ''}Текущая фаза: ${phase}
+  const guestOrchestratorNote = isGuest
+    ? `Пользователь без аккаунта: история в этом браузере; после входа — на сервере. Веди фазы методики как обычно. Напоминания про вход — редко и по делу (клиент и так показывает таймеры).\n\n`
+    : '';
+
+  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}Текущая фаза: ${phase}
 Собранный анамнез: ${anamnesisData ? JSON.stringify(anamnesisData, null, 0) : 'пока нет'}
 Профиль пользователя: ${userProfile ? JSON.stringify(userProfile, null, 0) : 'нет'}
 
@@ -118,10 +122,10 @@ ${historyText || '(диалог только начинается)'}
 
 Последнее сообщение пользователя: ${message}
 
-${!isGuest ? `Важно: если пользователь написал только приветствие и/или имя (без рассказа о курении) — в instructionToAgent укажи: обратиться по имени, кратко поприветствовать в ответ, задать один вопрос про курение (что нравится, сколько куришь и т.п.). Не писать "поздравь с первым шагом", "поддержи в решении завести разговор" — он этого не говорил.
+Важно: если пользователь написал только приветствие и/или имя (без рассказа о курении) — в instructionToAgent укажи: обратиться по имени, кратко поприветствовать в ответ, задать один вопрос про курение (что нравится, сколько куришь и т.п.). Не писать "поздравь с первым шагом", "поддержи в решении завести разговор" — он этого не говорил.
 
 Если пользователь выражает недоверие или сомнение (например: "не верю", "не помогает", "с чего верить", "не убедительно", "не убедил") — в instructionToAgent укажи: НЕ подкреплять фактами и НЕ повторять про иллюзию. Признать его чувство ("Понимаю, что так кажется"). Задать ОДИН вопрос из того, что он уже говорил в диалоге (утро, кофе, сон, стресс, насыщение), который подводит к другому взгляду — чтобы он сам увидел, без требования верить боту на слово.
-${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: ответ должен вести вопросами из опыта пользователя, не утверждениями. Закончить приглашением к ответу (вопрос или "хочешь разобрать с другой стороны?").' : ''}` : 'Для гостя не требуй в instructionToAgent вопросов про курение — до входа их не задаём.'}
+${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: ответ должен вести вопросами из опыта пользователя, не утверждениями. Закончить приглашением к ответу (вопрос или "хочешь разобрать с другой стороны?").' : ''}
 
 Верни JSON: plan (steps — массив из 3 элементов { "focus", "agent" }), onTrack, planUpdated, reasonOffTrack (если нужно), nextAgent, phaseUpdate, instructionToAgent.`;
 
@@ -158,22 +162,7 @@ ${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: отв�
       ? parsed.instructionToAgent.trim()
       : 'Ответь кратко и по делу, один вопрос или одна мысль.';
 
-  if (isGuest) {
-    nextAgent = 'anamnesis';
-    phaseUpdate = PHASES.WELCOME;
-    instructionToAgent =
-      'Гость: ответы до входа формирует бэкенд; в instruction не добавляй вопросы про курение.';
-  }
-
-  const plan = isGuest
-    ? {
-        steps: [
-          { focus: 'Представиться и узнать, как обращаться', agent: 'anamnesis' },
-          { focus: 'Кратко объяснить, что будете делать после входа', agent: 'anamnesis' },
-          { focus: 'Попросить войти или зарегистрироваться (Google или email)', agent: 'anamnesis' },
-        ],
-      }
-    : normalizePlan(parsed);
+  const plan = normalizePlan(parsed);
   const onTrack = Boolean(parsed.onTrack);
   const planUpdated = Boolean(parsed.planUpdated);
   const reasonOffTrack = typeof parsed.reasonOffTrack === 'string' ? parsed.reasonOffTrack.trim() : '';
