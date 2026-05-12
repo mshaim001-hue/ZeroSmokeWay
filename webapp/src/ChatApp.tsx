@@ -68,7 +68,7 @@ function BotAvatar() {
 
 function LogoMark() {
   return (
-    <svg className="header-logo-icon" width="40" height="40" viewBox="0 0 40 40" aria-hidden>
+    <svg className="header-logo-icon" width="44" height="44" viewBox="0 0 40 40" aria-hidden>
       <defs>
         <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#1b5e20" />
@@ -125,7 +125,14 @@ const SIDEBAR_TABS: { id: SidebarTab; label: string }[] = [
   { id: 'progress', label: 'Прогресс' },
   { id: 'health', label: 'Здоровье' },
   { id: 'settings', label: 'Настройки' },
-  { id: 'support_project', label: 'Поддержка проекта' },
+  { id: 'support_project', label: 'Поддержка' },
+];
+
+const RAIL_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
+  { id: 'progress', icon: '📈', label: 'Прогресс' },
+  { id: 'health', icon: '❤️', label: 'Здоровье' },
+  { id: 'settings', icon: '⚙️', label: 'Настройки' },
+  { id: 'support_project', icon: '🙏', label: 'Проект' },
 ];
 
 export function ChatApp() {
@@ -137,6 +144,7 @@ export function ChatApp() {
   const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('progress');
+  const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const scrollDown = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -162,6 +170,7 @@ export function ChatApp() {
     setPlan(null);
     setAnamnesis(null);
     setError(null);
+    setToolPanelOpen(false);
   }, []);
 
   useEffect(() => {
@@ -212,175 +221,202 @@ export function ChatApp() {
   }
 
   const nextFocus = firstPlanFocus(plan);
+  const activeRailLabel = SIDEBAR_TABS.find((t) => t.id === sidebarTab)?.label ?? '';
 
   return (
     <div className="chat-app">
       <header className="chat-header">
-        <div className="chat-header-left">
-          <div className="chat-header-logo-row">
+        <div className="chat-header-top">
+          <div className="chat-header-brand-row">
             <LogoMark />
             <div className="chat-header-brand">
               <span className="chat-header-title">ZeroSmokeWay</span>
               <span className="chat-header-tagline">Честный разговор о курении</span>
             </div>
           </div>
+          <div className="chat-header-actions">
+            <button type="button" className="btn-ghost" onClick={startJourney}>
+              Сначала
+            </button>
+          </div>
         </div>
-
-        <div className="chat-header-center">
+        <div className="chat-header-progress">
           <AgentProgressBar phase={phase} />
-        </div>
-
-        <div className="chat-header-actions">
-          <button type="button" className="btn-ghost" onClick={startJourney}>
-            Сначала
-          </button>
         </div>
       </header>
 
       <div className="chat-body">
         <div className="chat-main">
-          <main className="chat-thread" aria-busy={loading}>
-            {messages.map((m, i) => {
-              const showBotName = !m.isUser && (i === 0 || messages[i - 1]?.isUser);
-              const timeStr = formatMsgTime(m.timestamp);
+          <div className="chat-main-inner">
+            <div className="chat-content">
+              {!toolPanelOpen && (
+                <main className="chat-thread" aria-busy={loading}>
+                  {messages.map((m, i) => {
+                    const showBotName = !m.isUser && (i === 0 || messages[i - 1]?.isUser);
+                    const timeStr = formatMsgTime(m.timestamp);
 
-              if (m.isUser) {
-                return (
-                  <div key={i} className="msg-row msg-row--user">
-                    <div className="msg-column msg-column--user">
-                      <div className="msg-bubble msg-bubble--user">
-                        <p className="msg-text">{m.text}</p>
-                        {timeStr ? (
-                          <div className="msg-meta">
-                            <span className="msg-time">{timeStr}</span>
+                    if (m.isUser) {
+                      return (
+                        <div key={i} className="msg-row msg-row--user">
+                          <div className="msg-column msg-column--user">
+                            <div className="msg-bubble msg-bubble--user">
+                              <p className="msg-text">{m.text}</p>
+                              {timeStr ? (
+                                <div className="msg-meta">
+                                  <span className="msg-time">{timeStr}</span>
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        ) : null}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={i} className="msg-row msg-row--bot">
+                        <BotAvatar />
+                        <div className="msg-column msg-column--bot">
+                          {showBotName ? <span className="msg-sender">Алекс</span> : null}
+                          <div className="msg-bubble msg-bubble--bot">
+                            <p className="msg-text">{m.text}</p>
+                            {timeStr ? (
+                              <div className="msg-meta">
+                                <span className="msg-time">{timeStr}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {loading && (
+                    <div className="typing-row">
+                      <BotAvatar />
+                      <div className="typing-block">
+                        <span className="msg-sender msg-sender--typing">Алекс</span>
+                        <div
+                          className="typing-bubble"
+                          role="status"
+                          aria-live="polite"
+                          aria-label="Алекс формирует ответ"
+                        >
+                          <span className="typing-label">печатает</span>
+                          <span className="typing-dots" aria-hidden>
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              }
+                  )}
+                  <div ref={bottomRef} />
+                </main>
+              )}
 
-              return (
-                <div key={i} className="msg-row msg-row--bot">
-                  <BotAvatar />
-                  <div className="msg-column msg-column--bot">
-                    {showBotName ? <span className="msg-sender">Алекс</span> : null}
-                    <div className="msg-bubble msg-bubble--bot">
-                      <p className="msg-text">{m.text}</p>
-                      {timeStr ? (
-                        <div className="msg-meta">
-                          <span className="msg-time">{timeStr}</span>
-                        </div>
-                      ) : null}
-                    </div>
+              {toolPanelOpen && (
+                <div className="chat-tool-overlay" role="dialog" aria-modal="true" aria-label={activeRailLabel}>
+                  <div className="chat-tool-overlay-header">
+                    <button type="button" className="chat-tool-back" onClick={() => setToolPanelOpen(false)}>
+                      ← Чат
+                    </button>
+                    <span className="chat-tool-overlay-title">{activeRailLabel}</span>
+                  </div>
+                  <div className="chat-tool-overlay-scroll">
+                    {sidebarTab === 'progress' && (
+                      <div className="sidebar-panel sidebar-panel--flush">
+                        <ProgressQuitScreen
+                          chatPhaseLabel={phaseLabel(phase)}
+                          agentShort={AGENT_STEPS[agentProgressIndex(phase)].short}
+                          agentHint={AGENT_STEPS[agentProgressIndex(phase)].hint}
+                          nextFocus={nextFocus}
+                        />
+                      </div>
+                    )}
+                    {sidebarTab === 'health' && (
+                      <div className="sidebar-panel sidebar-panel--health-flush">
+                        <HealthMilestonesScreen onBack={() => setToolPanelOpen(false)} />
+                      </div>
+                    )}
+                    {sidebarTab === 'settings' && (
+                      <div className="sidebar-panel sidebar-panel--settings-flush">
+                        <SettingsQuitScreen onBack={() => setToolPanelOpen(false)} />
+                      </div>
+                    )}
+                    {sidebarTab === 'support_project' && (
+                      <div className="sidebar-panel sidebar-panel--support-flush">
+                        <SupportProjectScreen onBack={() => setToolPanelOpen(false)} />
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-            {loading && (
-              <div className="typing-row">
-                <BotAvatar />
-                <div className="typing-block">
-                  <span className="msg-sender msg-sender--typing">Алекс</span>
-                  <div
-                    className="typing-bubble"
-                    role="status"
-                    aria-live="polite"
-                    aria-label="Алекс формирует ответ"
-                  >
-                    <span className="typing-label">печатает</span>
-                    <span className="typing-dots" aria-hidden>
-                      <span />
-                      <span />
-                      <span />
-                    </span>
-                  </div>
+              )}
+            </div>
+
+            {error && <div className="chat-error">{error}</div>}
+
+            <div className="chat-composer-wrap">
+              <form className="chat-form" onSubmit={onSend}>
+                <div className="chat-form-input-wrap">
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={loading ? 'Ждём ответ…' : 'Сообщение'}
+                    disabled={loading}
+                    aria-label="Сообщение"
+                    autoComplete="off"
+                  />
                 </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </main>
-
-          {error && <div className="chat-error">{error}</div>}
-
-          <div className="chat-composer-wrap">
-            <form className="chat-form" onSubmit={onSend}>
-              <div className="chat-form-input-wrap">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={loading ? 'Ждём ответ…' : 'Сообщение'}
+                <button
+                  type="submit"
+                  className="btn-send"
                   disabled={loading}
-                  aria-label="Сообщение"
-                  autoComplete="off"
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn-send"
-                disabled={loading}
-                title={loading ? 'Отправка…' : 'Отправить'}
-                aria-label={loading ? 'Отправка…' : 'Отправить'}
-              >
-                {loading ? (
-                  <span className="btn-send-spinner" aria-hidden />
-                ) : (
-                  <svg className="btn-send-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden>
-                    <path
-                      fill="currentColor"
-                      d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"
-                    />
-                  </svg>
-                )}
-              </button>
-            </form>
+                  title={loading ? 'Отправка…' : 'Отправить'}
+                  aria-label={loading ? 'Отправка…' : 'Отправить'}
+                >
+                  {loading ? (
+                    <span className="btn-send-spinner" aria-hidden />
+                  ) : (
+                    <svg className="btn-send-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden>
+                      <path
+                        fill="currentColor"
+                        d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 
-        <aside className="chat-sidebar" aria-label="Панель разделов">
-          <nav className="sidebar-tab-grid" aria-label="Разделы боковой панели">
-            {SIDEBAR_TABS.map((t) => (
+        <aside className="chat-rail" aria-label="Разделы">
+          <div className="chat-rail__track">
+            {RAIL_ITEMS.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                className={'sidebar-tab' + (sidebarTab === t.id ? ' sidebar-tab--active' : '')}
-                onClick={() => setSidebarTab(t.id)}
+                className={
+                  'rail-tab' +
+                  (sidebarTab === t.id && toolPanelOpen ? ' rail-tab--active' : '')
+                }
+                onClick={() => {
+                  if (sidebarTab === t.id && toolPanelOpen) {
+                    setToolPanelOpen(false);
+                  } else {
+                    setSidebarTab(t.id);
+                    setToolPanelOpen(true);
+                  }
+                }}
+                aria-pressed={sidebarTab === t.id && toolPanelOpen}
+                aria-label={t.label}
               >
-                {t.label}
+                <span className="rail-tab__icon" aria-hidden>
+                  {t.icon}
+                </span>
+                <span className="rail-tab__label">{t.label}</span>
               </button>
             ))}
-          </nav>
-
-          <div className="sidebar-panel-scroll">
-            {sidebarTab === 'progress' && (
-              <div className="sidebar-panel sidebar-panel--flush">
-                <ProgressQuitScreen
-                  chatPhaseLabel={phaseLabel(phase)}
-                  agentShort={AGENT_STEPS[agentProgressIndex(phase)].short}
-                  agentHint={AGENT_STEPS[agentProgressIndex(phase)].hint}
-                  nextFocus={nextFocus}
-                />
-              </div>
-            )}
-
-            {sidebarTab === 'health' && (
-              <div className="sidebar-panel sidebar-panel--health-flush">
-                <HealthMilestonesScreen onBack={() => setSidebarTab('progress')} />
-              </div>
-            )}
-
-            {sidebarTab === 'settings' && (
-              <div className="sidebar-panel sidebar-panel--settings-flush">
-                <SettingsQuitScreen onBack={() => setSidebarTab('progress')} />
-              </div>
-            )}
-
-            {sidebarTab === 'support_project' && (
-              <div className="sidebar-panel sidebar-panel--support-flush">
-                <SupportProjectScreen onBack={() => setSidebarTab('progress')} />
-              </div>
-            )}
           </div>
         </aside>
       </div>
