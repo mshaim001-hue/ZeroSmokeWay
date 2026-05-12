@@ -148,7 +148,7 @@ export async function handleAdaptiveAnamnesis({
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
       messages: messages,
       tools: ANAMNESIS_FUNCTIONS.map(fn => ({ type: 'function', function: fn })),
       tool_choice: 'auto', // Модель сама решает, вызывать ли функции

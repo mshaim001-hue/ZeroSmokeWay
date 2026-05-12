@@ -4,6 +4,6 @@
   "buildCommand": "cd webapp && npm run build",
   "outputDirectory": "webapp/dist",
   "env": {
-    "OPENAI_MODEL": "gpt-4o-mini"
+    "OPENAI_MODEL": "gpt-5.4-nano"
   }
 }

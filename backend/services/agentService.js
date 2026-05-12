@@ -10,6 +10,7 @@ import {
   formatAnamnesisAuthRules,
   formatSecondaryAgentAuthRules,
 } from './authContext.js';
+import { buildGuestAnamnesisGateResult } from './guestAnamnesisGate.js';
 
 dotenv.config();
 
@@ -37,6 +38,13 @@ export async function handleAgentRequest({
     assistantTurnCount: conversationHistory.filter((m) => !m.isUser).length,
   };
   const authSystemBlock = `${formatAuthContextForPrompt(auth)}${agentType === 'anamnesis' ? formatAnamnesisAuthRules(auth) : formatSecondaryAgentAuthRules(agentType, auth)}`;
+
+  if (agentType === 'anamnesis' && !auth.isAuthenticated) {
+    return buildGuestAnamnesisGateResult({
+      conversationHistory,
+      userTurnCount: auth.userTurnCount,
+    });
+  }
 
   // Для anamnesis с адаптивным режимом используем специальный обработчик
   if (agentType === 'anamnesis' && useAdaptiveMode) {
@@ -115,7 +123,7 @@ export async function handleAgentRequest({
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o', // GPT-4o намного лучше справляется с ролью "человека"
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
       messages: messages,
       response_format: { type: 'json_object' }
     });

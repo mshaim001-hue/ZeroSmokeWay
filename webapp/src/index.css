@@ -385,6 +385,40 @@ input {
   color: #64748b;
 }
 
+.auth-oauth-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.auth-oauth-btn {
+  font-size: 0.875rem;
+}
+
+.auth-modal-divider {
+  margin: 14px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-modal-divider::before,
+.auth-modal-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--zsw-border);
+}
+
+.auth-modal-divider span {
+  white-space: nowrap;
+}
+
 .auth-code {
   font-size: 0.75rem;
   word-break: break-all;
