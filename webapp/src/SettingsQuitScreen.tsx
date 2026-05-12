@@ -67,9 +67,10 @@ function SettingsRow({ icon, title, desc, onClick, muted }: RowProps) {
 
 type Props = {
   onBack?: () => void;
+  embedInOverlay?: boolean;
 };
 
-export function SettingsQuitScreen({ onBack }: Props) {
+export function SettingsQuitScreen({ onBack, embedInOverlay = false }: Props) {
   const [rev, setRev] = useState(0);
   const refresh = useCallback(() => setRev((x) => x + 1), []);
 
@@ -154,13 +155,15 @@ export function SettingsQuitScreen({ onBack }: Props) {
 
   return (
     <div className="settings-screen" data-rev={rev}>
-      <header className="settings-app-header">
-        <button type="button" className="settings-bar-btn" onClick={() => onBack?.()} aria-label="Назад">
-          ←
-        </button>
-        <span className="settings-bar-title">Настройки</span>
-        <span className="settings-bar-spacer" aria-hidden />
-      </header>
+      {!embedInOverlay && (
+        <header className="settings-app-header">
+          <button type="button" className="btn-toolbar" onClick={() => onBack?.()} aria-label="Назад">
+            ←
+          </button>
+          <span className="settings-bar-title">Настройки</span>
+          <span className="settings-bar-spacer" aria-hidden />
+        </header>
+      )}
 
       <div className="settings-body">
         <SettingsRow icon="👑" title="Перейти на премиум" desc="Увеличьте свои шансы на успех" onClick={onPremium} />

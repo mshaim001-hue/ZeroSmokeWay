@@ -34,9 +34,10 @@ function SupportRow({ icon, title, desc, onClick, muted }: RowProps) {
 
 type Props = {
   onBack?: () => void;
+  embedInOverlay?: boolean;
 };
 
-export function SupportProjectScreen({ onBack }: Props) {
+export function SupportProjectScreen({ onBack, embedInOverlay = false }: Props) {
   async function onShare() {
     const quit = readQuitAtMs();
     const text =
@@ -79,13 +80,15 @@ export function SupportProjectScreen({ onBack }: Props) {
 
   return (
     <div className="settings-screen support-screen">
-      <header className="settings-app-header">
-        <button type="button" className="settings-bar-btn" onClick={() => onBack?.()} aria-label="Назад">
-          ←
-        </button>
-        <span className="settings-bar-title">Поддержка проекта</span>
-        <span className="settings-bar-spacer" aria-hidden />
-      </header>
+      {!embedInOverlay && (
+        <header className="settings-app-header">
+          <button type="button" className="btn-toolbar" onClick={() => onBack?.()} aria-label="Назад">
+            ←
+          </button>
+          <span className="settings-bar-title">Поддержка проекта</span>
+          <span className="settings-bar-spacer" aria-hidden />
+        </header>
+      )}
 
       <div className="settings-body">
         <div className="support-hero">

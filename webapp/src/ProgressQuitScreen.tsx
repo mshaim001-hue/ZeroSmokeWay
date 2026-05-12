@@ -23,9 +23,17 @@ type Props = {
   agentShort: string;
   agentHint: string;
   nextFocus: string | null;
+  /** Когда экран открыт поверх чата — шапка уже в оверлее, внутренняя «Прогресс» скрыта */
+  embedInOverlay?: boolean;
 };
 
-export function ProgressQuitScreen({ chatPhaseLabel, agentShort, agentHint, nextFocus }: Props) {
+export function ProgressQuitScreen({
+  chatPhaseLabel,
+  agentShort,
+  agentHint,
+  nextFocus,
+  embedInOverlay = false,
+}: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [quitAt, setQuitAt] = useState<number | null>(() => readQuitAtMs());
 
@@ -73,23 +81,25 @@ export function ProgressQuitScreen({ chatPhaseLabel, agentShort, agentHint, next
         )}
       </div>
 
-      <div className="progress-app-header">
-        <span className="progress-app-title">Прогресс</span>
-        <span className="progress-app-header-icons" aria-hidden>
-          <span className="progress-app-icon-btn" title="">
-            📓
+      {!embedInOverlay && (
+        <div className="progress-app-header">
+          <span className="progress-app-title">Прогресс</span>
+          <span className="progress-app-header-icons" aria-hidden>
+            <span className="progress-app-icon-btn" title="">
+              📓
+            </span>
+            <span className="progress-app-icon-btn">🎯</span>
+            <span className="progress-app-icon-btn">⋮</span>
           </span>
-          <span className="progress-app-icon-btn">🎯</span>
-          <span className="progress-app-icon-btn">⋮</span>
-        </span>
-      </div>
+        </div>
+      )}
 
       {!quitAt ? (
         <div className="progress-empty-card">
           <p className="progress-empty-text">
             Установи дату отказа — появятся день, кольцо «1 год» и счётчики как в трекере.
           </p>
-          <button type="button" className="progress-cta-btn" onClick={onStartQuit}>
+          <button type="button" className="btn btn--primary btn--block" onClick={onStartQuit}>
             Я бросил — начать отсчёт с сейчас
           </button>
         </div>
@@ -158,7 +168,7 @@ export function ProgressQuitScreen({ chatPhaseLabel, agentShort, agentHint, next
             </div>
           </div>
 
-          <button type="button" className="progress-reset-link" onClick={onClearQuit}>
+          <button type="button" className="btn-link progress-reset-actions" onClick={onClearQuit}>
             Сбросить дату отказа
           </button>
         </div>

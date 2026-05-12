@@ -121,19 +121,20 @@ function AgentProgressBar({ phase }: { phase: string }) {
   );
 }
 
-const SIDEBAR_TABS: { id: SidebarTab; label: string }[] = [
-  { id: 'progress', label: 'Прогресс' },
-  { id: 'health', label: 'Здоровье' },
-  { id: 'settings', label: 'Настройки' },
-  { id: 'support_project', label: 'Поддержка' },
-];
-
 const RAIL_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
   { id: 'progress', icon: '📈', label: 'Прогресс' },
   { id: 'health', icon: '❤️', label: 'Здоровье' },
   { id: 'settings', icon: '⚙️', label: 'Настройки' },
   { id: 'support_project', icon: '🙏', label: 'Проект' },
 ];
+
+/** Заголовок в общей зелёной шапке оверлея (как во встроенных экранах без дубля) */
+const TOOL_OVERLAY_TITLE: Record<SidebarTab, string> = {
+  progress: 'Прогресс',
+  health: 'Здоровье',
+  settings: 'Настройки',
+  support_project: 'Поддержка проекта',
+};
 
 export function ChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -221,7 +222,8 @@ export function ChatApp() {
   }
 
   const nextFocus = firstPlanFocus(plan);
-  const activeRailLabel = SIDEBAR_TABS.find((t) => t.id === sidebarTab)?.label ?? '';
+
+  const overlayToolTitle = TOOL_OVERLAY_TITLE[sidebarTab];
 
   return (
     <div className="chat-app">
@@ -235,7 +237,7 @@ export function ChatApp() {
             </div>
           </div>
           <div className="chat-header-actions">
-            <button type="button" className="btn-ghost" onClick={startJourney}>
+            <button type="button" className="btn btn--secondary btn--pill" onClick={startJourney}>
               Сначала
             </button>
           </div>
@@ -315,12 +317,25 @@ export function ChatApp() {
               )}
 
               {toolPanelOpen && (
-                <div className="chat-tool-overlay" role="dialog" aria-modal="true" aria-label={activeRailLabel}>
+                <div
+                  className="chat-tool-overlay"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="chat-tool-overlay-heading"
+                  aria-label={overlayToolTitle}
+                >
                   <div className="chat-tool-overlay-header">
-                    <button type="button" className="chat-tool-back" onClick={() => setToolPanelOpen(false)}>
+                    <button
+                      type="button"
+                      className="btn-toolbar btn-toolbar--narrow chat-tool-back"
+                      onClick={() => setToolPanelOpen(false)}
+                    >
                       ← Чат
                     </button>
-                    <span className="chat-tool-overlay-title">{activeRailLabel}</span>
+                    <span className="chat-tool-overlay-title" id="chat-tool-overlay-heading">
+                      {overlayToolTitle}
+                    </span>
+                    <span className="settings-bar-spacer" aria-hidden />
                   </div>
                   <div className="chat-tool-overlay-scroll">
                     {sidebarTab === 'progress' && (
@@ -330,22 +345,23 @@ export function ChatApp() {
                           agentShort={AGENT_STEPS[agentProgressIndex(phase)].short}
                           agentHint={AGENT_STEPS[agentProgressIndex(phase)].hint}
                           nextFocus={nextFocus}
+                          embedInOverlay
                         />
                       </div>
                     )}
                     {sidebarTab === 'health' && (
                       <div className="sidebar-panel sidebar-panel--health-flush">
-                        <HealthMilestonesScreen onBack={() => setToolPanelOpen(false)} />
+                        <HealthMilestonesScreen embedInOverlay onBack={() => setToolPanelOpen(false)} />
                       </div>
                     )}
                     {sidebarTab === 'settings' && (
                       <div className="sidebar-panel sidebar-panel--settings-flush">
-                        <SettingsQuitScreen onBack={() => setToolPanelOpen(false)} />
+                        <SettingsQuitScreen embedInOverlay onBack={() => setToolPanelOpen(false)} />
                       </div>
                     )}
                     {sidebarTab === 'support_project' && (
                       <div className="sidebar-panel sidebar-panel--support-flush">
-                        <SupportProjectScreen onBack={() => setToolPanelOpen(false)} />
+                        <SupportProjectScreen embedInOverlay onBack={() => setToolPanelOpen(false)} />
                       </div>
                     )}
                   </div>
@@ -369,7 +385,7 @@ export function ChatApp() {
                 </div>
                 <button
                   type="submit"
-                  className="btn-send"
+                  className="btn btn--primary btn--icon btn-send"
                   disabled={loading}
                   title={loading ? 'Отправка…' : 'Отправить'}
                   aria-label={loading ? 'Отправка…' : 'Отправить'}
