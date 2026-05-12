@@ -4,9 +4,9 @@ import { loadSkills, formatSkillsForPrompt } from './skillsService.js';
  * Конфигурация skills для каждого типа агента
  */
 const AGENT_SKILLS = {
-  anamnesis: ['natural-conversation', 'empathy', 'data-extraction'],
-  myth_buster: ['natural-conversation', 'empathy', 'myth-busting'],
-  support: ['natural-conversation', 'empathy', 'support']
+  anamnesis: [],
+  myth_buster: ['myth-busting'],
+  support: ['support'],
 };
 
 /**

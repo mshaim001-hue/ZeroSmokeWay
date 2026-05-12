@@ -74,7 +74,7 @@ export function getSkillExamples(skills) {
 }
 
 /**
- * Получает схему данных из skills (например, для data-extraction)
+ * Получает схему данных из skill по имени (если в JSON есть поле schema)
  */
 export function getSkillSchema(skillName, skills) {
   const skill = skills.find(s => s.name === skillName);
