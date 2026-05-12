@@ -46,11 +46,6 @@ export function ProgressQuitScreen() {
     setQuitAt(t);
   }
 
-  function onClearQuit() {
-    localStorage.removeItem(LS_QUIT_AT_MS);
-    setQuitAt(null);
-  }
-
   return (
     <div className="progress-quit-root">
       {!quitAt ? (
@@ -87,7 +82,7 @@ export function ProgressQuitScreen() {
             </div>
           </div>
 
-          <p className="progress-quote">Теперь я у руля!</p>
+          <p className="progress-quote">Я свободен</p>
 
           <div className="progress-stats-wrap">
             <div className="progress-stats-grid">
@@ -111,10 +106,6 @@ export function ProgressQuitScreen() {
               </div>
             </div>
           </div>
-
-          <button type="button" className="btn-link progress-reset-actions" onClick={onClearQuit}>
-            Сбросить дату отказа
-          </button>
         </div>
       )}
     </div>

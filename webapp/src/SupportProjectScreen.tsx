@@ -65,7 +65,7 @@ export function SupportProjectScreen() {
     const body = encodeURIComponent(
       `Здравствуйте!\n\n(Опишите идею, вопрос или замечание. Версия: веб.)\n\n`,
     );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:mshaim001@outlook.com?subject=${subject}&body=${body}`;
   }
 
   return (
