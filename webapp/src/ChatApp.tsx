@@ -1,6 +1,11 @@
 import type { Session } from '@supabase/supabase-js';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { ChatMessage, fetchOrchestratorSession, postOrchestrator } from './api';
+import {
+  ChatMessage,
+  fetchOrchestratorSession,
+  postOrchestrator,
+  putOrchestratorGuestSnapshot,
+} from './api';
 import { AuthModal } from './AuthModal';
 import { parseStoredOrchestratorSession } from './orchestratorSessionRestore';
 import { getSupabase } from './supabaseClient';
@@ -109,9 +114,69 @@ export function ChatApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const guestReminderGuestRef = useRef(false);
 
+  /** Снимок чата перед SIGNED_IN: перенос гостевой переписки в пустой аккаунт. */
+  const orchestratorHydrateSnapRef = useRef({
+    messages,
+    phase,
+    plan,
+    anamnesis,
+  });
+
+  orchestratorHydrateSnapRef.current = { messages, phase, plan, anamnesis };
+
   const accessToken = session?.access_token ?? null;
 
   guestReminderGuestRef.current = bootstrapping ? false : !accessToken;
+
+  const guestComposerLocked = !bootstrapping && !accessToken && guestAuthReminder === 3;
+
+  const hydrateOrchestratorAfterSignIn = useCallback(
+    async (token: string) => {
+      const snap = orchestratorHydrateSnapRef.current;
+
+      let stored = null as Awaited<ReturnType<typeof fetchOrchestratorSession>>;
+      try {
+        stored = await fetchOrchestratorSession(token);
+      } catch {
+        stored = null;
+      }
+
+      const parsed = parseStoredOrchestratorSession(
+        stored ?? { messages: [], orchestrator_state: {} },
+      );
+      const serverHasHistory = !!(parsed.messages && parsed.messages.length > 0);
+
+      if (!serverHasHistory && snap.messages.length > 0) {
+        try {
+          const outcome = await putOrchestratorGuestSnapshot(token, {
+            messages: snap.messages,
+            phase: snap.phase,
+            plan: snap.plan,
+            anamnesis: snap.anamnesis,
+          });
+          if (outcome === 'exists') {
+            await restoreChatFromServer(token);
+            return;
+          }
+          setError(null);
+        } catch (err: unknown) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Не удалось сохранить переписку сразу; она сохранится при следующем отправленном сообщении.',
+          );
+        }
+        setMessages(snap.messages);
+        if (snap.phase) setPhase(snap.phase);
+        setPlan(snap.plan);
+        setAnamnesis(snap.anamnesis ?? null);
+        return;
+      }
+
+      await restoreChatFromServer(token);
+    },
+    [restoreChatFromServer],
+  );
 
   const scrollDown = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 
@@ -188,7 +253,7 @@ export function ChatApp() {
       setSession(nextSession);
       if (cancelled) return;
       if (event === 'SIGNED_IN' && nextSession?.access_token) {
-        await restoreChatFromServer(nextSession.access_token);
+        await hydrateOrchestratorAfterSignIn(nextSession.access_token);
       }
       if (event === 'SIGNED_OUT') {
         startJourney();
@@ -199,7 +264,7 @@ export function ChatApp() {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [restoreChatFromServer, startJourney]);
+  }, [hydrateOrchestratorAfterSignIn, restoreChatFromServer, startJourney]);
 
   /** Для незалогиненных: три отложенных напоминания о входе (5 мин → +3 мин → +1 мин). */
   useEffect(() => {
@@ -226,9 +291,38 @@ export function ChatApp() {
     };
   }, [accessToken, bootstrapping]);
 
+  /** Подгонка под visual viewport при открытой клавиатуре — шапка остаётся сверху видимой области. */
+  useEffect(() => {
+    const doc = document.documentElement;
+    const sync = () => {
+      const vv = window.visualViewport;
+      if (vv) {
+        doc.style.setProperty('--zsw-chat-vh', `${vv.height}px`);
+        doc.style.setProperty('--zsw-chat-offset-top', `${vv.offsetTop}px`);
+      } else {
+        doc.style.setProperty('--zsw-chat-vh', `${window.innerHeight}px`);
+        doc.style.removeProperty('--zsw-chat-offset-top');
+      }
+    };
+
+    sync();
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', sync);
+    vv?.addEventListener('scroll', sync);
+    window.addEventListener('resize', sync);
+
+    return () => {
+      vv?.removeEventListener('resize', sync);
+      vv?.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+      doc.style.removeProperty('--zsw-chat-vh');
+      doc.style.removeProperty('--zsw-chat-offset-top');
+    };
+  }, []);
+
   async function onSend(e: FormEvent) {
     e.preventDefault();
-    if (bootstrapping) return;
+    if (bootstrapping || guestComposerLocked) return;
     const text = input.trim();
     if (!text || loading) return;
 
@@ -336,7 +430,7 @@ export function ChatApp() {
                 ? 'Вы в чате уже какое-то время. Чтобы сохранять историю и прогресс между заходами, войдите или зарегистрируйтесь.'
                 : guestAuthReminder === 2
                   ? 'Напоминание: без аккаунта переписка хранится только в этом браузере. Регистрация займёт пару минут.'
-                  : 'Чтобы продолжать без риска потерять диалог, нужно войти в аккаунт. Это последнее напоминание.'}
+                  : 'Отправка сообщений временно недоступна без входа. Войдите или зарегистрируйтесь — ваша текущая переписка перенесётся в аккаунт.'}
             </p>
             <div className="guest-auth-reminder__actions">
               {(guestAuthReminder === 1 || guestAuthReminder === 2) && (
@@ -495,14 +589,22 @@ export function ChatApp() {
             {!toolPanelOpen && error && <div className="chat-error">{error}</div>}
 
             {!toolPanelOpen && (
-            <div className="chat-composer-wrap">
+            <div
+              className={'chat-composer-wrap' + (guestComposerLocked ? ' chat-composer-wrap--blocked' : '')}
+            >
               <form className="chat-form" onSubmit={onSend}>
                 <div className="chat-form-input-wrap">
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={loading ? 'Ждём ответ…' : 'Сообщение'}
-                    disabled={loading || bootstrapping}
+                    placeholder={
+                      guestComposerLocked
+                        ? 'Только вход — отправка временно недоступна'
+                        : loading
+                          ? 'Ждём ответ…'
+                          : 'Сообщение'
+                    }
+                    disabled={loading || bootstrapping || guestComposerLocked}
                     aria-label="Сообщение"
                     autoComplete="off"
                   />
@@ -510,7 +612,7 @@ export function ChatApp() {
                 <button
                   type="submit"
                   className="btn btn--primary btn--icon btn-send"
-                  disabled={loading || bootstrapping}
+                  disabled={loading || bootstrapping || guestComposerLocked}
                   title={loading ? 'Отправка…' : 'Отправить'}
                   aria-label={loading ? 'Отправка…' : 'Отправить'}
                 >

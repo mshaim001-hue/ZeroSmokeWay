@@ -46,6 +46,42 @@ export async function postOrchestrator(
   }>;
 }
 
+export async function putOrchestratorGuestSnapshot(
+  accessToken: string,
+  snapshot: {
+    messages: ChatMessage[];
+    phase: string;
+    plan: Record<string, unknown> | null;
+    anamnesis: Record<string, unknown> | null;
+  },
+): Promise<'saved' | 'exists'> {
+  const base = apiRoot();
+  if (!base || !accessToken) {
+    throw new Error('API base URL или токен не задан');
+  }
+
+  const res = await fetch(`${base}/api/orchestrator`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      messages: snapshot.messages,
+      orchestrator_state: {
+        phase: snapshot.phase,
+        plan: snapshot.plan,
+        anamnesis: snapshot.anamnesis,
+      },
+    }),
+  });
+
+  if (res.status === 204) return 'saved';
+  if (res.status === 409) return 'exists';
+  const t = await res.text();
+  throw new Error(t || `HTTP ${res.status}`);
+}
+
 export type OrchestratorStoredSession = {
   messages: ChatMessage[] | unknown;
   orchestrator_state: {
