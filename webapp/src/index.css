@@ -537,10 +537,16 @@ input {
 .guest-auth-reminder--final {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--zsw-primary-dark) 14%, #fff8f0),
-    color-mix(in srgb, #b71c1c 6%, var(--zsw-bg-card))
+    var(--zsw-danger-bg),
+    color-mix(in srgb, var(--zsw-danger) 10%, var(--zsw-bg-card))
   );
-  border-bottom-color: color-mix(in srgb, var(--zsw-primary-dark) 35%, var(--zsw-border));
+  border-bottom-color: var(--zsw-danger-border);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--zsw-danger) 18%, transparent);
+}
+
+.guest-auth-reminder--final .guest-auth-reminder__text {
+  color: var(--zsw-danger);
+  font-weight: 600;
 }
 
 .chat-body {
