@@ -96,26 +96,67 @@ export async function getAgentPrompt(agentType) {
     skillsCache[cacheKey] = formatSkillsForPrompt(skills);
   }
 
+  const carrTableRules =
+    agentType === 'anamnesis'
+      ? `
+
+СЛУЖЕБНОЕ (не показывай пользователю): внутри extractedData поддерживай carrCoverage — «таблицу анамнеза» по духу книги Карра.
+Обновляй только из того, что человек уже сказал; не придумывай. Поля:
+- quantitative.yearsInTrap / cigarettesPerDay: value (число или null), confidence 0..1, note кратко.
+- attempts: maxAbstinenceDays, relapseReasons.items[] (короткие фразы), neverTriedQuitting если явно «никогда не бросал».
+- illusions: stress, boredom, concentration, social, coffeeAlcohol, work — suspected true/false/null, evidence (его слова); lastCigarettePanic.level "low"|"high"|null.
+`
+      : '';
+
   const basePrompt = BASE_AGENT_PROMPTS[agentType];
   const skillsText = skillsCache[cacheKey];
 
-  return basePrompt + skillsText + '\n\nФОРМАТ ОТВЕТА (ВСЕГДА JSON):\n' + 
-    (agentType === 'anamnesis' ? JSON.stringify({
-      message: "твой текст",
-      currentStep: 1,
-      extractedProfile: { name: "...", location: "..." },
-      extractedData: { 
-        smokingStatus: "...", 
-        cigarettesPerDay: 0, 
-        smokingYears: null,
-        likes: [], 
-        dislikes: [], 
-        fears: [], 
-        triggers: [], 
-        previousAttempts: "", 
-        motivation: "" 
-      }
-    }, null, 2) : JSON.stringify({
-      message: "твой текст"
-    }, null, 2));
+  return (
+    basePrompt +
+    carrTableRules +
+    skillsText +
+    '\n\nФОРМАТ ОТВЕТА (ВСЕГДА JSON):\n' +
+    (agentType === 'anamnesis'
+      ? JSON.stringify(
+          {
+            message: 'твой текст',
+            currentStep: 1,
+            extractedProfile: { name: '...', location: '...' },
+            extractedData: {
+              smokingStatus: '...',
+              cigarettesPerDay: 0,
+              smokingYears: null,
+              likes: [],
+              dislikes: [],
+              fears: [],
+              triggers: [],
+              previousAttempts: '',
+              motivation: '',
+              carrCoverage: {
+                quantitative: {
+                  yearsInTrap: { value: null, confidence: 0, note: '' },
+                  cigarettesPerDay: { value: null, confidence: 0, note: '' },
+                },
+                attempts: {
+                  maxAbstinenceDays: { value: null, confidence: 0, note: '' },
+                  relapseReasons: { items: [], confidence: 0 },
+                  neverTriedQuitting: { value: null, confidence: 0 },
+                },
+                illusions: {
+                  stress: { suspected: null, evidence: '', fearLevel: null },
+                  boredom: { suspected: null, evidence: '' },
+                  concentration: { suspected: null, evidence: '' },
+                  social: { suspected: null, evidence: '' },
+                  coffeeAlcohol: { suspected: null, evidence: '' },
+                  work: { suspected: null, evidence: '' },
+                  lastCigarettePanic: { level: null, evidence: '' },
+                },
+              },
+            },
+          },
+          null,
+          2,
+        )
+      : JSON.stringify({ message: 'твой текст' }, null, 2))
+  );
 }

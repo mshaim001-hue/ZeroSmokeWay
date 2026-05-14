@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { formatAuthContextForPrompt } from './authContext.js';
+import { coverageThreshold, finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
 
 dotenv.config();
 
@@ -110,7 +111,19 @@ export async function getOrchestratorDecision({
     ? `Пользователь без аккаунта: история в этом браузере; после входа — на сервере. Веди фазы методики как обычно. Напоминания про вход — редко и по делу (клиент и так показывает таймеры).\n\n`
     : '';
 
-  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}Текущая фаза: ${phase}
+  const cov = finalizeAnamnesisCoverage(anamnesisData);
+  const thr = coverageThreshold();
+  const coverageDigest = `=== ПОКРЫТИЕ АНАМНЕЗА (таблица Карра, обновляет агент анамнеза) ===
+Текущий coverageScore: ${cov.coverageScore} (порог для перехода к развенчанию мифов: ${thr})
+Уже готово по порогу: ${cov.coverageReadyForMythBusting ? 'да' : 'нет'}
+Фрагмент JSON таблицы: ${JSON.stringify(cov.carrCoverage ?? {}).slice(0, 4000)}
+
+Если coverageScore ≥ ${thr} и по смыслу диалог готов — верни phaseUpdate: "${PHASES.MYTH_BUSTING}" и nextAgent: "myth_buster".
+Не торопи переход, если людям ещё не задали ключевые вопросы — таблица и score важнее сиюминутной догадки.
+
+`;
+
+  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}${coverageDigest}Текущая фаза: ${phase}
 Собранный анамнез: ${anamnesisData ? JSON.stringify(anamnesisData, null, 0) : 'пока нет'}
 Профиль пользователя: ${userProfile ? JSON.stringify(userProfile, null, 0) : 'нет'}
 

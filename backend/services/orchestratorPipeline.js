@@ -2,11 +2,10 @@ import { getOrchestratorDecision, PHASES } from './orchestratorService.js';
 import { handleAgentRequest } from './agentService.js';
 import { resolveAuthContext } from './authContext.js';
 import { saveOrchestratorConversation } from './conversationStore.js';
+import { finalizeAnamnesisCoverage, mergeAnamnesisWithCoverage } from './anamnesisCoverage.js';
 
-function mergeAnamnesis(base, extracted) {
-  const b = base && typeof base === 'object' ? base : {};
-  const e = extracted && typeof extracted === 'object' ? extracted : {};
-  return { ...b, ...e };
+function isEarlyPhase(ph) {
+  return ph === PHASES.WELCOME || ph === PHASES.ANAMNESIS;
 }
 
 /**
@@ -34,26 +33,46 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     authContext,
   });
 
+  let nextAgent = decision.nextAgent;
+  let phaseUpdate = decision.phaseUpdate;
+
+  const priorSnapshot = finalizeAnamnesisCoverage(anamnesisData);
+
+  if (phase === PHASES.MYTH_BUSTING) {
+    nextAgent = 'myth_buster';
+    phaseUpdate = PHASES.MYTH_BUSTING;
+  } else if (isEarlyPhase(phase) && priorSnapshot.coverageReadyForMythBusting) {
+    nextAgent = 'myth_buster';
+    phaseUpdate = PHASES.MYTH_BUSTING;
+  }
+
   const agentResult = await handleAgentRequest({
     message: message.trim(),
-    agentType: decision.nextAgent,
+    agentType: nextAgent,
     conversationHistory,
     anamnesisData,
     userProfile,
-    useAdaptiveMode: decision.nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
+    useAdaptiveMode: nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
     orchestratorInstruction: decision.instructionToAgent,
     authContext,
   });
 
   console.log(
     'Orchestrator →',
-    decision.nextAgent,
+    nextAgent,
     '| instruction:',
     (decision.instructionToAgent || '').slice(0, 120),
     authContext.isAuthenticated ? '| JWT user' : '| guest',
   );
 
-  const mergedAnamnesis = mergeAnamnesis(anamnesisData, agentResult.extractedData);
+  let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, agentResult.extractedData);
+  mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
+
+  let effectivePhase = phaseUpdate;
+  if (isEarlyPhase(phaseUpdate) && mergedAnamnesis.coverageReadyForMythBusting) {
+    effectivePhase = PHASES.MYTH_BUSTING;
+  }
+
   const userId = authContext.userId;
 
   if (userId) {
@@ -66,7 +85,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       },
     ];
     await saveOrchestratorConversation(userId, finalMessages, {
-      phase: decision.phaseUpdate,
+      phase: effectivePhase,
       plan: decision.plan,
       anamnesis: mergedAnamnesis,
     });
@@ -77,9 +96,11 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     extractedData: agentResult.extractedData,
     extractedProfile: agentResult.extractedProfile,
     currentStep: agentResult.currentStep,
-    phase: decision.phaseUpdate,
-    nextAgent: decision.nextAgent,
+    phase: effectivePhase,
+    nextAgent,
     plan: decision.plan,
+    anamnesisState: mergedAnamnesis,
+    coverageScore: mergedAnamnesis.coverageScore,
     onTrack: decision.onTrack,
     planUpdated: decision.planUpdated,
     isComplete: agentResult.isComplete,

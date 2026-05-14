@@ -12,7 +12,7 @@ import { getSupabase } from './supabaseClient';
 import { ProgressQuitScreen } from './ProgressQuitScreen';
 import { HealthMilestonesScreen } from './HealthMilestonesScreen';
 import { SettingsQuitScreen } from './SettingsQuitScreen';
-import { SupportProjectScreen } from './SupportProjectScreen';
+import { MethodologyProgress } from './MethodologyProgress';
 
 const PHASE_WELCOME = 'welcome';
 
@@ -384,7 +384,9 @@ export function ChatApp() {
       setMessages((m) => [...m, bot]);
       if (data.phase) setPhase(data.phase);
       if (data.plan) setPlan(data.plan);
-      if (data.extractedData && Object.keys(data.extractedData).length) {
+      if (data.anamnesisState && typeof data.anamnesisState === 'object') {
+        setAnamnesis(data.anamnesisState as Record<string, unknown>);
+      } else if (data.extractedData && Object.keys(data.extractedData).length) {
         setAnamnesis((prev) => ({ ...(prev ?? {}), ...data.extractedData }));
       }
     } catch (err: unknown) {
@@ -444,6 +446,15 @@ export function ChatApp() {
           </div>
         </div>
       </header>
+
+      {!bootstrapping && (
+        <MethodologyProgress
+          phase={phase}
+          coverageScore={
+            typeof anamnesis?.coverageScore === 'number' ? anamnesis.coverageScore : undefined
+          }
+        />
+      )}
 
       {!bootstrapping && !accessToken && guestAuthReminder > 0 ? (
         <aside

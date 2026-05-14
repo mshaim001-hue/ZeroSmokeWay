@@ -23,6 +23,8 @@ export async function postOrchestrator(
   nextAgent?: string | null;
   plan?: Record<string, unknown> | null;
   session?: { isAuthenticated: boolean };
+  anamnesisState?: Record<string, unknown> | null;
+  coverageScore?: number;
 }> {
   const base = apiRoot();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -43,6 +45,8 @@ export async function postOrchestrator(
     nextAgent?: string | null;
     plan?: Record<string, unknown> | null;
     session?: { isAuthenticated: boolean };
+    anamnesisState?: Record<string, unknown> | null;
+    coverageScore?: number;
   }>;
 }
 
