@@ -12,7 +12,7 @@ import { getSupabase } from './supabaseClient';
 import { ProgressQuitScreen } from './ProgressQuitScreen';
 import { HealthMilestonesScreen } from './HealthMilestonesScreen';
 import { SettingsQuitScreen } from './SettingsQuitScreen';
-import { MethodologyProgress } from './MethodologyProgress';
+import { SupportProjectScreen } from './SupportProjectScreen';
 
 const PHASE_WELCOME = 'welcome';
 
@@ -446,15 +446,6 @@ export function ChatApp() {
           </div>
         </div>
       </header>
-
-      {!bootstrapping && (
-        <MethodologyProgress
-          phase={phase}
-          coverageScore={
-            typeof anamnesis?.coverageScore === 'number' ? anamnesis.coverageScore : undefined
-          }
-        />
-      )}
 
       {!bootstrapping && !accessToken && guestAuthReminder > 0 ? (
         <aside
