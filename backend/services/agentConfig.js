@@ -104,6 +104,7 @@ export async function getAgentPrompt(agentType) {
 Обновляй только из того, что человек уже сказал; не придумывай. Поля:
 - quantitative.yearsInTrap / cigarettesPerDay: value (число или null), confidence 0..1, note кратко.
 - attempts: maxAbstinenceDays, relapseReasons.items[] (короткие фразы), neverTriedQuitting если явно «никогда не бросал».
+- firstSmoke: firstCigarette — первая сигарета (когда/как/обстоятельства в свободной форме в value + note); associatedMemories.items[] — воспоминания, которые человек связывает с этим.
 - illusions: stress, boredom, concentration, social, coffeeAlcohol, work — suspected true/false/null, evidence (его слова); lastCigarettePanic.level "low"|"high"|null.
 `
       : '';
@@ -150,6 +151,10 @@ export async function getAgentPrompt(agentType) {
                   coffeeAlcohol: { suspected: null, evidence: '' },
                   work: { suspected: null, evidence: '' },
                   lastCigarettePanic: { level: null, evidence: '' },
+                },
+                firstSmoke: {
+                  firstCigarette: { value: null, confidence: 0, note: '' },
+                  associatedMemories: { items: [], confidence: 0 },
                 },
               },
             },

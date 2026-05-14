@@ -24,6 +24,12 @@ function cloneEmpty() {
         work: { suspected: null, evidence: '' },
         lastCigarettePanic: { level: null, evidence: '' },
       },
+      firstSmoke: {
+        /** Первая сигарета: когда / как / обстоятельства (не дословный опрос — выжимка из речи). */
+        firstCigarette: { value: null, confidence: 0, note: '' },
+        /** Воспоминания, которые человек связывает с этим опытом. */
+        associatedMemories: { items: [], confidence: 0 },
+      },
     }),
   );
 }
@@ -102,6 +108,24 @@ export function mergeCarrCoverage(prev, incoming) {
       }
     }
   }
+  if (incoming.firstSmoke && typeof incoming.firstSmoke === 'object') {
+    base.firstSmoke = base.firstSmoke || {
+      firstCigarette: { value: null, confidence: 0, note: '' },
+      associatedMemories: { items: [], confidence: 0 },
+    };
+    if (incoming.firstSmoke.firstCigarette) {
+      base.firstSmoke.firstCigarette = mergeScalarRow(
+        base.firstSmoke.firstCigarette,
+        incoming.firstSmoke.firstCigarette,
+      );
+    }
+    if (incoming.firstSmoke.associatedMemories) {
+      base.firstSmoke.associatedMemories = mergeRelapse(
+        base.firstSmoke.associatedMemories || { items: [], confidence: 0 },
+        incoming.firstSmoke.associatedMemories,
+      );
+    }
+  }
   return base;
 }
 
@@ -148,6 +172,7 @@ export function computeCoverageScore(carr) {
   const q = c.quantitative || {};
   const a = c.attempts || {};
   const ill = c.illusions || {};
+  const first = c.firstSmoke || {};
 
   const quant =
     (hasValue(q.yearsInTrap) ? 0.12 + conf(q.yearsInTrap) * 0.1 : conf(q.yearsInTrap) * 0.12) +
@@ -166,9 +191,17 @@ export function computeCoverageScore(carr) {
   for (const k of keys) {
     if (illusionTouch(ill[k])) touched++;
   }
-  const illusionScore = keys.length ? (touched / keys.length) * 0.38 : 0;
+  const illusionScore = keys.length ? (touched / keys.length) * 0.32 : 0;
 
-  const score = Math.min(1, quant + att + illusionScore);
+  const firstPart =
+    (hasValue(first.firstCigarette)
+      ? 0.06 + conf(first.firstCigarette) * 0.04
+      : conf(first.firstCigarette) * 0.06) +
+    ((first.associatedMemories?.items?.length ?? 0) > 0
+      ? 0.06 + conf(first.associatedMemories) * 0.04
+      : conf(first.associatedMemories) * 0.06);
+
+  const score = Math.min(1, quant + att + illusionScore + firstPart);
   return Math.round(score * 1000) / 1000;
 }
 
