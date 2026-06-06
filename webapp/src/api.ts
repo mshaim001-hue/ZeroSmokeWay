@@ -63,8 +63,8 @@ export async function putOrchestratorGuestSnapshot(
   },
 ): Promise<'saved' | 'exists'> {
   const base = apiRoot();
-  if (!base || !accessToken) {
-    throw new Error('API base URL или токен не задан');
+  if (!accessToken) {
+    throw new Error('Токен не задан');
   }
 
   const res = await fetch(`${base}/api/orchestrator`, {
