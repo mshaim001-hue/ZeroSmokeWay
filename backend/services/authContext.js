@@ -1,16 +1,18 @@
-import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
+import { getUserFromAuthHeader } from '../lib/supabaseServer.js';
 
 /**
  * @param {string | undefined} authorizationHeader
  * @param {Array<{ isUser: boolean }>} conversationHistory
- * @returns {Promise<{ userId: string | null, isAuthenticated: boolean, userTurnCount: number, assistantTurnCount: number }>}
+ * @returns {Promise<{ userId: string | null, userEmail: string | null, isAuthenticated: boolean, userTurnCount: number, assistantTurnCount: number }>}
  */
 export async function resolveAuthContext(authorizationHeader, conversationHistory = []) {
-  const userId = await getUserIdFromAuthHeader(authorizationHeader);
+  const user = await getUserFromAuthHeader(authorizationHeader);
+  const userId = user?.id ?? null;
+  const userEmail = user?.email ?? null;
   const isAuthenticated = Boolean(userId);
   const userTurnCount = conversationHistory.filter((m) => m.isUser).length;
   const assistantTurnCount = conversationHistory.filter((m) => !m.isUser).length;
-  return { userId, isAuthenticated, userTurnCount, assistantTurnCount };
+  return { userId, userEmail, isAuthenticated, userTurnCount, assistantTurnCount };
 }
 
 /**

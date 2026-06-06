@@ -4,6 +4,12 @@
   "buildCommand": "cd webapp && npm run build",
   "outputDirectory": "webapp/dist",
   "env": {
-    "OPENAI_MODEL": "gpt-5.4-nano"
-  }
+    "OPENAI_MODEL": "gpt-5.4-mini"
+  },
+  "crons": [
+    {
+      "path": "/api/email-flush",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }

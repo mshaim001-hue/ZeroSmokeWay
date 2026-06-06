@@ -1,13 +1,14 @@
 import { getOrchestratorDecision, PHASES } from './orchestratorService.js';
 import { handleAgentRequest } from './agentService.js';
 import { resolveAuthContext } from './authContext.js';
-import { saveOrchestratorConversation } from './conversationStore.js';
+import { saveOrchestratorConversation, getOrchestratorSession } from './conversationStore.js';
 import { finalizeAnamnesisCoverage, mergeAnamnesisWithCoverage } from './anamnesisCoverage.js';
 import {
   getNextIllusion,
   isMythBustingComplete,
   mythProgressDigest,
 } from './mythBustingProgress.js';
+import { scheduleEmailSequence } from './emailSequenceService.js';
 
 function isEarlyPhase(ph) {
   return ph === PHASES.WELCOME || ph === PHASES.ANAMNESIS;
@@ -148,6 +149,22 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
   const userId = authContext.userId;
 
   if (userId) {
+    // При первом сохранении — планируем email-последовательность
+    try {
+      const existing = await getOrchestratorSession(userId);
+      const isFirstSave = !existing || !Array.isArray(existing.messages) || existing.messages.length === 0;
+      if (isFirstSave && authContext.userEmail) {
+        scheduleEmailSequence({
+          userId,
+          email: authContext.userEmail,
+          name: mergedAnamnesis?.extractedProfile?.name || null,
+          anamnesis: mergedAnamnesis,
+        }).catch((e) => console.warn('scheduleEmailSequence error:', e));
+      }
+    } catch (e) {
+      console.warn('email schedule check error:', e);
+    }
+
     const finalMessages = [
       ...conversationHistory,
       {

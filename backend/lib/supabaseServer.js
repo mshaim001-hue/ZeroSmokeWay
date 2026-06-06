@@ -42,6 +42,15 @@ export function getSupabaseAdmin() {
  * @returns {Promise<string|null>} user id или null
  */
 export async function getUserIdFromAuthHeader(authHeader) {
+  const u = await getUserFromAuthHeader(authHeader);
+  return u?.id ?? null;
+}
+
+/**
+ * Полный объект пользователя из JWT.
+ * @returns {Promise<import('@supabase/supabase-js').User|null>}
+ */
+export async function getUserFromAuthHeader(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const jwt = authHeader.slice(7).trim();
   if (!jwt || !hasSupabaseAuth()) return null;
@@ -55,5 +64,5 @@ export async function getUserIdFromAuthHeader(authHeader) {
     error,
   } = await supabase.auth.getUser(jwt);
   if (error || !user) return null;
-  return user.id;
+  return user;
 }

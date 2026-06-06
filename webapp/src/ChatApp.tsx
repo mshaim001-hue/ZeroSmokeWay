@@ -7,6 +7,7 @@ import {
   putOrchestratorGuestSnapshot,
 } from './api';
 import { AuthModal } from './AuthModal';
+import { CravingButton } from './CravingButton';
 import { parseStoredOrchestratorSession } from './orchestratorSessionRestore';
 import { getSupabase } from './supabaseClient';
 import { ProgressQuitScreen } from './ProgressQuitScreen';
@@ -615,6 +616,31 @@ export function ChatApp() {
             </div>
 
             {!toolPanelOpen && error && <div className="chat-error">{error}</div>}
+
+            {!toolPanelOpen && phase === 'support' && (
+              <CravingButton
+                disabled={loading || bootstrapping || guestComposerLocked}
+                onSendMessage={(text) => {
+                  setInput('');
+                  const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
+                  const history = [...messages, userMsg];
+                  setMessages(history);
+                  setLoading(true);
+                  setError(null);
+                  postOrchestrator(
+                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress },
+                    accessToken,
+                  ).then((data) => {
+                    setMessages((m) => [...m, { text: data.response, isUser: false, timestamp: nowIso() }]);
+                    if (data.phase) setPhase(data.phase);
+                    if (data.mythProgress) setMythProgress(data.mythProgress);
+                    if (data.anamnesisState) setAnamnesis(data.anamnesisState as Record<string, unknown>);
+                  }).catch((err: unknown) => {
+                    setError(err instanceof Error ? err.message : String(err));
+                  }).finally(() => setLoading(false));
+                }}
+              />
+            )}
 
             {!toolPanelOpen && (
             <div
