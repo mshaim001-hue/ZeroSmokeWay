@@ -179,7 +179,7 @@ ${chunkText.substring(0, 500)}...
 
   try {
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты помощник для классификации текстов. Отвечай только валидным JSON объектом с полем "agents" содержащим массив строк.' },
         { role: 'user', content: prompt }

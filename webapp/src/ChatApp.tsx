@@ -105,6 +105,7 @@ export function ChatApp() {
   const [phase, setPhase] = useState(PHASE_WELCOME);
   const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
+  const [mythProgress, setMythProgress] = useState<Record<string, boolean>>({});
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('progress');
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -142,6 +143,7 @@ export function ChatApp() {
     setPhase(PHASE_WELCOME);
     setPlan(null);
     setAnamnesis(null);
+    setMythProgress({});
     setError(null);
     setToolPanelOpen(false);
   }, []);
@@ -372,6 +374,7 @@ export function ChatApp() {
           phase,
           userProfile: null,
           currentPlan: plan,
+          mythProgress,
         },
         accessToken,
       );
@@ -384,6 +387,7 @@ export function ChatApp() {
       setMessages((m) => [...m, bot]);
       if (data.phase) setPhase(data.phase);
       if (data.plan) setPlan(data.plan);
+      if (data.mythProgress) setMythProgress(data.mythProgress);
       if (data.anamnesisState && typeof data.anamnesisState === 'object') {
         setAnamnesis(data.anamnesisState as Record<string, unknown>);
       } else if (data.extractedData && Object.keys(data.extractedData).length) {

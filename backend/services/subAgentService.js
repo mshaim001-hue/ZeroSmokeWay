@@ -39,7 +39,7 @@ export async function analyzeEmotionalTone(agentResponse, agentType, userMessage
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты анализируешь ответы AI-агентов. Отвечай только валидным JSON.' },
         { role: 'user', content: prompt }
@@ -91,7 +91,7 @@ ${JSON.stringify(conversationHistory.slice(-3), null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты валидируешь данные анамнеза. Отвечай только валидным JSON.' },
         { role: 'user', content: prompt }
@@ -140,7 +140,7 @@ export async function reviewSafety(agentResponse, agentType) {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты проверяешь безопасность ответов. Отвечай только валидным JSON.' },
         { role: 'user', content: prompt }
@@ -186,7 +186,7 @@ ${JSON.stringify(analysisResults, null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты улучшаешь ответы AI-агентов. Верни только улучшенный текст ответа.' },
         { role: 'user', content: prompt }

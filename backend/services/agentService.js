@@ -115,7 +115,7 @@ export async function handleAgentRequest({
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: messages,
       response_format: { type: 'json_object' }
     });

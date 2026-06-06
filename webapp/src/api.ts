@@ -14,6 +14,7 @@ export async function postOrchestrator(
     phase: string;
     userProfile: unknown;
     currentPlan: Record<string, unknown> | null;
+    mythProgress?: Record<string, boolean>;
   },
   accessToken: string | null,
 ): Promise<{
@@ -25,6 +26,7 @@ export async function postOrchestrator(
   session?: { isAuthenticated: boolean };
   anamnesisState?: Record<string, unknown> | null;
   coverageScore?: number;
+  mythProgress?: Record<string, boolean>;
 }> {
   const base = apiRoot();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -47,6 +49,7 @@ export async function postOrchestrator(
     session?: { isAuthenticated: boolean };
     anamnesisState?: Record<string, unknown> | null;
     coverageScore?: number;
+    mythProgress?: Record<string, boolean>;
   }>;
 }
 
