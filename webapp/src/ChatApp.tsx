@@ -16,15 +16,14 @@ import { SupportProjectScreen } from './SupportProjectScreen';
 
 const PHASE_WELCOME = 'welcome';
 
-/** Гостевая сессия: напоминания о входе (от момента готовности чата без JWT). */
-const GUEST_AUTH_REMINDER_MS = {
-  /** Первое уведомление */
-  first: 5 * 60 * 1000,
-  /** Второе: через 3 мин после первого (5 + 3 от старта) */
-  second: 8 * 60 * 1000,
-  /** Финальное: ещё +1 мин (9 мин от старта), без кнопки закрытия */
-  third: 9 * 60 * 1000,
-} as const;
+/**
+ * Регистрация предлагается по вовлечённости, не по таймеру.
+ * Порог: сколько сообщений пользователь отправил.
+ * Stage 1 — мягко после 3 сообщений.
+ * Stage 2 — настойчиво после 5 сообщений.
+ * Stage 3 — блокировка после 7 сообщений.
+ */
+const GUEST_AUTH_MESSAGES_THRESHOLD = { first: 3, second: 5, third: 7 } as const;
 
 type SidebarTab =
   | 'progress'
@@ -135,7 +134,7 @@ export function ChatApp() {
     setMessages([
       {
         text:
-          'Привет. Я Алекс. Подумал тут про сигареты поговорить — без душноты и лекций о здоровье, просто так. Как зовут?',
+          'Сколько раз уже пробовал бросить?',
         isUser: false,
         timestamp: nowIso(),
       },
@@ -268,30 +267,23 @@ export function ChatApp() {
     };
   }, [hydrateOrchestratorAfterSignIn, restoreChatFromServer, startJourney]);
 
-  /** Для незалогиненных: три отложенных напоминания о входе (5 мин → +3 мин → +1 мин). */
+  /** Для незалогиненных: напоминание о входе по количеству отправленных сообщений. */
   useEffect(() => {
     if (bootstrapping || accessToken) {
       setGuestAuthReminder(0);
       return;
     }
-
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-    const show = (stage: 1 | 2 | 3) => {
-      if (!guestReminderGuestRef.current) return;
-      setGuestAuthReminder(stage);
-    };
-
-    timeouts.push(
-      window.setTimeout(() => show(1), GUEST_AUTH_REMINDER_MS.first),
-      window.setTimeout(() => show(2), GUEST_AUTH_REMINDER_MS.second),
-      window.setTimeout(() => show(3), GUEST_AUTH_REMINDER_MS.third),
-    );
-
-    return () => {
-      timeouts.forEach((id) => window.clearTimeout(id));
-    };
-  }, [accessToken, bootstrapping]);
+    const userMsgCount = messages.filter((m) => m.isUser).length;
+    if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.third) {
+      setGuestAuthReminder(3);
+    } else if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.second) {
+      setGuestAuthReminder(2);
+    } else if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.first) {
+      setGuestAuthReminder(1);
+    } else {
+      setGuestAuthReminder(0);
+    }
+  }, [accessToken, bootstrapping, messages]);
 
   /** Подгонка под visual viewport при открытой клавиатуре — шапка остаётся сверху видимой области. */
   useEffect(() => {
@@ -463,10 +455,10 @@ export function ChatApp() {
           <div className="guest-auth-reminder__inner">
             <p className="guest-auth-reminder__text">
               {guestAuthReminder === 1
-                ? 'Вы в чате уже какое-то время. Чтобы сохранять историю и прогресс между заходами, войдите или зарегистрируйтесь.'
+                ? 'Алекс запомнит всё что ты рассказал — если войдёшь. Иначе при закрытии вкладки разговор пропадёт.'
                 : guestAuthReminder === 2
-                  ? 'Напоминание: без аккаунта переписка хранится только в этом браузере. Регистрация займёт пару минут.'
-                  : 'Отправка сообщений временно недоступна без входа. Войдите или зарегистрируйтесь — ваша текущая переписка перенесётся в аккаунт.'}
+                  ? 'Хочу вернуться к этому завтра. Оставь почту — напишу тебе.'
+                  : 'Войди, чтобы продолжить. Всё что написал — перенесётся.'}
             </p>
             <div className="guest-auth-reminder__actions">
               {(guestAuthReminder === 1 || guestAuthReminder === 2) && (
@@ -475,7 +467,7 @@ export function ChatApp() {
                   className="btn btn--secondary btn--compact"
                   onClick={() => setGuestAuthReminder(0)}
                 >
-                  Позже
+                  Потом
                 </button>
               )}
               <button
@@ -483,7 +475,7 @@ export function ChatApp() {
                 className="btn btn--primary btn--compact"
                 onClick={() => setAuthModalOpen(true)}
               >
-                Войти
+                {guestAuthReminder === 2 ? 'Оставить почту' : 'Войти'}
               </button>
             </div>
           </div>
