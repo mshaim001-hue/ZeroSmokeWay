@@ -140,6 +140,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     useAdaptiveMode: nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
     orchestratorInstruction,
     authContext,
+    phase,
   });
 
   console.log(

@@ -30,6 +30,7 @@ export async function handleAgentRequest({
   useAdaptiveMode = false, // Новый параметр для включения адаптивного режима
   orchestratorInstruction = null,
   authContext = null,
+  phase = null,
 }) {
   const auth = authContext ?? {
     isAuthenticated: false,
@@ -105,7 +106,9 @@ export async function handleAgentRequest({
   // Инструкция оркестратора — последним системным блоком, чтобы агент её не проигнорировал
   if (orchestratorInstruction) {
     let instruction = `НА ЭТОТ ОТВЕТ СДЕЛАЙ ТОЛЬКО СЛЕДУЮЩЕЕ (не пиши общее приветствие типа "Привет, рад познакомиться" — сделай именно то, что ниже):\n${orchestratorInstruction}`;
-    if (agentType === 'myth_buster') {
+    // В фазе свободы иллюзии уже разобраны — не дописываем «веди вопросом из его опыта»,
+    // иначе агент возвращается к допросу по триггерам и перебивает freedom-инструкцию.
+    if (agentType === 'myth_buster' && phase !== 'freedom') {
       instruction += '\n\nНе утверждай "это иллюзия" или "учёные доказали" — веди одним вопросом или аналогией из его опыта. Закончи вопросом или приглашением ("как тебе мысль?", "хочешь с другой стороны посмотреть?"), чтобы он понимал, что писать дальше.';
     }
     messages.push({ role: 'system', content: instruction });
