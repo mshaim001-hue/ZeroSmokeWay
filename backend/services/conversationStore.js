@@ -29,11 +29,13 @@ export async function saveOrchestratorConversation(userId, messages, orchestrato
     updated_at: new Date().toISOString(),
   };
 
-  const { phase, plan, anamnesis } = orchestratorState || {};
+  const { phase, plan, anamnesis, mythProgress, sessionBrief } = orchestratorState || {};
   payload.orchestrator_state = {
     phase: phase ?? null,
     plan: plan ?? null,
     anamnesis: anamnesis ?? null,
+    mythProgress: mythProgress ?? null,
+    sessionBrief: sessionBrief ?? null,
     saved_at: new Date().toISOString(),
   };
 

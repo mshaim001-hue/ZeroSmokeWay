@@ -106,6 +106,7 @@ export function ChatApp() {
   const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [mythProgress, setMythProgress] = useState<Record<string, boolean>>({});
+  const [sessionBrief, setSessionBrief] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('progress');
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -135,7 +136,7 @@ export function ChatApp() {
     setMessages([
       {
         text:
-          'Сколько раз уже пробовал бросить?',
+          'Привет, я Алекс. Сразу скажу — бросать не зову, кури сколько куришь. Просто интересно поговорить: что тебе вообще нравится в сигаретах?',
         isUser: false,
         timestamp: nowIso(),
       },
@@ -144,6 +145,7 @@ export function ChatApp() {
     setPlan(null);
     setAnamnesis(null);
     setMythProgress({});
+    setSessionBrief(null);
     setError(null);
     setToolPanelOpen(false);
   }, []);
@@ -165,6 +167,8 @@ export function ChatApp() {
         if (parsed.phase) setPhase(parsed.phase);
         if (parsed.plan) setPlan(parsed.plan);
         setAnamnesis(parsed.anamnesis);
+        if (parsed.mythProgress) setMythProgress(parsed.mythProgress);
+        setSessionBrief(parsed.sessionBrief);
         setError(null);
       } catch {
         startJourney();
@@ -368,6 +372,7 @@ export function ChatApp() {
           userProfile: null,
           currentPlan: plan,
           mythProgress,
+          sessionBrief,
         },
         accessToken,
       );
@@ -381,6 +386,7 @@ export function ChatApp() {
       if (data.phase) setPhase(data.phase);
       if (data.plan) setPlan(data.plan);
       if (data.mythProgress) setMythProgress(data.mythProgress);
+      if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
       if (data.anamnesisState && typeof data.anamnesisState === 'object') {
         setAnamnesis(data.anamnesisState as Record<string, unknown>);
       } else if (data.extractedData && Object.keys(data.extractedData).length) {
@@ -628,12 +634,13 @@ export function ChatApp() {
                   setLoading(true);
                   setError(null);
                   postOrchestrator(
-                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress },
+                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress, sessionBrief },
                     accessToken,
                   ).then((data) => {
                     setMessages((m) => [...m, { text: data.response, isUser: false, timestamp: nowIso() }]);
                     if (data.phase) setPhase(data.phase);
                     if (data.mythProgress) setMythProgress(data.mythProgress);
+                    if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
                     if (data.anamnesisState) setAnamnesis(data.anamnesisState as Record<string, unknown>);
                   }).catch((err: unknown) => {
                     setError(err instanceof Error ? err.message : String(err));

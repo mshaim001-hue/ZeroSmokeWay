@@ -5,10 +5,12 @@ export function parseStoredOrchestratorSession(stored: OrchestratorStoredSession
   phase: string | null;
   plan: Record<string, unknown> | null;
   anamnesis: Record<string, unknown> | null;
+  mythProgress: Record<string, boolean> | null;
+  sessionBrief: string | null;
 } {
   const raw = stored.messages;
   if (!Array.isArray(raw) || raw.length === 0) {
-    return { messages: null, phase: null, plan: null, anamnesis: null };
+    return { messages: null, phase: null, plan: null, anamnesis: null, mythProgress: null, sessionBrief: null };
   }
   const messages: ChatMessage[] = [];
   for (const m of raw) {
@@ -25,7 +27,7 @@ export function parseStoredOrchestratorSession(stored: OrchestratorStoredSession
         timestamp: (m as ChatMessage).timestamp,
       });
     } else {
-      return { messages: null, phase: null, plan: null, anamnesis: null };
+      return { messages: null, phase: null, plan: null, anamnesis: null, mythProgress: null, sessionBrief: null };
     }
   }
   const st = stored.orchestrator_state ?? {};
@@ -33,5 +35,10 @@ export function parseStoredOrchestratorSession(stored: OrchestratorStoredSession
   const plan = st.plan && typeof st.plan === 'object' ? (st.plan as Record<string, unknown>) : null;
   const anamnesis =
     st.anamnesis && typeof st.anamnesis === 'object' ? (st.anamnesis as Record<string, unknown>) : null;
-  return { messages, phase, plan, anamnesis };
+  const mythProgress =
+    st.mythProgress && typeof st.mythProgress === 'object'
+      ? (st.mythProgress as Record<string, boolean>)
+      : null;
+  const sessionBrief = typeof st.sessionBrief === 'string' ? st.sessionBrief : null;
+  return { messages, phase, plan, anamnesis, mythProgress, sessionBrief };
 }

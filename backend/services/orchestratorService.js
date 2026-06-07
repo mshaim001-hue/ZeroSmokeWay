@@ -56,7 +56,8 @@ const ORCHESTRATOR_SYSTEM = `Ты — оркестратор диалога по
 - plan: { "steps": [ { "focus": "...", "agent": "anamnesis"|"myth_buster"|"support" }, ... ] } — 3 элемента.
 - onTrack, planUpdated, reasonOffTrack (если нужно).
 - nextAgent, phaseUpdate.
-- instructionToAgent: 1–3 предложения для агента — ЧТО сделать в этом ответе, с опорой на то, что пользователь написал. Без выдуманных "решений" и "шагов" пользователя.`;
+- instructionToAgent: 1–3 предложения для агента — ЧТО сделать в этом ответе, с опорой на то, что пользователь написал. Без выдуманных "решений" и "шагов" пользователя.
+- sessionBrief: 1–2 живые фразы «где мы сейчас и что дальше» — для следующей сессии, чтобы потом не начинать заново. Что узнали о человеке, на какой фазе/иллюзии остановились, какой следующий шаг. Пиши по-человечески, как заметка себе-будущему. Опирайся ТОЛЬКО на реально сказанное.`;
 
 /**
  * Нормализовать план: массив ровно из 3 шагов { focus, agent }.
@@ -101,6 +102,7 @@ export async function getOrchestratorDecision({
   anamnesisData = null,
   userProfile = null,
   currentPlan = null,
+  priorSessionBrief = null,
   authContext = null,
 }) {
   const recentMessages = conversationHistory.slice(-12);
@@ -126,7 +128,11 @@ export async function getOrchestratorDecision({
 
 `;
 
-  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}${coverageDigest}Текущая фаза: ${phase}
+  const briefNote = priorSessionBrief
+    ? `Бриф с прошлой сессии (продолжай отсюда, НЕ начинай знакомство заново): ${priorSessionBrief}\n\n`
+    : '';
+
+  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}${briefNote}${coverageDigest}Текущая фаза: ${phase}
 Собранный анамнез: ${anamnesisData ? JSON.stringify(anamnesisData, null, 0) : 'пока нет'}
 Профиль пользователя: ${userProfile ? JSON.stringify(userProfile, null, 0) : 'нет'}
 
@@ -143,7 +149,7 @@ ${historyText || '(диалог только начинается)'}
 Если пользователь выражает недоверие или сомнение (например: "не верю", "не помогает", "с чего верить", "не убедительно", "не убедил") — в instructionToAgent укажи: НЕ подкреплять фактами и НЕ повторять про иллюзию. Признать его чувство ("Понимаю, что так кажется"). Задать ОДИН вопрос из того, что он уже говорил в диалоге (утро, кофе, сон, стресс, насыщение), который подводит к другому взгляду — чтобы он сам увидел, без требования верить боту на слово.
 ${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: ответ должен вести вопросами из опыта пользователя, не утверждениями. Закончить приглашением к ответу (вопрос или "хочешь разобрать с другой стороны?").' : ''}
 
-Верни JSON: plan (steps — массив из 3 элементов { "focus", "agent" }), onTrack, planUpdated, reasonOffTrack (если нужно), nextAgent, phaseUpdate, instructionToAgent.`;
+Верни JSON: plan (steps — массив из 3 элементов { "focus", "agent" }), onTrack, planUpdated, reasonOffTrack (если нужно), nextAgent, phaseUpdate, instructionToAgent, sessionBrief.`;
 
   const completion = await openai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
@@ -182,6 +188,10 @@ ${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: отв�
   const onTrack = Boolean(parsed.onTrack);
   const planUpdated = Boolean(parsed.planUpdated);
   const reasonOffTrack = typeof parsed.reasonOffTrack === 'string' ? parsed.reasonOffTrack.trim() : '';
+  const sessionBrief =
+    typeof parsed.sessionBrief === 'string' && parsed.sessionBrief.trim()
+      ? parsed.sessionBrief.trim()
+      : (priorSessionBrief || '');
 
   return {
     nextAgent,
@@ -191,5 +201,6 @@ ${phase === PHASES.MYTH_BUSTING ? '\nСейчас фаза myth_busting: отв�
     onTrack,
     planUpdated,
     reasonOffTrack,
+    sessionBrief,
   };
 }

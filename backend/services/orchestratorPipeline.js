@@ -7,6 +7,7 @@ import {
   getNextIllusion,
   isMythBustingComplete,
   mythProgressDigest,
+  hasAhaSignal,
 } from './mythBustingProgress.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
 
@@ -30,7 +31,7 @@ function buildMythBusterInstruction(baseInstruction, nextIllusion, mythProgress)
     );
   }
 
-  const alreadyAddressed = Object.keys(mythProgress || {}).filter((k) => mythProgress[k]);
+  const alreadyAddressed = Object.keys(mythProgress || {}).filter((k) => mythProgress[k] === true);
   const progressNote =
     alreadyAddressed.length > 0
       ? `Уже разобраны: ${alreadyAddressed.join(', ')}. `
@@ -58,6 +59,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     userProfile = null,
     currentPlan = null,
     mythProgress = {},  // { stress: true, boredom: true, ... } — клиент сохраняет и передаёт
+    sessionBrief: priorSessionBrief = null,  // бриф с прошлого хода/сессии
   } = body;
 
   const authContext = await resolveAuthContext(authorizationHeader, conversationHistory);
@@ -69,6 +71,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     anamnesisData,
     userProfile,
     currentPlan,
+    priorSessionBrief,
     authContext,
   });
 
@@ -129,12 +132,19 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     authContext.isAuthenticated ? '| JWT user' : '| guest',
   );
 
-  // Если myth_buster ответил на иллюзию — помечаем её разобранной
-  // Эвристика: ответ содержит сократический вопрос (не пустой) → считаем иллюзию разобранной
+  // Помечаем иллюзию разобранной только когда человек САМ её увидел (aha-момент),
+  // а не просто потому что бот ответил. Страховка: после 3 заходов двигаемся дальше,
+  // чтобы не застрять на одной иллюзии. Счётчик заходов едет в mythProgress под
+  // служебным ключом __attempts_<key> (клиент гоняет mythProgress как непрозрачный объект).
   if (nextAgent === 'myth_buster' && phase !== PHASES.FREEDOM) {
     const nextIllusion = getNextIllusion(carrCoverage, mythProgress);
-    if (nextIllusion && agentResult.response && agentResult.response.length > 30) {
-      updatedMythProgress = { ...mythProgress, [nextIllusion.key]: true };
+    if (nextIllusion) {
+      const attemptsKey = `__attempts_${nextIllusion.key}`;
+      const attempts = (Number(updatedMythProgress[attemptsKey]) || 0) + 1;
+      updatedMythProgress[attemptsKey] = attempts;
+      if (hasAhaSignal(message) || attempts >= 3) {
+        updatedMythProgress[nextIllusion.key] = true;
+      }
     }
   }
 
@@ -178,6 +188,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       plan: decision.plan,
       anamnesis: mergedAnamnesis,
       mythProgress: updatedMythProgress,
+      sessionBrief: decision.sessionBrief,
     });
   }
 
@@ -192,6 +203,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     anamnesisState: mergedAnamnesis,
     coverageScore: mergedAnamnesis.coverageScore,
     mythProgress: updatedMythProgress,
+    sessionBrief: decision.sessionBrief,
     onTrack: decision.onTrack,
     planUpdated: decision.planUpdated,
     isComplete: agentResult.isComplete,

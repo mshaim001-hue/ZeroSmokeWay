@@ -28,6 +28,32 @@ const ILLUSION_HINTS = {
   lastCigarettePanic: 'Спроси: что конкретно пугает в "последней"? Некурящие живут без сигарет и не страдают. Откуда уверенность, что тебе это нужно — ты родился с такой потребностью?',
 };
 
+// Сигналы "aha" — человек сам согласился / увидел иллюзию своими словами.
+const AHA_PATTERNS = [
+  /\bну да\b/, /\bда уж\b/, /\bи правда\b/, /\bи вправду\b/, /\bточно\b/, /\bверно\b/,
+  /\bлогично\b/, /\bсоглас/, /\bпожалуй\b/, /\bнаверное\b/, /\bдействительно\b/,
+  /никогда так не /, /не думал/, /не задумыв/, /не смотрел на это/,
+  /\bполучается/, /\bвыходит\b/, /\bстранно\b/, /\bхм+\b/, /твоя правда/,
+  /блин,? да/, /вот это да/, /\bдоход/, /\bпонял\b/, /\bпоняла\b/, /\bосознал/,
+];
+// Явное несогласие — гасит ложный aha (проверяется первым).
+const AHA_NEGATIONS = [
+  /не соглас/, /не верю/, /не убеди/, /\bбред\b/, /\bчушь\b/,
+  /не думаю,? что так/, /\bда нет\b/, /не получается/, /не логично/,
+];
+
+/**
+ * Похоже ли сообщение на "aha-момент" — человек сам согласился/увидел.
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function hasAhaSignal(text) {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.toLowerCase();
+  if (AHA_NEGATIONS.some((r) => r.test(t))) return false;
+  return AHA_PATTERNS.some((r) => r.test(t));
+}
+
 /**
  * Определяет следующую иллюзию для проработки.
  * @param {object} carrCoverage — из anamnesisCoverage
@@ -39,7 +65,7 @@ export function getNextIllusion(carrCoverage, mythProgress = {}) {
 
   // 1. Иллюзии с явными доказательствами из анамнеза — первые кандидаты
   for (const key of ILLUSION_ORDER) {
-    if (mythProgress[key]) continue;
+    if (mythProgress[key] === true) continue;
     const row = illusions[key];
     if (!row) continue;
     if (
@@ -57,7 +83,7 @@ export function getNextIllusion(carrCoverage, mythProgress = {}) {
 
   // 2. Любая неразобранная иллюзия с хоть каким-то следом
   for (const key of ILLUSION_ORDER) {
-    if (mythProgress[key]) continue;
+    if (mythProgress[key] === true) continue;
     const row = illusions[key];
     if (row && typeof row.evidence === 'string' && row.evidence.trim().length > 0) {
       return {
@@ -78,7 +104,7 @@ export function getNextIllusion(carrCoverage, mythProgress = {}) {
  */
 export function isMythBustingComplete(carrCoverage, mythProgress = {}) {
   const illusions = carrCoverage?.illusions || {};
-  const addressed = Object.keys(mythProgress).filter((k) => mythProgress[k]);
+  const addressed = Object.keys(mythProgress).filter((k) => mythProgress[k] === true);
 
   // Если разобрали хотя бы 2 иллюзии и нет ни одной явно не разобранной с сильными уликами
   if (addressed.length < 2) return false;
