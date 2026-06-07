@@ -48,6 +48,23 @@ function buildMythBusterInstruction(baseInstruction, nextIllusion, mythProgress)
 }
 
 /**
+ * Инструкция для фазы свободы: иллюзии уже разобраны, человек сам всё увидел.
+ * Задача агента сменилась — не допрашивать дальше, а закрепить и отпустить.
+ */
+function buildFreedomInstruction(baseInstruction) {
+  return (
+    (baseInstruction ? baseInstruction + '\n\n' : '') +
+    'ФАЗА СВОБОДЫ. Все иллюзии уже разобраны — человек сам увидел, что терять нечего. ' +
+    'НЕ задавай больше сократических вопросов про отдельные иллюзии (стресс, кофе, компанию): это пройденный этап, ' +
+    'возвращаться к ним = обесценивать его инсайт и создавать ощущение, что финиша нет. ' +
+    'Сейчас твоя задача — закрепить и отпустить: спокойно подтверди то, к чему он пришёл сам, ' +
+    'и передай тихую уверенность, что впереди легче, чем кажется. Без пафоса, без "ты справишься" и "держись" — ' +
+    'ровная интонация человека, который сам прошёл этот путь. Можешь мягко обозначить, что бросить можно прямо сейчас ' +
+    'и без борьбы, но не дави и не торопи. 2–3 предложения. Закончи тёплым открытым вопросом.'
+  );
+}
+
+/**
  * Общая логика POST /api/orchestrator (Express и Vercel).
  */
 export async function runOrchestrationRequest({ body, authorizationHeader }) {
@@ -97,7 +114,10 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
   let updatedMythProgress = { ...mythProgress };
   let orchestratorInstruction = decision.instructionToAgent;
 
-  if (nextAgent === 'myth_buster' && phase !== PHASES.FREEDOM) {
+  if (nextAgent === 'myth_buster' && phase === PHASES.FREEDOM) {
+    // Иллюзии уже позади — закрепляем, а не допрашиваем заново.
+    orchestratorInstruction = buildFreedomInstruction(decision.instructionToAgent);
+  } else if (nextAgent === 'myth_buster') {
     const nextIllusion = getNextIllusion(carrCoverage, mythProgress);
     orchestratorInstruction = buildMythBusterInstruction(
       decision.instructionToAgent,
