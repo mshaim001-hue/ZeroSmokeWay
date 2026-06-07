@@ -40,6 +40,10 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   }
 
   async function signInWithProvider(provider: 'google') {
+    if (!sb) {
+      setError('Supabase не настроен.');
+      return;
+    }
     setError(null);
     setInfo(null);
     setOauthBusy(provider);
@@ -61,6 +65,10 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!sb) {
+      setError('Supabase не настроен.');
+      return;
+    }
     setError(null);
     setInfo(null);
     const em = email.trim();
@@ -93,6 +101,10 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   }
 
   async function onSignOut() {
+    if (!sb) {
+      onClose();
+      return;
+    }
     await sb.auth.signOut();
     onClose();
   }

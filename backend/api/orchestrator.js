@@ -1,7 +1,7 @@
 // Vercel Serverless Function: оркестратор диалога + восстановление сессии
 import { runOrchestrationRequest } from '../services/orchestratorPipeline.js';
 import { PHASES } from '../services/orchestratorService.js';
-import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
+import { getUserIdFromAuthHeader, hasSupabaseAdmin } from '../lib/supabaseServer.js';
 import { getOrchestratorSession, saveOrchestratorConversation } from '../services/conversationStore.js';
 import { parseOrchestratorImportPayload } from '../services/orchestratorSnapshotImport.js';
 
@@ -43,6 +43,12 @@ export default async function handler(req, res) {
       const userId = await getUserIdFromAuthHeader(req.headers.authorization);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Без service_role записать нельзя. Честно отдаём ошибку, чтобы клиент сохранил
+      // гостевой снимок в localStorage, а не потерял его, посчитав перенос успешным.
+      if (!hasSupabaseAdmin()) {
+        return res.status(503).json({ error: 'Хранилище недоступно: задайте SUPABASE_SERVICE_ROLE_KEY' });
       }
 
       const parsed = parseOrchestratorImportPayload(req.body);

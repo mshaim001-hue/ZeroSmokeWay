@@ -2,7 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 
 /** Читаем env при вызове: скрипты успевают вызвать dotenv.config() до импорта этого модуля не помогает (ESM). */
 function supabaseUrl() {
-  return process.env.SUPABASE_URL;
+  // VITE_-фолбэк: на Vercel часто заданы только клиентские переменные сборки,
+  // но в рантайме serverless-функций они тоже доступны. Так бэкенд проверяет JWT
+  // против того же проекта, в который вошёл фронтенд.
+  return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 }
 
 function serviceRoleKey() {
@@ -13,7 +16,8 @@ function anonOrPublishableKey() {
   return (
     process.env.SUPABASE_ANON_KEY ||
     process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY
   );
 }
 
