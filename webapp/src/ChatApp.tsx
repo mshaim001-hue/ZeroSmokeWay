@@ -39,6 +39,48 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+/**
+ * Гостевой снимок переписки в localStorage — переживает OAuth-редирект (вход через Google
+ * уводит страницу на провайдера и обратно, стирая React-память). Без него перенос гостевого
+ * диалога в новый аккаунт терялся.
+ */
+const GUEST_SNAPSHOT_KEY = 'zsw_guest_snapshot_v1';
+
+type GuestSnapshot = {
+  messages: ChatMessage[];
+  phase: string;
+  plan: Record<string, unknown> | null;
+  anamnesis: Record<string, unknown> | null;
+};
+
+function readGuestSnapshot(): GuestSnapshot | null {
+  try {
+    const raw = localStorage.getItem(GUEST_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.messages) || parsed.messages.length === 0) return null;
+    return parsed as GuestSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function writeGuestSnapshot(snap: GuestSnapshot) {
+  try {
+    localStorage.setItem(GUEST_SNAPSHOT_KEY, JSON.stringify(snap));
+  } catch {
+    /* приватный режим / переполнение — перенос просто пойдёт по in-memory пути */
+  }
+}
+
+function clearGuestSnapshot() {
+  try {
+    localStorage.removeItem(GUEST_SNAPSHOT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 function formatMsgTime(iso: string): string {
   try {
     const d = new Date(iso);
@@ -179,7 +221,17 @@ export function ChatApp() {
 
   const hydrateOrchestratorAfterSignIn = useCallback(
     async (token: string) => {
-      const snap = orchestratorHydrateSnapRef.current;
+      // In-memory снимок есть при входе без редиректа (email/пароль в модалке).
+      // При входе через Google страница перезагружается после редиректа и память пуста —
+      // тогда берём гостевой снимок из localStorage.
+      const memSnap = orchestratorHydrateSnapRef.current;
+      const lsSnap = readGuestSnapshot();
+      const snap =
+        memSnap.messages.length > 0
+          ? memSnap
+          : lsSnap
+            ? { messages: lsSnap.messages, phase: lsSnap.phase, plan: lsSnap.plan, anamnesis: lsSnap.anamnesis }
+            : memSnap;
 
       let stored = null as Awaited<ReturnType<typeof fetchOrchestratorSession>>;
       try {
@@ -201,6 +253,7 @@ export function ChatApp() {
             plan: snap.plan,
             anamnesis: snap.anamnesis,
           });
+          clearGuestSnapshot();
           if (outcome === 'exists') {
             await restoreChatFromServer(token);
             return;
@@ -220,6 +273,7 @@ export function ChatApp() {
         return;
       }
 
+      clearGuestSnapshot();
       await restoreChatFromServer(token);
     },
     [restoreChatFromServer],
@@ -230,6 +284,13 @@ export function ChatApp() {
   useEffect(() => {
     scrollDown();
   }, [messages, loading]);
+
+  // Пишем гостевой снимок в localStorage, пока юзер не вошёл — чтобы переписка пережила
+  // редирект Google-OAuth и перенеслась в новый аккаунт. После входа снимок чистится в hydrate.
+  useEffect(() => {
+    if (bootstrapping || accessToken || messages.length === 0) return;
+    writeGuestSnapshot({ messages, phase, plan, anamnesis });
+  }, [bootstrapping, accessToken, messages, phase, plan, anamnesis]);
 
   /** Первая загрузка: либо диалог из Supabase (GET), либо гостевой приветствие. */
   useEffect(() => {
@@ -246,7 +307,9 @@ export function ChatApp() {
       if (cancelled) return;
       setSession(initial);
       if (initial?.access_token) {
-        await restoreChatFromServer(initial.access_token);
+        // На обычном входе нет редиректа и сюда попадает уже залогиненный юзер;
+        // на возврате после Google-OAuth здесь же подхватывается гостевой снимок из localStorage.
+        await hydrateOrchestratorAfterSignIn(initial.access_token);
       } else {
         startJourney();
       }
