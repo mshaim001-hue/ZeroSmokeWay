@@ -105,8 +105,10 @@ export type OrchestratorStoredSession = {
 
 /** GET /api/orchestrator — восстановление сессии после входа (Supabase JWT). GET на Vercel: тот же путь. */
 export async function fetchOrchestratorSession(accessToken: string | null): Promise<OrchestratorStoredSession | null> {
+  // base пустой на same-domain деплое (VITE_API_BASE_URL не задан) — это валидно,
+  // fetch пойдёт по относительному /api/orchestrator. Нельзя выходить по !base.
+  if (!accessToken) return null;
   const base = apiRoot();
-  if (!base || !accessToken) return null;
   const res = await fetch(`${base}/api/orchestrator`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${accessToken}` },
