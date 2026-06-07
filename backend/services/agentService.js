@@ -62,8 +62,10 @@ export async function handleAgentRequest({
     };
   }
   
-  // Стандартный обработчик для остальных агентов или anamnesis без адаптивного режима
-  const systemPrompt = await getAgentPrompt(agentType);
+  // Стандартный обработчик для остальных агентов или anamnesis без адаптивного режима.
+  // В фазе свободы у myth_buster — отдельная персона (закрепить инсайт, не допрашивать заново).
+  const promptKey = agentType === 'myth_buster' && phase === 'freedom' ? 'freedom' : agentType;
+  const systemPrompt = await getAgentPrompt(promptKey);
   
   if (!systemPrompt) throw new Error(`Unknown agent: ${agentType}`);
 
