@@ -51,7 +51,13 @@ function buildMythBusterInstruction(baseInstruction, nextIllusion, mythProgress)
  * Инструкция для фазы свободы: иллюзии уже разобраны, человек сам всё увидел.
  * Задача агента сменилась — не допрашивать дальше, а закрепить и отпустить.
  */
-function buildFreedomInstruction(baseInstruction) {
+function buildFreedomInstruction(baseInstruction, userInsights = {}) {
+  const insightEntries = Object.entries(userInsights).filter(([, v]) => v && v.length > 0);
+  const insightsNote = insightEntries.length > 0
+    ? '\n\nЕГО СОБСТВЕННЫЕ ФОРМУЛИРОВКИ (он написал это сам — используй их, не перефразируй):\n' +
+      insightEntries.map(([k, v]) => `  — ${k}: "${v}"`).join('\n')
+    : '';
+
   return (
     (baseInstruction ? baseInstruction + '\n\n' : '') +
     'ФАЗА СВОБОДЫ. Все иллюзии уже разобраны — человек сам увидел, что терять нечего. ' +
@@ -60,7 +66,8 @@ function buildFreedomInstruction(baseInstruction) {
     'Сейчас твоя задача — закрепить и отпустить: спокойно подтверди то, к чему он пришёл сам, ' +
     'и передай тихую уверенность, что впереди легче, чем кажется. Без пафоса, без "ты справишься" и "держись" — ' +
     'ровная интонация человека, который сам прошёл этот путь. Можешь мягко обозначить, что бросить можно прямо сейчас ' +
-    'и без борьбы, но не дави и не торопи. 2–3 предложения. Закончи тёплым открытым вопросом.'
+    'и без борьбы, но не дави и не торопи. 2–3 предложения. Закончи тёплым открытым вопросом.' +
+    insightsNote
   );
 }
 
@@ -77,6 +84,8 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     currentPlan = null,
     mythProgress = {},  // { stress: true, boredom: true, ... } — клиент сохраняет и передаёт
     sessionBrief: priorSessionBrief = null,  // бриф с прошлого хода/сессии
+    userInsights = {},  // { stress: "слова пользователя", ... } — его собственные формулировки
+    awaitingInsightFor = null,  // иллюзия, для которой ждём формулировку от пользователя
   } = body;
 
   const authContext = await resolveAuthContext(authorizationHeader, conversationHistory);
@@ -90,6 +99,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     currentPlan,
     priorSessionBrief,
     authContext,
+    userInsights,
   });
 
   let nextAgent = decision.nextAgent;
@@ -112,18 +122,37 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
 
   // Для myth_buster: определяем следующую иллюзию и обогащаем инструкцию
   let updatedMythProgress = { ...mythProgress };
+  let updatedUserInsights = { ...userInsights };
+  let updatedAwaitingInsightFor = awaitingInsightFor;
   let orchestratorInstruction = decision.instructionToAgent;
+
+  // Если ждали формулировку — сохраняем ответ пользователя и снимаем флаг
+  if (awaitingInsightFor && message.trim().length > 3) {
+    updatedUserInsights[awaitingInsightFor] = message.trim();
+    updatedAwaitingInsightFor = null;
+  }
 
   if (nextAgent === 'myth_buster' && phase === PHASES.FREEDOM) {
     // Иллюзии уже позади — закрепляем, а не допрашиваем заново.
-    orchestratorInstruction = buildFreedomInstruction(decision.instructionToAgent);
+    orchestratorInstruction = buildFreedomInstruction(decision.instructionToAgent, updatedUserInsights);
   } else if (nextAgent === 'myth_buster') {
     const nextIllusion = getNextIllusion(carrCoverage, mythProgress);
-    orchestratorInstruction = buildMythBusterInstruction(
-      decision.instructionToAgent,
-      nextIllusion,
-      mythProgress,
-    );
+
+    // Если сейчас ожидаем формулировку от пользователя — агент должен принять её и двигаться дальше
+    if (updatedAwaitingInsightFor === null && awaitingInsightFor) {
+      // формулировка только что получена — благодарим без пафоса и переходим к следующей иллюзии
+      orchestratorInstruction =
+        (decision.instructionToAgent ? decision.instructionToAgent + '\n\n' : '') +
+        'Пользователь только что сформулировал свой вывод своими словами — прими его спокойно, ' +
+        'без похвалы ("ты молодец", "отлично сказал"). Можно коротко отразить: "да, именно так". ' +
+        'Затем плавно перейди к следующей иллюзии или теме по плану.';
+    } else {
+      orchestratorInstruction = buildMythBusterInstruction(
+        decision.instructionToAgent,
+        nextIllusion,
+        mythProgress,
+      );
+    }
 
     // Если иллюзий нет (все разобраны) — переходим к FREEDOM
     if (!nextIllusion && isMythBustingComplete(carrCoverage, mythProgress)) {
@@ -163,8 +192,20 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       const attemptsKey = `__attempts_${nextIllusion.key}`;
       const attempts = (Number(updatedMythProgress[attemptsKey]) || 0) + 1;
       updatedMythProgress[attemptsKey] = attempts;
-      if (hasAhaSignal(message) || attempts >= 3) {
+      const ahaDetected = hasAhaSignal(message) || attempts >= 3;
+      if (ahaDetected) {
         updatedMythProgress[nextIllusion.key] = true;
+        // Если aha реальный (не просто по счётчику) — просим сформулировать вывод своими словами
+        if (hasAhaSignal(message) && !updatedUserInsights[nextIllusion.key]) {
+          updatedAwaitingInsightFor = nextIllusion.key;
+          // Переопределяем инструкцию: попросить сформулировать, не двигаться к следующей иллюзии
+          orchestratorInstruction =
+            (decision.instructionToAgent ? decision.instructionToAgent + '\n\n' : '') +
+            `Человек только что сам пришёл к выводу по иллюзии "${nextIllusion.label}". ` +
+            'Это важный момент. Не торопись к следующей теме. ' +
+            'Спроси его спокойно и коротко: "Как бы ты сам это сформулировал — своими словами?" ' +
+            'Один вопрос, без давления. Его ответ мы запомним.';
+        }
       }
     }
   }
@@ -210,6 +251,8 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       anamnesis: mergedAnamnesis,
       mythProgress: updatedMythProgress,
       sessionBrief: decision.sessionBrief,
+      userInsights: updatedUserInsights,
+      awaitingInsightFor: updatedAwaitingInsightFor,
     });
   }
 
@@ -224,6 +267,8 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     anamnesisState: mergedAnamnesis,
     coverageScore: mergedAnamnesis.coverageScore,
     mythProgress: updatedMythProgress,
+    userInsights: updatedUserInsights,
+    awaitingInsightFor: updatedAwaitingInsightFor,
     sessionBrief: decision.sessionBrief,
     onTrack: decision.onTrack,
     planUpdated: decision.planUpdated,

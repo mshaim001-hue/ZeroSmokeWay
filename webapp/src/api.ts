@@ -16,6 +16,8 @@ export async function postOrchestrator(
     currentPlan: Record<string, unknown> | null;
     mythProgress?: Record<string, boolean>;
     sessionBrief?: string | null;
+    userInsights?: Record<string, string>;
+    awaitingInsightFor?: string | null;
   },
   accessToken: string | null,
 ): Promise<{
@@ -29,6 +31,8 @@ export async function postOrchestrator(
   coverageScore?: number;
   mythProgress?: Record<string, boolean>;
   sessionBrief?: string | null;
+  userInsights?: Record<string, string>;
+  awaitingInsightFor?: string | null;
 }> {
   const base = apiRoot();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -99,6 +103,8 @@ export type OrchestratorStoredSession = {
     anamnesis?: Record<string, unknown> | null;
     mythProgress?: Record<string, boolean> | null;
     sessionBrief?: string | null;
+    userInsights?: Record<string, string> | null;
+    awaitingInsightFor?: string | null;
     saved_at?: string;
   };
 };

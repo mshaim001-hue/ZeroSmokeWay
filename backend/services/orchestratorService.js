@@ -104,6 +104,7 @@ export async function getOrchestratorDecision({
   currentPlan = null,
   priorSessionBrief = null,
   authContext = null,
+  userInsights = null,
 }) {
   const recentMessages = conversationHistory.slice(-12);
   const historyText = recentMessages
@@ -132,7 +133,12 @@ export async function getOrchestratorDecision({
     ? `Бриф с прошлой сессии (продолжай отсюда, НЕ начинай знакомство заново): ${priorSessionBrief}\n\n`
     : '';
 
-  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}${briefNote}${coverageDigest}Текущая фаза: ${phase}
+  const insightEntries = userInsights ? Object.entries(userInsights).filter(([, v]) => v && v.length > 0) : [];
+  const insightsNote = insightEntries.length > 0
+    ? `ЕГО СОБСТВЕННЫЕ ВЫВОДЫ (он написал это сам — это якоря, которые он уже принял):\n${insightEntries.map(([k, v]) => `  ${k}: "${v}"`).join('\n')}\n\n`
+    : '';
+
+  const userPrompt = `${authContext ? formatAuthContextForPrompt(authContext) + '\n\n' : ''}${guestOrchestratorNote}${briefNote}${insightsNote}${coverageDigest}Текущая фаза: ${phase}
 Собранный анамнез: ${anamnesisData ? JSON.stringify(anamnesisData, null, 0) : 'пока нет'}
 Профиль пользователя: ${userProfile ? JSON.stringify(userProfile, null, 0) : 'нет'}
 

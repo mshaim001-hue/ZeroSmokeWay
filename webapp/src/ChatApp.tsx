@@ -149,6 +149,8 @@ export function ChatApp() {
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [mythProgress, setMythProgress] = useState<Record<string, boolean>>({});
   const [sessionBrief, setSessionBrief] = useState<string | null>(null);
+  const [userInsights, setUserInsights] = useState<Record<string, string>>({});
+  const [awaitingInsightFor, setAwaitingInsightFor] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('progress');
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -211,6 +213,8 @@ export function ChatApp() {
         setAnamnesis(parsed.anamnesis);
         if (parsed.mythProgress) setMythProgress(parsed.mythProgress);
         setSessionBrief(parsed.sessionBrief);
+        if (parsed.userInsights) setUserInsights(parsed.userInsights);
+        if (parsed.awaitingInsightFor !== undefined) setAwaitingInsightFor(parsed.awaitingInsightFor ?? null);
         setError(null);
       } catch {
         startJourney();
@@ -436,6 +440,8 @@ export function ChatApp() {
           currentPlan: plan,
           mythProgress,
           sessionBrief,
+          userInsights,
+          awaitingInsightFor,
         },
         accessToken,
       );
@@ -450,6 +456,8 @@ export function ChatApp() {
       if (data.plan) setPlan(data.plan);
       if (data.mythProgress) setMythProgress(data.mythProgress);
       if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
+      if (data.userInsights) setUserInsights(data.userInsights);
+      if (typeof data.awaitingInsightFor !== 'undefined') setAwaitingInsightFor(data.awaitingInsightFor ?? null);
       if (data.anamnesisState && typeof data.anamnesisState === 'object') {
         setAnamnesis(data.anamnesisState as Record<string, unknown>);
       } else if (data.extractedData && Object.keys(data.extractedData).length) {
@@ -697,13 +705,15 @@ export function ChatApp() {
                   setLoading(true);
                   setError(null);
                   postOrchestrator(
-                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress, sessionBrief },
+                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress, sessionBrief, userInsights, awaitingInsightFor },
                     accessToken,
                   ).then((data) => {
                     setMessages((m) => [...m, { text: data.response, isUser: false, timestamp: nowIso() }]);
                     if (data.phase) setPhase(data.phase);
                     if (data.mythProgress) setMythProgress(data.mythProgress);
                     if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
+                    if (data.userInsights) setUserInsights(data.userInsights);
+                    if (typeof data.awaitingInsightFor !== 'undefined') setAwaitingInsightFor(data.awaitingInsightFor ?? null);
                     if (data.anamnesisState) setAnamnesis(data.anamnesisState as Record<string, unknown>);
                   }).catch((err: unknown) => {
                     setError(err instanceof Error ? err.message : String(err));
