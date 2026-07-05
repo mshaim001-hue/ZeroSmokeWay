@@ -5,6 +5,7 @@ import { handleAdaptiveAnamnesis, isAnamnesisComplete } from './adaptiveAnamnesi
 import { analyzeResponseWithSubAgents } from './subAgentService.js';
 import { createCompactContext } from './contextManagerService.js';
 import { finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
+import { prepareLilaDialogContext } from './lilaDialogMemory.js';
 import {
   formatAuthContextForPrompt,
   formatAnamnesisAuthRules,
@@ -16,8 +17,6 @@ dotenv.config();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const LILA_HISTORY_LIMIT = 200;
 
 export async function handleAgentRequest({
   message,
@@ -68,9 +67,16 @@ export async function handleAgentRequest({
 
   const isLila = agentType === 'anamnesis';
   let historyToUse = conversationHistory;
+  let lilaDialogMemory = null;
 
   if (isLila) {
-    historyToUse = conversationHistory.slice(-LILA_HISTORY_LIMIT);
+    const lilaDialogPrep = await prepareLilaDialogContext({
+      conversationHistory,
+      anamnesisData,
+      visitedCells: anamnesisData?.lilaState?.visitedCells,
+    });
+    historyToUse = lilaDialogPrep.recentMessages;
+    lilaDialogMemory = lilaDialogPrep.lilaDialogMemory;
   } else if (conversationHistory.length > 20) {
     historyToUse = createCompactContext(conversationHistory, agentType).messages;
   }
@@ -92,6 +98,12 @@ export async function handleAgentRequest({
         `=== НАКОПЛЕННАЯ ТАБЛИЦА (carrCoverage) ===\n${JSON.stringify(snapshot.carrCoverage, null, 2)}\n` +
         `coverageScore: ${snapshot.coverageScore}`,
     });
+    if (lilaDialogMemory?.lilaDialogSummary) {
+      messages.push({
+        role: 'system',
+        content: `=== РЕЗЮМЕ РАННЕГО ДИАЛОГА (до последних 5 пар) ===\n${lilaDialogMemory.lilaDialogSummary}`,
+      });
+    }
     if (lilaContext) {
       messages.push({ role: 'system', content: lilaContext });
     }
@@ -156,6 +168,7 @@ export async function handleAgentRequest({
       extractedProfile: parsed.extractedProfile,
       currentStep: parsed.currentStep,
       diceReady: isLila ? Boolean(parsed.diceReady) : undefined,
+      lilaDialogMemory,
       analysis: analysisResults,
       contextCompacted: !isLila && conversationHistory.length > 20,
     };

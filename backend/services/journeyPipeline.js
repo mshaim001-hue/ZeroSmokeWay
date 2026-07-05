@@ -290,6 +290,10 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
   let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, agentResult.extractedData);
   mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
   mergedAnamnesis.lilaState = lilaState;
+  if (agentResult.lilaDialogMemory) {
+    mergedAnamnesis.lilaDialogSummary = agentResult.lilaDialogMemory.lilaDialogSummary;
+    mergedAnamnesis.lilaSummarizedPairCount = agentResult.lilaDialogMemory.lilaSummarizedPairCount;
+  }
 
   if (isLilaPhase(effectivePhase) && mergedAnamnesis.coverageReadyForMythBusting) {
     effectivePhase = PHASES.MYTH_BUSTING;
