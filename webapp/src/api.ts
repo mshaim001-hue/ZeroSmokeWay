@@ -4,6 +4,26 @@ export type ChatMessage = {
   timestamp: string;
 };
 
+export type LilaState = {
+  position: number;
+  gameEntered: boolean;
+  visitedCells: number[];
+};
+
+export type MythPlan = {
+  title: string;
+  sections: { title: string; content: string }[];
+  pledgePrompt: string;
+  generatedAt?: string;
+};
+
+export type MythProgress = {
+  sectionIndex?: number;
+  narrativeComplete?: boolean;
+  pledgeReceived?: boolean;
+  [key: string]: unknown;
+};
+
 const apiRoot = () => (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 export async function postOrchestrator(
@@ -14,25 +34,31 @@ export async function postOrchestrator(
     phase: string;
     userProfile: unknown;
     currentPlan: Record<string, unknown> | null;
-    mythProgress?: Record<string, boolean>;
+    mythProgress?: MythProgress;
     sessionBrief?: string | null;
-    userInsights?: Record<string, string>;
-    awaitingInsightFor?: string | null;
+    lilaState?: LilaState | null;
+    mythPlan?: MythPlan | null;
+    pledgeText?: string | null;
   },
   accessToken: string | null,
 ): Promise<{
   response: string;
   extractedData?: Record<string, unknown> | null;
   phase?: string | null;
-  nextAgent?: string | null;
   plan?: Record<string, unknown> | null;
   session?: { isAuthenticated: boolean };
   anamnesisState?: Record<string, unknown> | null;
   coverageScore?: number;
-  mythProgress?: Record<string, boolean>;
+  mythProgress?: MythProgress;
+  mythPlan?: MythPlan | null;
+  lilaState?: LilaState | null;
+  pledgeText?: string | null;
   sessionBrief?: string | null;
-  userInsights?: Record<string, string>;
-  awaitingInsightFor?: string | null;
+  diceReady?: boolean;
+  lilaPosition?: number | null;
+  gameEntered?: boolean;
+  awaitingPledge?: boolean;
+  mythNarrativeActive?: boolean;
 }> {
   const base = apiRoot();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -46,17 +72,7 @@ export async function postOrchestrator(
     const t = await res.text();
     throw new Error(t || `HTTP ${res.status}`);
   }
-  return res.json() as Promise<{
-    response: string;
-    extractedData?: Record<string, unknown> | null;
-    phase?: string | null;
-    nextAgent?: string | null;
-    plan?: Record<string, unknown> | null;
-    session?: { isAuthenticated: boolean };
-    anamnesisState?: Record<string, unknown> | null;
-    coverageScore?: number;
-    mythProgress?: Record<string, boolean>;
-  }>;
+  return res.json();
 }
 
 export async function putOrchestratorGuestSnapshot(
@@ -101,18 +117,17 @@ export type OrchestratorStoredSession = {
     phase?: string | null;
     plan?: Record<string, unknown> | null;
     anamnesis?: Record<string, unknown> | null;
-    mythProgress?: Record<string, boolean> | null;
+    mythProgress?: MythProgress | null;
+    mythPlan?: MythPlan | null;
+    lilaState?: LilaState | null;
+    pledgeText?: string | null;
     sessionBrief?: string | null;
-    userInsights?: Record<string, string> | null;
-    awaitingInsightFor?: string | null;
-    saved_at?: string;
+    diceReady?: boolean | null;
+    lilaPosition?: number | null;
   };
 };
 
-/** GET /api/orchestrator — восстановление сессии после входа (Supabase JWT). GET на Vercel: тот же путь. */
 export async function fetchOrchestratorSession(accessToken: string | null): Promise<OrchestratorStoredSession | null> {
-  // base пустой на same-domain деплое (VITE_API_BASE_URL не задан) — это валидно,
-  // fetch пойдёт по относительному /api/orchestrator. Нельзя выходить по !base.
   if (!accessToken) return null;
   const base = apiRoot();
   const res = await fetch(`${base}/api/orchestrator`, {

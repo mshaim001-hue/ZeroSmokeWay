@@ -5,9 +5,13 @@ import {
   fetchOrchestratorSession,
   postOrchestrator,
   putOrchestratorGuestSnapshot,
+  type LilaState,
+  type MythPlan,
+  type MythProgress,
 } from './api';
 import { AuthModal } from './AuthModal';
 import { CravingButton } from './CravingButton';
+import { DiceRoller } from './DiceRoller';
 import { parseStoredOrchestratorSession } from './orchestratorSessionRestore';
 import { getSupabase } from './supabaseClient';
 import { ProgressQuitScreen } from './ProgressQuitScreen';
@@ -16,6 +20,23 @@ import { SettingsQuitScreen } from './SettingsQuitScreen';
 import { SupportProjectScreen } from './SupportProjectScreen';
 
 const PHASE_WELCOME = 'welcome';
+
+const LILA_WELCOME =
+  'Добро пожаловать в пространство Лилы.\n\n' +
+  'Я — Кристаллическое Зеркало Истины. Здесь нет утешений и эзотерической мишуры. Только правда.\n\n' +
+  'Намерение игры уже задано: «Почему я до сих пор курю?»\n\n' +
+  'Подтверди одно: готов играть без масок и смотреть в лицо фактам.\n\n' +
+  'Когда будешь готов — напиши.';
+
+function isLilaPhase(phase: string) {
+  return phase === 'welcome' || phase === 'anamnesis';
+}
+
+function isMythPhase(phase: string) {
+  return phase === 'myth_busting';
+}
+
+const MYTH_CONTINUE = '▶ Продолжить';
 
 /**
  * Регистрация предлагается по вовлечённости, не по таймеру.
@@ -51,6 +72,7 @@ type GuestSnapshot = {
   phase: string;
   plan: Record<string, unknown> | null;
   anamnesis: Record<string, unknown> | null;
+  diceReady: boolean;
 };
 
 function readGuestSnapshot(): GuestSnapshot | null {
@@ -59,7 +81,7 @@ function readGuestSnapshot(): GuestSnapshot | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.messages) || parsed.messages.length === 0) return null;
-    return parsed as GuestSnapshot;
+    return { ...parsed, diceReady: parsed.diceReady ?? false } as GuestSnapshot;
   } catch {
     return null;
   }
@@ -91,10 +113,12 @@ function formatMsgTime(iso: string): string {
   }
 }
 
-function BotAvatar() {
+function BotAvatar({ lila }: { lila?: boolean }) {
   return (
     <div className="msg-avatar" aria-hidden>
-      <span className="msg-avatar-letter">А</span>
+      <span className={'msg-avatar-letter' + (lila ? ' msg-avatar-letter--lila' : '')}>
+        {lila ? 'З' : 'А'}
+      </span>
     </div>
   );
 }
@@ -147,10 +171,14 @@ export function ChatApp() {
   const [phase, setPhase] = useState(PHASE_WELCOME);
   const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
-  const [mythProgress, setMythProgress] = useState<Record<string, boolean>>({});
+  const [mythProgress, setMythProgress] = useState<MythProgress>({});
   const [sessionBrief, setSessionBrief] = useState<string | null>(null);
-  const [userInsights, setUserInsights] = useState<Record<string, string>>({});
-  const [awaitingInsightFor, setAwaitingInsightFor] = useState<string | null>(null);
+  const [diceReady, setDiceReady] = useState(false);
+  const [lilaPosition, setLilaPosition] = useState<number | null>(null);
+  const [lilaState, setLilaState] = useState<LilaState | null>(null);
+  const [mythPlan, setMythPlan] = useState<MythPlan | null>(null);
+  const [pledgeText, setPledgeText] = useState<string | null>(null);
+  const [awaitingPledge, setAwaitingPledge] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('progress');
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -166,9 +194,10 @@ export function ChatApp() {
     phase,
     plan,
     anamnesis,
+    diceReady,
   });
 
-  orchestratorHydrateSnapRef.current = { messages, phase, plan, anamnesis };
+  orchestratorHydrateSnapRef.current = { messages, phase, plan, anamnesis, diceReady };
 
   const accessToken = session?.access_token ?? null;
 
@@ -179,8 +208,7 @@ export function ChatApp() {
   const startJourney = useCallback(() => {
     setMessages([
       {
-        text:
-          'Привет, я Алекс. Сразу скажу — бросать не зову, кури сколько куришь. Просто интересно поговорить: что тебе вообще нравится в сигаретах?',
+        text: LILA_WELCOME,
         isUser: false,
         timestamp: nowIso(),
       },
@@ -190,6 +218,12 @@ export function ChatApp() {
     setAnamnesis(null);
     setMythProgress({});
     setSessionBrief(null);
+    setDiceReady(false);
+    setLilaPosition(null);
+    setLilaState(null);
+    setMythPlan(null);
+    setPledgeText(null);
+    setAwaitingPledge(false);
     setError(null);
     setToolPanelOpen(false);
   }, []);
@@ -213,8 +247,12 @@ export function ChatApp() {
         setAnamnesis(parsed.anamnesis);
         if (parsed.mythProgress) setMythProgress(parsed.mythProgress);
         setSessionBrief(parsed.sessionBrief);
-        if (parsed.userInsights) setUserInsights(parsed.userInsights);
-        if (parsed.awaitingInsightFor !== undefined) setAwaitingInsightFor(parsed.awaitingInsightFor ?? null);
+        setDiceReady(parsed.diceReady);
+        setLilaPosition(parsed.lilaPosition);
+        setLilaState(parsed.lilaState);
+        setMythPlan(parsed.mythPlan);
+        setPledgeText(parsed.pledgeText);
+        setAwaitingPledge(parsed.phase === 'myth_busting' && parsed.mythProgress?.narrativeComplete === true && !parsed.pledgeText);
         setError(null);
       } catch {
         startJourney();
@@ -234,7 +272,7 @@ export function ChatApp() {
         memSnap.messages.length > 0
           ? memSnap
           : lsSnap
-            ? { messages: lsSnap.messages, phase: lsSnap.phase, plan: lsSnap.plan, anamnesis: lsSnap.anamnesis }
+            ? { messages: lsSnap.messages, phase: lsSnap.phase, plan: lsSnap.plan, anamnesis: lsSnap.anamnesis, diceReady: lsSnap.diceReady }
             : memSnap;
 
       let stored = null as Awaited<ReturnType<typeof fetchOrchestratorSession>>;
@@ -274,6 +312,7 @@ export function ChatApp() {
         if (snap.phase) setPhase(snap.phase);
         setPlan(snap.plan);
         setAnamnesis(snap.anamnesis ?? null);
+        setDiceReady(snap.diceReady ?? false);
         return;
       }
 
@@ -293,8 +332,8 @@ export function ChatApp() {
   // редирект Google-OAuth и перенеслась в новый аккаунт. После входа снимок чистится в hydrate.
   useEffect(() => {
     if (bootstrapping || accessToken || messages.length === 0) return;
-    writeGuestSnapshot({ messages, phase, plan, anamnesis });
-  }, [bootstrapping, accessToken, messages, phase, plan, anamnesis]);
+    writeGuestSnapshot({ messages, phase, plan, anamnesis, diceReady });
+  }, [bootstrapping, accessToken, messages, phase, plan, anamnesis, diceReady]);
 
   /** Первая загрузка: либо диалог из Supabase (GET), либо гостевой приветствие. */
   useEffect(() => {
@@ -416,36 +455,8 @@ export function ChatApp() {
     };
   }, []);
 
-  async function onSend(e: FormEvent) {
-    e.preventDefault();
-    if (bootstrapping || guestComposerLocked) return;
-    const text = input.trim();
-    if (!text || loading) return;
-
-    const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
-    const history = [...messages, userMsg];
-    setMessages(history);
-    setInput('');
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await postOrchestrator(
-        {
-          message: text,
-          conversationHistory: history,
-          anamnesisData: anamnesis,
-          phase,
-          userProfile: null,
-          currentPlan: plan,
-          mythProgress,
-          sessionBrief,
-          userInsights,
-          awaitingInsightFor,
-        },
-        accessToken,
-      );
-
+  const applyOrchestratorResponse = useCallback(
+    (data: Awaited<ReturnType<typeof postOrchestrator>>) => {
       const bot: ChatMessage = {
         text: data.response,
         isUser: false,
@@ -456,19 +467,101 @@ export function ChatApp() {
       if (data.plan) setPlan(data.plan);
       if (data.mythProgress) setMythProgress(data.mythProgress);
       if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
-      if (data.userInsights) setUserInsights(data.userInsights);
-      if (typeof data.awaitingInsightFor !== 'undefined') setAwaitingInsightFor(data.awaitingInsightFor ?? null);
+      if (typeof data.diceReady === 'boolean') setDiceReady(data.diceReady);
+      if (typeof data.lilaPosition === 'number') setLilaPosition(data.lilaPosition);
+      if (data.lilaState) setLilaState(data.lilaState);
+      if (data.mythPlan) setMythPlan(data.mythPlan);
+      if (data.pledgeText) setPledgeText(data.pledgeText);
+      if (typeof data.awaitingPledge === 'boolean') setAwaitingPledge(data.awaitingPledge);
       if (data.anamnesisState && typeof data.anamnesisState === 'object') {
         setAnamnesis(data.anamnesisState as Record<string, unknown>);
       } else if (data.extractedData && Object.keys(data.extractedData).length) {
         setAnamnesis((prev) => ({ ...(prev ?? {}), ...data.extractedData }));
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
+    },
+    [],
+  );
+
+  const sendToOrchestrator = useCallback(
+    async (text: string, history: ChatMessage[]) => {
+      setLoading(true);
+      setError(null);
+      setDiceReady(false);
+      try {
+        const data = await postOrchestrator(
+          {
+            message: text,
+            conversationHistory: history,
+            anamnesisData: anamnesis,
+            phase,
+            userProfile: null,
+            currentPlan: plan,
+            mythProgress,
+            sessionBrief,
+            lilaState,
+            mythPlan,
+            pledgeText,
+          },
+          accessToken,
+        );
+        applyOrchestratorResponse(data);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      accessToken,
+      anamnesis,
+      applyOrchestratorResponse,
+      mythProgress,
+      phase,
+      plan,
+      sessionBrief,
+      lilaState,
+      mythPlan,
+      pledgeText,
+    ],
+  );
+
+  const handleMythContinue = useCallback(() => {
+    if (bootstrapping || guestComposerLocked || loading) return;
+    const userMsg: ChatMessage = { text: MYTH_CONTINUE, isUser: true, timestamp: nowIso() };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    void sendToOrchestrator(MYTH_CONTINUE, history);
+  }, [bootstrapping, guestComposerLocked, loading, messages, sendToOrchestrator]);
+
+  async function onSend(e: FormEvent) {
+    e.preventDefault();
+    if (bootstrapping || guestComposerLocked) return;
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    setInput('');
+    await sendToOrchestrator(text, history);
   }
+
+  const handleDiceRoll = useCallback(
+    (value: number) => {
+      if (bootstrapping || guestComposerLocked || loading || !diceReady) return;
+      const text = `🎲 ${value}`;
+      const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
+      const history = [...messages, userMsg];
+      setMessages(history);
+      void sendToOrchestrator(text, history);
+    },
+    [bootstrapping, diceReady, guestComposerLocked, loading, messages, sendToOrchestrator],
+  );
+
+  const inLila = isLilaPhase(phase);
+  const inMyth = isMythPhase(phase);
+  const botSenderName = inLila ? 'Зеркало' : inMyth ? 'Карр' : 'Алекс';
+  const showMythContinue = inMyth && !awaitingPledge && !loading && !bootstrapping;
 
   const overlayToolTitle = TOOL_OVERLAY_TITLE[sidebarTab];
 
@@ -533,7 +626,7 @@ export function ChatApp() {
           <div className="guest-auth-reminder__inner">
             <p className="guest-auth-reminder__text">
               {guestAuthReminder === 1
-                ? 'Алекс запомнит всё что ты рассказал — если войдёшь. Иначе при закрытии вкладки разговор пропадёт.'
+                ? 'Зеркало запомнит всё что ты рассказал — если войдёшь. Иначе при закрытии вкладки игра пропадёт.'
                 : guestAuthReminder === 2
                   ? 'Хочу вернуться к этому завтра. Оставь почту — напишу тебе.'
                   : 'Войди, чтобы продолжить. Всё что написал — перенесётся.'}
@@ -593,9 +686,9 @@ export function ChatApp() {
 
                     return (
                       <div key={i} className="msg-row msg-row--bot">
-                        <BotAvatar />
+                        <BotAvatar lila={inLila} />
                         <div className="msg-column msg-column--bot">
-                          {showBotName ? <span className="msg-sender">Алекс</span> : null}
+                          {showBotName ? <span className="msg-sender">{botSenderName}</span> : null}
                           <div className="msg-bubble msg-bubble--bot">
                             <p className="msg-text">{m.text}</p>
                             {timeStr ? (
@@ -610,14 +703,14 @@ export function ChatApp() {
                   })}
                   {!bootstrapping && loading && (
                     <div className="typing-row">
-                      <BotAvatar />
+                      <BotAvatar lila={inLila} />
                       <div className="typing-block">
-                        <span className="msg-sender msg-sender--typing">Алекс</span>
+                        <span className="msg-sender msg-sender--typing">{botSenderName}</span>
                         <div
                           className="typing-bubble"
                           role="status"
                           aria-live="polite"
-                          aria-label="Алекс формирует ответ"
+                          aria-label={`${botSenderName} формирует ответ`}
                         >
                           <span className="typing-label">печатает</span>
                           <span className="typing-dots" aria-hidden>
@@ -705,16 +798,10 @@ export function ChatApp() {
                   setLoading(true);
                   setError(null);
                   postOrchestrator(
-                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress, sessionBrief, userInsights, awaitingInsightFor },
+                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress, sessionBrief, lilaState, mythPlan, pledgeText },
                     accessToken,
                   ).then((data) => {
-                    setMessages((m) => [...m, { text: data.response, isUser: false, timestamp: nowIso() }]);
-                    if (data.phase) setPhase(data.phase);
-                    if (data.mythProgress) setMythProgress(data.mythProgress);
-                    if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
-                    if (data.userInsights) setUserInsights(data.userInsights);
-                    if (typeof data.awaitingInsightFor !== 'undefined') setAwaitingInsightFor(data.awaitingInsightFor ?? null);
-                    if (data.anamnesisState) setAnamnesis(data.anamnesisState as Record<string, unknown>);
+                    applyOrchestratorResponse(data);
                   }).catch((err: unknown) => {
                     setError(err instanceof Error ? err.message : String(err));
                   }).finally(() => setLoading(false));
@@ -726,6 +813,22 @@ export function ChatApp() {
             <div
               className={'chat-composer-wrap' + (guestComposerLocked ? ' chat-composer-wrap--blocked' : '')}
             >
+              {showMythContinue && (
+                <button
+                  type="button"
+                  className="btn btn--secondary myth-continue-btn"
+                  onClick={handleMythContinue}
+                  disabled={loading || guestComposerLocked}
+                >
+                  {MYTH_CONTINUE}
+                </button>
+              )}
+              {inLila && (
+                <DiceRoller
+                  disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
+                  onRoll={handleDiceRoll}
+                />
+              )}
               <form className="chat-form" onSubmit={onSend}>
                 <div className="chat-form-input-wrap">
                   <input
@@ -736,7 +839,11 @@ export function ChatApp() {
                         ? 'Только вход — отправка временно недоступна'
                         : loading
                           ? 'Ждём ответ…'
-                          : 'Сообщение'
+                          : awaitingPledge
+                            ? 'Твоё торжественное обещание…'
+                            : inMyth
+                              ? 'Или нажми «Продолжить»'
+                              : 'Сообщение'
                     }
                     disabled={loading || bootstrapping || guestComposerLocked}
                     aria-label="Сообщение"

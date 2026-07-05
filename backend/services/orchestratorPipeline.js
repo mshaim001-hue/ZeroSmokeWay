@@ -1,79 +1,70 @@
 import { getOrchestratorDecision, PHASES } from './orchestratorService.js';
-import { handleAgentRequest } from './agentService.js';
+import { handleAgentRequest, formatMythSectionResponse } from './agentService.js';
 import { resolveAuthContext } from './authContext.js';
 import { saveOrchestratorConversation, getOrchestratorSession } from './conversationStore.js';
 import { finalizeAnamnesisCoverage, mergeAnamnesisWithCoverage } from './anamnesisCoverage.js';
 import {
-  getNextIllusion,
-  isMythBustingComplete,
-  mythProgressDigest,
-  hasAhaSignal,
-} from './mythBustingProgress.js';
+  generateMythPlan,
+  normalizeMythPlan,
+  normalizeMythProgress,
+  looksLikePledge,
+} from './mythPlanService.js';
+import {
+  applyLilaMove,
+  formatLilaMoveForAgent,
+  normalizeLilaState,
+} from './lilaBoard.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
 
 function isEarlyPhase(ph) {
   return ph === PHASES.WELCOME || ph === PHASES.ANAMNESIS;
 }
 
+function isDiceRollMessage(text) {
+  return /^🎲\s*[1-6]$/.test(String(text || '').trim());
+}
+
+function isMythContinueMessage(text) {
+  const t = String(text || '').trim().toLowerCase();
+  return t === '▶ продолжить' || t === 'продолжить' || t === '[продолжить]';
+}
+
 /**
- * Формирует расширенную инструкцию для myth_buster:
- * добавляет конкретную иллюзию, слова пользователя и сократический вопрос.
+ * Выдаёт следующую часть повествования Карра из mythPlan.
  */
-function buildMythBusterInstruction(baseInstruction, nextIllusion, mythProgress) {
-  if (!nextIllusion) {
-    // Все иллюзии разобраны — финальный вопрос
-    return (
-      (baseInstruction ? baseInstruction + '\n\n' : '') +
-      'Все ключевые иллюзии разобраны. Задай финальный вопрос Карра: ' +
-      '"Мы разобрали всё, что ты называл причинами курить. ' +
-      'Скажи честно — от чего конкретно ты откажешься, если бросишь? Что именно потеряешь?" ' +
-      'Не давай ответа. Жди, пока он сам сформулирует. Это ведёт к пониманию: терять нечего.'
-    );
+function deliverMythNarrative(mythPlan, mythProgress) {
+  const plan = normalizeMythPlan(mythPlan);
+  if (!plan) return { response: 'Готовлю твой план…', mythProgress, awaitingPledge: false };
+
+  const mp = normalizeMythProgress(mythProgress);
+  const idx = mp.sectionIndex;
+
+  if (idx < plan.sections.length) {
+    const response = formatMythSectionResponse(plan.sections[idx], idx, plan.sections.length);
+    return {
+      response,
+      mythProgress: {
+        ...mp,
+        sectionIndex: idx + 1,
+        narrativeComplete: idx + 1 >= plan.sections.length,
+      },
+      awaitingPledge: false,
+      mythNarrativeActive: true,
+    };
   }
 
-  const alreadyAddressed = Object.keys(mythProgress || {}).filter((k) => mythProgress[k] === true);
-  const progressNote =
-    alreadyAddressed.length > 0
-      ? `Уже разобраны: ${alreadyAddressed.join(', ')}. `
-      : '';
+  if (!mp.pledgeReceived) {
+    return {
+      response: plan.pledgePrompt,
+      mythProgress: { ...mp, narrativeComplete: true },
+      awaitingPledge: true,
+      mythNarrativeActive: true,
+    };
+  }
 
-  return (
-    (baseInstruction ? baseInstruction + '\n\n' : '') +
-    `ИЛЛЮЗИЯ ЭТОГО ХОДА: "${nextIllusion.label}". ` +
-    (nextIllusion.evidence ? `Из анамнеза — его слова: "${nextIllusion.evidence}". ` : '') +
-    `Подсказка: ${nextIllusion.hint} ` +
-    progressNote +
-    'Один вопрос или аналогия — не утверждение. Закончи открытым вопросом.'
-  );
+  return { response: null, mythProgress: mp, awaitingPledge: false, mythNarrativeActive: false };
 }
 
-/**
- * Инструкция для фазы свободы: иллюзии уже разобраны, человек сам всё увидел.
- * Задача агента сменилась — не допрашивать дальше, а закрепить и отпустить.
- */
-function buildFreedomInstruction(baseInstruction, userInsights = {}) {
-  const insightEntries = Object.entries(userInsights).filter(([, v]) => v && v.length > 0);
-  const insightsNote = insightEntries.length > 0
-    ? '\n\nЕГО СОБСТВЕННЫЕ ФОРМУЛИРОВКИ (он написал это сам — используй их, не перефразируй):\n' +
-      insightEntries.map(([k, v]) => `  — ${k}: "${v}"`).join('\n')
-    : '';
-
-  return (
-    (baseInstruction ? baseInstruction + '\n\n' : '') +
-    'ФАЗА СВОБОДЫ. Все иллюзии уже разобраны — человек сам увидел, что терять нечего. ' +
-    'НЕ задавай больше сократических вопросов про отдельные иллюзии (стресс, кофе, компанию): это пройденный этап, ' +
-    'возвращаться к ним = обесценивать его инсайт и создавать ощущение, что финиша нет. ' +
-    'Сейчас твоя задача — закрепить и отпустить: спокойно подтверди то, к чему он пришёл сам, ' +
-    'и передай тихую уверенность, что впереди легче, чем кажется. Без пафоса, без "ты справишься" и "держись" — ' +
-    'ровная интонация человека, который сам прошёл этот путь. Можешь мягко обозначить, что бросить можно прямо сейчас ' +
-    'и без борьбы, но не дави и не торопи. 2–3 предложения. Закончи тёплым открытым вопросом.' +
-    insightsNote
-  );
-}
-
-/**
- * Общая логика POST /api/orchestrator (Express и Vercel).
- */
 export async function runOrchestrationRequest({ body, authorizationHeader }) {
   const {
     message,
@@ -82,152 +73,263 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     phase = PHASES.WELCOME,
     userProfile = null,
     currentPlan = null,
-    mythProgress = {},  // { stress: true, boredom: true, ... } — клиент сохраняет и передаёт
-    sessionBrief: priorSessionBrief = null,  // бриф с прошлого хода/сессии
-    userInsights = {},  // { stress: "слова пользователя", ... } — его собственные формулировки
-    awaitingInsightFor = null,  // иллюзия, для которой ждём формулировку от пользователя
+    mythProgress = {},
+    sessionBrief: priorSessionBrief = null,
+    lilaState: rawLilaState = null,
+    mythPlan: rawMythPlan = null,
+    pledgeText: priorPledgeText = null,
   } = body;
 
   const authContext = await resolveAuthContext(authorizationHeader, conversationHistory);
+  const msg = message.trim();
 
-  const decision = await getOrchestratorDecision({
-    message: message.trim(),
-    conversationHistory,
-    phase,
-    anamnesisData,
-    userProfile,
-    currentPlan,
-    priorSessionBrief,
-    authContext,
-    userInsights,
-  });
-
-  let nextAgent = decision.nextAgent;
-  let phaseUpdate = decision.phaseUpdate;
+  let lilaState = normalizeLilaState(rawLilaState ?? anamnesisData?.lilaState);
+  let mythPlan = normalizeMythPlan(rawMythPlan ?? anamnesisData?.mythPlan);
+  let updatedMythProgress = normalizeMythProgress(mythProgress);
+  let pledgeText = priorPledgeText ?? anamnesisData?.pledgeText ?? null;
+  let lilaMoveContext = null;
+  let diceReady = false;
 
   const priorSnapshot = finalizeAnamnesisCoverage(anamnesisData);
   const carrCoverage = priorSnapshot.carrCoverage;
 
-  // Определяем фазу и агента
-  if (phase === PHASES.FREEDOM) {
-    nextAgent = 'myth_buster';
-    phaseUpdate = PHASES.FREEDOM;
-  } else if (phase === PHASES.MYTH_BUSTING) {
-    nextAgent = 'myth_buster';
-    phaseUpdate = PHASES.MYTH_BUSTING;
-  } else if (isEarlyPhase(phase) && priorSnapshot.coverageReadyForMythBusting) {
-    nextAgent = 'myth_buster';
-    phaseUpdate = PHASES.MYTH_BUSTING;
-  }
+  // --- Фаза поддержки ---
+  if (phase === PHASES.SUPPORT) {
+    const agentResult = await handleAgentRequest({
+      message: msg,
+      agentType: 'support',
+      conversationHistory,
+      anamnesisData: priorSnapshot,
+      userProfile,
+      authContext,
+      phase,
+      mythPlan,
+      pledgeText,
+    });
 
-  // Для myth_buster: определяем следующую иллюзию и обогащаем инструкцию
-  let updatedMythProgress = { ...mythProgress };
-  let updatedUserInsights = { ...userInsights };
-  let updatedAwaitingInsightFor = awaitingInsightFor;
-  let orchestratorInstruction = decision.instructionToAgent;
-
-  // Если ждали формулировку — сохраняем ответ пользователя и снимаем флаг
-  if (awaitingInsightFor && message.trim().length > 3) {
-    updatedUserInsights[awaitingInsightFor] = message.trim();
-    updatedAwaitingInsightFor = null;
-  }
-
-  if (nextAgent === 'myth_buster' && phase === PHASES.FREEDOM) {
-    // Иллюзии уже позади — закрепляем, а не допрашиваем заново.
-    orchestratorInstruction = buildFreedomInstruction(decision.instructionToAgent, updatedUserInsights);
-  } else if (nextAgent === 'myth_buster') {
-    const nextIllusion = getNextIllusion(carrCoverage, mythProgress);
-
-    // Если сейчас ожидаем формулировку от пользователя — агент должен принять её и двигаться дальше
-    if (updatedAwaitingInsightFor === null && awaitingInsightFor) {
-      // формулировка только что получена — благодарим без пафоса и переходим к следующей иллюзии
-      orchestratorInstruction =
-        (decision.instructionToAgent ? decision.instructionToAgent + '\n\n' : '') +
-        'Пользователь только что сформулировал свой вывод своими словами — прими его спокойно, ' +
-        'без похвалы ("ты молодец", "отлично сказал"). Можно коротко отразить: "да, именно так". ' +
-        'Затем плавно перейди к следующей иллюзии или теме по плану.';
-    } else {
-      orchestratorInstruction = buildMythBusterInstruction(
-        decision.instructionToAgent,
-        nextIllusion,
-        mythProgress,
+    if (authContext.userId) {
+      await saveOrchestratorConversation(
+        authContext.userId,
+        [...conversationHistory, { text: agentResult.response, isUser: false, timestamp: new Date().toISOString() }],
+        {
+          phase: PHASES.SUPPORT,
+          plan: currentPlan,
+          anamnesis: priorSnapshot,
+          mythProgress: updatedMythProgress,
+          mythPlan,
+          lilaState,
+          pledgeText,
+          sessionBrief: priorSessionBrief,
+          diceReady: false,
+        },
       );
     }
 
-    // Если иллюзий нет (все разобраны) — переходим к FREEDOM
-    if (!nextIllusion && isMythBustingComplete(carrCoverage, mythProgress)) {
-      phaseUpdate = PHASES.FREEDOM;
+    return {
+      response: agentResult.response,
+      phase: PHASES.SUPPORT,
+      anamnesisState: priorSnapshot,
+      mythProgress: updatedMythProgress,
+      mythPlan,
+      lilaState,
+      pledgeText,
+      diceReady: false,
+      session: { isAuthenticated: authContext.isAuthenticated },
+    };
+  }
+
+  // --- Фаза myth_busting: повествование + обещание ---
+  if (phase === PHASES.MYTH_BUSTING) {
+    if (!mythPlan) {
+      mythPlan = await generateMythPlan({ conversationHistory, carrCoverage });
     }
+
+    if (updatedMythProgress.narrativeComplete && !updatedMythProgress.pledgeReceived && looksLikePledge(msg)) {
+      pledgeText = msg;
+      updatedMythProgress = { ...updatedMythProgress, pledgeReceived: true };
+
+      const welcomeSupport = await handleAgentRequest({
+        message: msg,
+        agentType: 'support',
+        conversationHistory: [...conversationHistory, { text: msg, isUser: true, timestamp: new Date().toISOString() }],
+        anamnesisData: priorSnapshot,
+        userProfile,
+        authContext,
+        phase: PHASES.SUPPORT,
+        mythPlan,
+        pledgeText,
+        orchestratorInstruction:
+          'Человек только что дал торжественное обещание бросить. Прими спокойно, без пафоса. ' +
+          'Подтверди, что обещание принято. Коротко: ты рядом, когда потянет.',
+      });
+
+      const botMsg = { text: welcomeSupport.response, isUser: false, timestamp: new Date().toISOString() };
+      if (authContext.userId) {
+        await saveOrchestratorConversation(
+          authContext.userId,
+          [...conversationHistory, { text: msg, isUser: true, timestamp: new Date().toISOString() }, botMsg],
+          {
+            phase: PHASES.SUPPORT,
+            plan: currentPlan,
+            anamnesis: priorSnapshot,
+            mythProgress: updatedMythProgress,
+            mythPlan,
+            lilaState,
+            pledgeText,
+            sessionBrief: priorSessionBrief,
+            diceReady: false,
+          },
+        );
+      }
+
+      return {
+        response: welcomeSupport.response,
+        phase: PHASES.SUPPORT,
+        anamnesisState: priorSnapshot,
+        mythProgress: updatedMythProgress,
+        mythPlan,
+        lilaState,
+        pledgeText,
+        diceReady: false,
+        session: { isAuthenticated: authContext.isAuthenticated },
+      };
+    }
+
+    if (isMythContinueMessage(msg)) {
+      const narrative = deliverMythNarrative(mythPlan, updatedMythProgress);
+      updatedMythProgress = narrative.mythProgress;
+      const botMsg = { text: narrative.response, isUser: false, timestamp: new Date().toISOString() };
+
+      if (authContext.userId) {
+        await saveOrchestratorConversation(authContext.userId, [...conversationHistory, botMsg], {
+          phase: PHASES.MYTH_BUSTING,
+          plan: currentPlan,
+          anamnesis: { ...priorSnapshot, mythPlan, lilaState },
+          mythProgress: updatedMythProgress,
+          mythPlan,
+          lilaState,
+          pledgeText,
+          sessionBrief: priorSessionBrief,
+          diceReady: false,
+        });
+      }
+
+      return {
+        response: narrative.response,
+        phase: PHASES.MYTH_BUSTING,
+        anamnesisState: { ...priorSnapshot, mythPlan, lilaState },
+        mythProgress: updatedMythProgress,
+        mythPlan,
+        lilaState,
+        pledgeText,
+        diceReady: false,
+        awaitingPledge: narrative.awaitingPledge,
+        session: { isAuthenticated: authContext.isAuthenticated },
+      };
+    }
+
+    if (updatedMythProgress.narrativeComplete && !updatedMythProgress.pledgeReceived) {
+      return {
+        response: mythPlan?.pledgePrompt || 'Напиши торжественное обещание бросить — своими словами.',
+        phase: PHASES.MYTH_BUSTING,
+        anamnesisState: { ...priorSnapshot, mythPlan, lilaState },
+        mythProgress: updatedMythProgress,
+        mythPlan,
+        lilaState,
+        pledgeText,
+        diceReady: false,
+        awaitingPledge: true,
+        session: { isAuthenticated: authContext.isAuthenticated },
+      };
+    }
+
+    return {
+      response: 'Нажми «Продолжить», чтобы читать дальше.',
+      phase: PHASES.MYTH_BUSTING,
+      anamnesisState: { ...priorSnapshot, mythPlan, lilaState },
+      mythProgress: updatedMythProgress,
+      mythPlan,
+      lilaState,
+      pledgeText,
+      diceReady: false,
+      session: { isAuthenticated: authContext.isAuthenticated },
+    };
+  }
+
+  // --- Фаза Лилы ---
+  let effectivePhase = phase;
+  const decision = await getOrchestratorDecision({
+    message: msg,
+    conversationHistory,
+    phase,
+    anamnesisData: priorSnapshot,
+    userProfile,
+    currentPlan,
+    priorSessionBrief,
+    authContext,
+    userInsights: {},
+  });
+
+  let orchestratorInstruction = decision.instructionToAgent;
+
+  if (isEarlyPhase(phase) && isDiceRollMessage(msg)) {
+    const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
+    const move = applyLilaMove(lilaState, roll);
+    lilaState = {
+      position: move.position,
+      gameEntered: move.gameEntered,
+      visitedCells: move.visitedCells,
+    };
+    lilaMoveContext = formatLilaMoveForAgent(move);
   }
 
   const agentResult = await handleAgentRequest({
-    message: message.trim(),
-    agentType: nextAgent,
+    message: msg,
+    agentType: 'anamnesis',
     conversationHistory,
-    anamnesisData,
+    anamnesisData: priorSnapshot,
     userProfile,
-    useAdaptiveMode: nextAgent === 'anamnesis' && process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
+    useAdaptiveMode: process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
     orchestratorInstruction,
     authContext,
     phase,
+    lilaContext: lilaMoveContext,
   });
 
-  console.log(
-    'Orchestrator →',
-    nextAgent,
-    '| phase:',
-    phaseUpdate,
-    '| instruction:',
-    (orchestratorInstruction || '').slice(0, 140),
-    authContext.isAuthenticated ? '| JWT user' : '| guest',
-  );
-
-  // Помечаем иллюзию разобранной только когда человек САМ её увидел (aha-момент),
-  // а не просто потому что бот ответил. Страховка: после 3 заходов двигаемся дальше,
-  // чтобы не застрять на одной иллюзии. Счётчик заходов едет в mythProgress под
-  // служебным ключом __attempts_<key> (клиент гоняет mythProgress как непрозрачный объект).
-  if (nextAgent === 'myth_buster' && phase !== PHASES.FREEDOM) {
-    const nextIllusion = getNextIllusion(carrCoverage, mythProgress);
-    if (nextIllusion) {
-      const attemptsKey = `__attempts_${nextIllusion.key}`;
-      const attempts = (Number(updatedMythProgress[attemptsKey]) || 0) + 1;
-      updatedMythProgress[attemptsKey] = attempts;
-      const ahaDetected = hasAhaSignal(message) || attempts >= 3;
-      if (ahaDetected) {
-        updatedMythProgress[nextIllusion.key] = true;
-        // Если aha реальный (не просто по счётчику) — просим сформулировать вывод своими словами
-        if (hasAhaSignal(message) && !updatedUserInsights[nextIllusion.key]) {
-          updatedAwaitingInsightFor = nextIllusion.key;
-          // Переопределяем инструкцию: попросить сформулировать, не двигаться к следующей иллюзии
-          orchestratorInstruction =
-            (decision.instructionToAgent ? decision.instructionToAgent + '\n\n' : '') +
-            `Человек только что сам пришёл к выводу по иллюзии "${nextIllusion.label}". ` +
-            'Это важный момент. Не торопись к следующей теме. ' +
-            'Спроси его спокойно и коротко: "Как бы ты сам это сформулировал — своими словами?" ' +
-            'Один вопрос, без давления. Его ответ мы запомним.';
-        }
-      }
-    }
-  }
+  diceReady = Boolean(agentResult.diceReady);
 
   let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, agentResult.extractedData);
   mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
+  mergedAnamnesis.lilaState = lilaState;
 
-  let effectivePhase = phaseUpdate;
-  if (isEarlyPhase(phaseUpdate) && mergedAnamnesis.coverageReadyForMythBusting) {
+  effectivePhase = decision.phaseUpdate || phase;
+  if (isEarlyPhase(effectivePhase) && mergedAnamnesis.coverageReadyForMythBusting) {
     effectivePhase = PHASES.MYTH_BUSTING;
   }
 
-  const userId = authContext.userId;
+  let response = agentResult.response;
 
-  if (userId) {
-    // При первом сохранении — планируем email-последовательность
+  // Переход в myth_busting: генерируем план и сразу выдаём первую секцию
+  if (effectivePhase === PHASES.MYTH_BUSTING && phase !== PHASES.MYTH_BUSTING) {
+    if (!mythPlan) {
+      mythPlan = await generateMythPlan({ conversationHistory, carrCoverage: mergedAnamnesis.carrCoverage });
+    }
+    mergedAnamnesis.mythPlan = mythPlan;
+    const intro =
+      'Игра Лила завершена. Зеркало отступает. Сейчас Аллен Карр расставит всё по полочкам — просто читай.\n\n';
+    const narrative = deliverMythNarrative(mythPlan, updatedMythProgress);
+    updatedMythProgress = narrative.mythProgress;
+    response = intro + (narrative.response || '');
+    diceReady = false;
+  }
+
+  if (authContext.userId) {
     try {
-      const existing = await getOrchestratorSession(userId);
+      const existing = await getOrchestratorSession(authContext.userId);
       const isFirstSave = !existing || !Array.isArray(existing.messages) || existing.messages.length === 0;
       if (isFirstSave && authContext.userEmail) {
         scheduleEmailSequence({
-          userId,
+          userId: authContext.userId,
           email: authContext.userEmail,
           name: mergedAnamnesis?.extractedProfile?.name || null,
           anamnesis: mergedAnamnesis,
@@ -237,46 +339,38 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       console.warn('email schedule check error:', e);
     }
 
-    const finalMessages = [
-      ...conversationHistory,
+    await saveOrchestratorConversation(
+      authContext.userId,
+      [...conversationHistory, { text: response, isUser: false, timestamp: new Date().toISOString() }],
       {
-        text: agentResult.response,
-        isUser: false,
-        timestamp: new Date().toISOString(),
+        phase: effectivePhase,
+        plan: decision.plan,
+        anamnesis: mergedAnamnesis,
+        mythProgress: updatedMythProgress,
+        mythPlan,
+        lilaState,
+        pledgeText,
+        sessionBrief: decision.sessionBrief,
+        diceReady,
       },
-    ];
-    await saveOrchestratorConversation(userId, finalMessages, {
-      phase: effectivePhase,
-      plan: decision.plan,
-      anamnesis: mergedAnamnesis,
-      mythProgress: updatedMythProgress,
-      sessionBrief: decision.sessionBrief,
-      userInsights: updatedUserInsights,
-      awaitingInsightFor: updatedAwaitingInsightFor,
-    });
+    );
   }
 
   return {
-    response: agentResult.response,
+    response,
     extractedData: agentResult.extractedData,
-    extractedProfile: agentResult.extractedProfile,
-    currentStep: agentResult.currentStep,
     phase: effectivePhase,
-    nextAgent,
     plan: decision.plan,
     anamnesisState: mergedAnamnesis,
     coverageScore: mergedAnamnesis.coverageScore,
     mythProgress: updatedMythProgress,
-    userInsights: updatedUserInsights,
-    awaitingInsightFor: updatedAwaitingInsightFor,
+    mythPlan,
+    lilaState,
+    pledgeText,
+    diceReady,
+    lilaPosition: lilaState.position,
+    gameEntered: lilaState.gameEntered,
     sessionBrief: decision.sessionBrief,
-    onTrack: decision.onTrack,
-    planUpdated: decision.planUpdated,
-    isComplete: agentResult.isComplete,
-    contextCompacted: agentResult.contextCompacted,
-    contextStats: agentResult.contextStats,
-    session: {
-      isAuthenticated: authContext.isAuthenticated,
-    },
+    session: { isAuthenticated: authContext.isAuthenticated },
   };
 }

@@ -1,16 +1,31 @@
-import type { ChatMessage, OrchestratorStoredSession } from './api';
+import type { ChatMessage, LilaState, MythPlan, MythProgress, OrchestratorStoredSession } from './api';
 
 export function parseStoredOrchestratorSession(stored: OrchestratorStoredSession): {
   messages: ChatMessage[] | null;
   phase: string | null;
   plan: Record<string, unknown> | null;
   anamnesis: Record<string, unknown> | null;
-  mythProgress: Record<string, boolean> | null;
+  mythProgress: MythProgress | null;
+  mythPlan: MythPlan | null;
+  lilaState: LilaState | null;
+  pledgeText: string | null;
   sessionBrief: string | null;
-  userInsights: Record<string, string> | null;
-  awaitingInsightFor: string | null;
+  diceReady: boolean;
+  lilaPosition: number | null;
 } {
-  const empty = { messages: null, phase: null, plan: null, anamnesis: null, mythProgress: null, sessionBrief: null, userInsights: null, awaitingInsightFor: null };
+  const empty = {
+    messages: null,
+    phase: null,
+    plan: null,
+    anamnesis: null,
+    mythProgress: null,
+    mythPlan: null,
+    lilaState: null,
+    pledgeText: null,
+    sessionBrief: null,
+    diceReady: false,
+    lilaPosition: null,
+  };
   const raw = stored.messages;
   if (!Array.isArray(raw) || raw.length === 0) {
     return empty;
@@ -34,19 +49,17 @@ export function parseStoredOrchestratorSession(stored: OrchestratorStoredSession
     }
   }
   const st = stored.orchestrator_state ?? {};
-  const phase = typeof st.phase === 'string' ? st.phase : null;
-  const plan = st.plan && typeof st.plan === 'object' ? (st.plan as Record<string, unknown>) : null;
-  const anamnesis =
-    st.anamnesis && typeof st.anamnesis === 'object' ? (st.anamnesis as Record<string, unknown>) : null;
-  const mythProgress =
-    st.mythProgress && typeof st.mythProgress === 'object'
-      ? (st.mythProgress as Record<string, boolean>)
-      : null;
-  const sessionBrief = typeof st.sessionBrief === 'string' ? st.sessionBrief : null;
-  const userInsights =
-    st.userInsights && typeof st.userInsights === 'object'
-      ? (st.userInsights as Record<string, string>)
-      : null;
-  const awaitingInsightFor = typeof st.awaitingInsightFor === 'string' ? st.awaitingInsightFor : null;
-  return { messages, phase, plan, anamnesis, mythProgress, sessionBrief, userInsights, awaitingInsightFor };
+  return {
+    messages,
+    phase: typeof st.phase === 'string' ? st.phase : null,
+    plan: st.plan && typeof st.plan === 'object' ? (st.plan as Record<string, unknown>) : null,
+    anamnesis: st.anamnesis && typeof st.anamnesis === 'object' ? (st.anamnesis as Record<string, unknown>) : null,
+    mythProgress: st.mythProgress && typeof st.mythProgress === 'object' ? (st.mythProgress as MythProgress) : null,
+    mythPlan: st.mythPlan && typeof st.mythPlan === 'object' ? (st.mythPlan as MythPlan) : null,
+    lilaState: st.lilaState && typeof st.lilaState === 'object' ? (st.lilaState as LilaState) : null,
+    pledgeText: typeof st.pledgeText === 'string' ? st.pledgeText : null,
+    sessionBrief: typeof st.sessionBrief === 'string' ? st.sessionBrief : null,
+    diceReady: st.diceReady === true,
+    lilaPosition: typeof st.lilaPosition === 'number' ? st.lilaPosition : null,
+  };
 }

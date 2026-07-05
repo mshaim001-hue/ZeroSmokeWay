@@ -1,10 +1,10 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
-import { searchKnowledgeBase } from './knowledgeBase.js';
 import { getAgentPrompt } from './agentConfig.js';
 import { handleAdaptiveAnamnesis, isAnamnesisComplete } from './adaptiveAnamnesisService.js';
 import { analyzeResponseWithSubAgents } from './subAgentService.js';
 import { createCompactContext } from './contextManagerService.js';
+import { finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
 import {
   formatAuthContextForPrompt,
   formatAnamnesisAuthRules,
@@ -17,20 +17,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/**
- * Основной обработчик запросов к агентам
- * Для anamnesis использует адаптивный режим с function calling (если включен)
- */
-export async function handleAgentRequest({ 
-  message, 
-  agentType, 
-  conversationHistory, 
-  anamnesisData, 
+const LILA_HISTORY_LIMIT = 200;
+
+export async function handleAgentRequest({
+  message,
+  agentType,
+  conversationHistory,
+  anamnesisData,
   userProfile,
-  useAdaptiveMode = false, // Новый параметр для включения адаптивного режима
+  useAdaptiveMode = false,
   orchestratorInstruction = null,
   authContext = null,
   phase = null,
+  lilaContext = null,
+  mythPlan = null,
+  pledgeText = null,
 }) {
   const auth = authContext ?? {
     isAuthenticated: false,
@@ -39,7 +40,6 @@ export async function handleAgentRequest({
   };
   const authSystemBlock = `${formatAuthContextForPrompt(auth)}${agentType === 'anamnesis' ? formatAnamnesisAuthRules(auth) : formatSecondaryAgentAuthRules(agentType, auth)}`;
 
-  // Для anamnesis с адаптивным режимом используем специальный обработчик
   if (agentType === 'anamnesis' && useAdaptiveMode) {
     const previousCoverage = anamnesisData?.coverage || null;
     const previousExtractedData = anamnesisData?.extractedData || anamnesisData || null;
@@ -51,43 +51,32 @@ export async function handleAgentRequest({
       previousCoverage,
       authSystemBlock,
     });
-    
-    // Проверяем, завершен ли анамнез
+
     const complete = isAnamnesisComplete(result.coverage);
-    
+
     return {
       ...result,
       isComplete: complete,
-      extractedData: result.extractedData || previousExtractedData
+      extractedData: result.extractedData || previousExtractedData,
     };
   }
-  
-  // Стандартный обработчик для остальных агентов или anamnesis без адаптивного режима.
-  // В фазе свободы у myth_buster — отдельная персона (закрепить инсайт, не допрашивать заново).
-  const promptKey = agentType === 'myth_buster' && phase === 'freedom' ? 'freedom' : agentType;
+
+  const promptKey = agentType;
   const systemPrompt = await getAgentPrompt(promptKey);
-  
+
   if (!systemPrompt) throw new Error(`Unknown agent: ${agentType}`);
 
-  let knowledgeContext = '';
-  try {
-    const searchQuery = `${message} ${agentType === 'myth_buster' ? 'мифы о курении' : 'психология курильщика'}`;
-    const relevantChunks = await searchKnowledgeBase(searchQuery, 2, agentType);
-    if (relevantChunks.length > 0) {
-      knowledgeContext = '\n\nИНФОРМАЦИЯ ИЗ КНИГ ДЛЯ ТЕБЯ:\n' + relevantChunks.map(c => c.text).join('\n---\n');
-    }
-  } catch (e) {
-    console.warn('KB search failed', e.message);
+  const isLila = agentType === 'anamnesis';
+  let historyToUse = conversationHistory;
+
+  if (isLila) {
+    historyToUse = conversationHistory.slice(-LILA_HISTORY_LIMIT);
+  } else if (conversationHistory.length > 20) {
+    historyToUse = createCompactContext(conversationHistory, agentType).messages;
   }
 
-  // Используем компактный контекст для длинных диалогов
-  const useCompactContext = conversationHistory.length > 20;
-  const contextData = useCompactContext 
-    ? createCompactContext(conversationHistory, agentType)
-    : { messages: conversationHistory };
-
   const messages = [
-    { role: 'system', content: systemPrompt + knowledgeContext },
+    { role: 'system', content: systemPrompt },
     { role: 'system', content: authSystemBlock },
   ];
 
@@ -95,25 +84,40 @@ export async function handleAgentRequest({
     messages.push({ role: 'system', content: `Контекст юзера: ${JSON.stringify(userProfile)}` });
   }
 
-  if (anamnesisData && agentType !== 'anamnesis') {
-    messages.push({ role: 'system', content: `Анамнез: ${JSON.stringify(anamnesisData)}` });
+  if (isLila) {
+    const snapshot = finalizeAnamnesisCoverage(anamnesisData);
+    messages.push({
+      role: 'system',
+      content:
+        `=== НАКОПЛЕННАЯ ТАБЛИЦА (carrCoverage) ===\n${JSON.stringify(snapshot.carrCoverage, null, 2)}\n` +
+        `coverageScore: ${snapshot.coverageScore}`,
+    });
+    if (lilaContext) {
+      messages.push({ role: 'system', content: lilaContext });
+    }
+  } else if (anamnesisData) {
+    messages.push({ role: 'system', content: `Данные из Лилы: ${JSON.stringify(anamnesisData)}` });
   }
 
-  // Используем компактную историю или обычную
-  const historyToUse = useCompactContext ? contextData.messages : conversationHistory;
-  historyToUse.slice(-8).forEach((msg) => {
+  if (agentType === 'support' && mythPlan) {
+    messages.push({
+      role: 'system',
+      content: `Индивидуальный план (контекст): ${JSON.stringify(mythPlan).slice(0, 8000)}`,
+    });
+    if (pledgeText) {
+      messages.push({ role: 'system', content: `Торжественное обещание человека: "${pledgeText}"` });
+    }
+  }
+
+  historyToUse.forEach((msg) => {
     messages.push({ role: msg.isUser ? 'user' : 'assistant', content: msg.text });
   });
 
-  // Инструкция оркестратора — последним системным блоком, чтобы агент её не проигнорировал
   if (orchestratorInstruction) {
-    let instruction = `НА ЭТОТ ОТВЕТ СДЕЛАЙ ТОЛЬКО СЛЕДУЮЩЕЕ (не пиши общее приветствие типа "Привет, рад познакомиться" — сделай именно то, что ниже):\n${orchestratorInstruction}`;
-    // В фазе свободы иллюзии уже разобраны — не дописываем «веди вопросом из его опыта»,
-    // иначе агент возвращается к допросу по триггерам и перебивает freedom-инструкцию.
-    if (agentType === 'myth_buster' && phase !== 'freedom') {
-      instruction += '\n\nНе утверждай "это иллюзия" или "учёные доказали" — веди одним вопросом или аналогией из его опыта. Закончи вопросом или приглашением ("как тебе мысль?", "хочешь с другой стороны посмотреть?"), чтобы он понимал, что писать дальше.';
-    }
-    messages.push({ role: 'system', content: instruction });
+    messages.push({
+      role: 'system',
+      content: `НА ЭТОТ ОТВЕТ:\n${orchestratorInstruction}`,
+    });
   }
 
   messages.push({ role: 'user', content: message });
@@ -121,16 +125,15 @@ export async function handleAgentRequest({
   try {
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
-      messages: messages,
-      response_format: { type: 'json_object' }
+      messages,
+      response_format: { type: 'json_object' },
     });
 
     const parsed = JSON.parse(completion.choices[0].message.content);
-    
+
     let finalResponse = parsed.message;
     let analysisResults = null;
 
-    // Опционально: используем sub-агентов для анализа и улучшения ответа
     const useSubAgents = process.env.USE_SUB_AGENTS === 'true';
     if (useSubAgents) {
       const analysis = await analyzeResponseWithSubAgents({
@@ -138,13 +141,12 @@ export async function handleAgentRequest({
         agentType,
         userMessage: message,
         extractedData: parsed.extractedData,
-        conversationHistory: historyToUse
+        conversationHistory: historyToUse,
       });
-      
+
       if (analysis.wasImproved) {
         finalResponse = analysis.improvedResponse;
         analysisResults = analysis.analysis;
-        console.log('✅ Sub-агенты улучшили ответ');
       }
     }
 
@@ -153,12 +155,18 @@ export async function handleAgentRequest({
       extractedData: parsed.extractedData,
       extractedProfile: parsed.extractedProfile,
       currentStep: parsed.currentStep,
+      diceReady: isLila ? Boolean(parsed.diceReady) : undefined,
       analysis: analysisResults,
-      contextCompacted: useCompactContext,
-      contextStats: useCompactContext ? contextData.stats : null
+      contextCompacted: !isLila && conversationHistory.length > 20,
     };
   } catch (error) {
     console.error('AI Error:', error);
-    throw new Error('Не удалось получить ответ от Алекса');
+    throw new Error('Не удалось получить ответ от агента');
   }
+}
+
+export function formatMythSectionResponse(section, index, total) {
+  const header = section.title ? `**${section.title}**\n\n` : '';
+  const footer = index < total - 1 ? '\n\n—\n\n*(продолжение следует)*' : '';
+  return header + section.content + footer;
 }

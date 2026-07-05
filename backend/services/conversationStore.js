@@ -29,7 +29,7 @@ export async function saveOrchestratorConversation(userId, messages, orchestrato
     updated_at: new Date().toISOString(),
   };
 
-  const { phase, plan, anamnesis, mythProgress, sessionBrief, userInsights, awaitingInsightFor } = orchestratorState || {};
+  const { phase, plan, anamnesis, mythProgress, sessionBrief, userInsights, awaitingInsightFor, diceReady, lilaPosition, lilaState, mythPlan, pledgeText } = orchestratorState || {};
   payload.orchestrator_state = {
     phase: phase ?? null,
     plan: plan ?? null,
@@ -38,6 +38,11 @@ export async function saveOrchestratorConversation(userId, messages, orchestrato
     sessionBrief: sessionBrief ?? null,
     userInsights: userInsights ?? null,
     awaitingInsightFor: awaitingInsightFor ?? null,
+    diceReady: diceReady ?? null,
+    lilaPosition: lilaPosition ?? null,
+    lilaState: lilaState ?? null,
+    mythPlan: mythPlan ?? null,
+    pledgeText: pledgeText ?? null,
     saved_at: new Date().toISOString(),
   };
 
