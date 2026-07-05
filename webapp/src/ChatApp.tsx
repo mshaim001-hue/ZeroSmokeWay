@@ -70,7 +70,6 @@ const GUEST_SNAPSHOT_KEY = 'zsw_guest_snapshot_v1';
 type GuestSnapshot = {
   messages: ChatMessage[];
   phase: string;
-  plan: Record<string, unknown> | null;
   anamnesis: Record<string, unknown> | null;
   diceReady: boolean;
 };
@@ -159,10 +158,8 @@ export function ChatApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState(PHASE_WELCOME);
-  const [plan, setPlan] = useState<Record<string, unknown> | null>(null);
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [mythProgress, setMythProgress] = useState<MythProgress>({});
-  const [sessionBrief, setSessionBrief] = useState<string | null>(null);
   const [diceReady, setDiceReady] = useState(false);
   const [lilaPosition, setLilaPosition] = useState<number | null>(null);
   const [lilaState, setLilaState] = useState<LilaState | null>(null);
@@ -182,12 +179,11 @@ export function ChatApp() {
   const orchestratorHydrateSnapRef = useRef({
     messages,
     phase,
-    plan,
     anamnesis,
     diceReady,
   });
 
-  orchestratorHydrateSnapRef.current = { messages, phase, plan, anamnesis, diceReady };
+  orchestratorHydrateSnapRef.current = { messages, phase, anamnesis, diceReady };
 
   const accessToken = session?.access_token ?? null;
 
@@ -204,10 +200,8 @@ export function ChatApp() {
       },
     ]);
     setPhase(PHASE_WELCOME);
-    setPlan(null);
     setAnamnesis(null);
     setMythProgress({});
-    setSessionBrief(null);
     setDiceReady(false);
     setLilaPosition(null);
     setLilaState(null);
@@ -233,10 +227,8 @@ export function ChatApp() {
         }
         setMessages(parsed.messages);
         if (parsed.phase) setPhase(parsed.phase);
-        if (parsed.plan) setPlan(parsed.plan);
         setAnamnesis(parsed.anamnesis);
         if (parsed.mythProgress) setMythProgress(parsed.mythProgress);
-        setSessionBrief(parsed.sessionBrief);
         setDiceReady(parsed.diceReady);
         setLilaPosition(parsed.lilaPosition);
         setLilaState(parsed.lilaState);
@@ -262,7 +254,7 @@ export function ChatApp() {
         memSnap.messages.length > 0
           ? memSnap
           : lsSnap
-            ? { messages: lsSnap.messages, phase: lsSnap.phase, plan: lsSnap.plan, anamnesis: lsSnap.anamnesis, diceReady: lsSnap.diceReady }
+            ? { messages: lsSnap.messages, phase: lsSnap.phase, anamnesis: lsSnap.anamnesis, diceReady: lsSnap.diceReady }
             : memSnap;
 
       let stored = null as Awaited<ReturnType<typeof fetchOrchestratorSession>>;
@@ -282,7 +274,6 @@ export function ChatApp() {
           const outcome = await putOrchestratorGuestSnapshot(token, {
             messages: snap.messages,
             phase: snap.phase,
-            plan: snap.plan,
             anamnesis: snap.anamnesis,
           });
           clearGuestSnapshot();
@@ -300,7 +291,6 @@ export function ChatApp() {
         }
         setMessages(snap.messages);
         if (snap.phase) setPhase(snap.phase);
-        setPlan(snap.plan);
         setAnamnesis(snap.anamnesis ?? null);
         setDiceReady(snap.diceReady ?? false);
         return;
@@ -322,8 +312,8 @@ export function ChatApp() {
   // редирект Google-OAuth и перенеслась в новый аккаунт. После входа снимок чистится в hydrate.
   useEffect(() => {
     if (bootstrapping || accessToken || messages.length === 0) return;
-    writeGuestSnapshot({ messages, phase, plan, anamnesis, diceReady });
-  }, [bootstrapping, accessToken, messages, phase, plan, anamnesis, diceReady]);
+    writeGuestSnapshot({ messages, phase, anamnesis, diceReady });
+  }, [bootstrapping, accessToken, messages, phase, anamnesis, diceReady]);
 
   /** Первая загрузка: либо диалог из Supabase (GET), либо гостевой приветствие. */
   useEffect(() => {
@@ -454,9 +444,7 @@ export function ChatApp() {
       };
       setMessages((m) => [...m, bot]);
       if (data.phase) setPhase(data.phase);
-      if (data.plan) setPlan(data.plan);
       if (data.mythProgress) setMythProgress(data.mythProgress);
-      if (typeof data.sessionBrief !== 'undefined') setSessionBrief(data.sessionBrief ?? null);
       if (typeof data.diceReady === 'boolean') setDiceReady(data.diceReady);
       if (typeof data.lilaPosition === 'number') setLilaPosition(data.lilaPosition);
       if (data.lilaState) setLilaState(data.lilaState);
@@ -485,9 +473,7 @@ export function ChatApp() {
             anamnesisData: anamnesis,
             phase,
             userProfile: null,
-            currentPlan: plan,
             mythProgress,
-            sessionBrief,
             lilaState,
             mythPlan,
             pledgeText,
@@ -507,8 +493,6 @@ export function ChatApp() {
       applyOrchestratorResponse,
       mythProgress,
       phase,
-      plan,
-      sessionBrief,
       lilaState,
       mythPlan,
       pledgeText,
@@ -786,7 +770,7 @@ export function ChatApp() {
                   setLoading(true);
                   setError(null);
                   postOrchestrator(
-                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, currentPlan: plan, mythProgress, sessionBrief, lilaState, mythPlan, pledgeText },
+                    { message: text, conversationHistory: history, anamnesisData: anamnesis, phase, userProfile: null, mythProgress, lilaState, mythPlan, pledgeText },
                     accessToken,
                   ).then((data) => {
                     applyOrchestratorResponse(data);

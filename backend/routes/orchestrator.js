@@ -1,6 +1,6 @@
 import express from 'express';
-import { PHASES } from '../services/orchestratorService.js';
-import { runOrchestrationRequest } from '../services/orchestratorPipeline.js';
+import { PHASES } from '../services/journeyPhases.js';
+import { runJourneyRequest } from '../services/journeyPipeline.js';
 import { getUserIdFromAuthHeader } from '../lib/supabaseServer.js';
 import { getOrchestratorSession, saveOrchestratorConversation } from '../services/conversationStore.js';
 import { parseOrchestratorImportPayload } from '../services/orchestratorSnapshotImport.js';
@@ -70,27 +70,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'message is required' });
     }
 
-    const decisionAndLog = await runOrchestrationRequest({
+    const payload = await runJourneyRequest({
       body: req.body,
       authorizationHeader: req.headers.authorization,
     });
 
-    // ——— Лог в терминал: как работает оркестратор ———
-    console.log('\n========== ORCHESTRATOR ==========');
-    if (decisionAndLog.plan?.steps) {
-      console.log('План на 3 шага вперёд:');
-      decisionAndLog.plan.steps.forEach((s, i) => {
-        console.log(`  ${i + 1}. [${s.agent}] ${s.focus}`);
-      });
-    }
-    console.log('Диалог по плану:', decisionAndLog.onTrack ? 'да' : 'нет');
-    if (decisionAndLog.planUpdated) {
-      console.log('План обновлён: да');
-    }
-    console.log('Авторизован (JWT):', decisionAndLog.session?.isAuthenticated ? 'да' : 'нет');
-    console.log('====================================\n');
+    console.log('\n========== JOURNEY ==========');
+    console.log('Фаза:', payload.phase);
+    console.log('Авторизован (JWT):', payload.session?.isAuthenticated ? 'да' : 'нет');
+    console.log('================================\n');
 
-    res.json(decisionAndLog);
+    res.json(payload);
   } catch (error) {
     console.error('Orchestrator request error:', error);
     res.status(500).json({

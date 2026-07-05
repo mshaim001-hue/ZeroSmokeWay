@@ -1,4 +1,4 @@
-import { getOrchestratorDecision, PHASES } from './orchestratorService.js';
+import { PHASES, isLilaPhase } from './journeyPhases.js';
 import { handleAgentRequest, formatMythSectionResponse } from './agentService.js';
 import { resolveAuthContext } from './authContext.js';
 import { saveOrchestratorConversation, getOrchestratorSession } from './conversationStore.js';
@@ -16,10 +16,6 @@ import {
 } from './lilaBoard.js';
 import { buildLilaInstruction, resolveDiceReady } from './lilaOrchestration.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
-
-function isEarlyPhase(ph) {
-  return ph === PHASES.WELCOME || ph === PHASES.ANAMNESIS;
-}
 
 function isDiceRollMessage(text) {
   return /^🎲\s*[1-6]$/.test(String(text || '').trim());
@@ -66,16 +62,14 @@ function deliverMythNarrative(mythPlan, mythProgress) {
   return { response: null, mythProgress: mp, awaitingPledge: false, mythNarrativeActive: false };
 }
 
-export async function runOrchestrationRequest({ body, authorizationHeader }) {
+export async function runJourneyRequest({ body, authorizationHeader }) {
   const {
     message,
     conversationHistory = [],
     anamnesisData = null,
     phase = PHASES.WELCOME,
     userProfile = null,
-    currentPlan = null,
     mythProgress = {},
-    sessionBrief: priorSessionBrief = null,
     lilaState: rawLilaState = null,
     mythPlan: rawMythPlan = null,
     pledgeText: priorPledgeText = null,
@@ -114,13 +108,11 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
         [...conversationHistory, { text: agentResult.response, isUser: false, timestamp: new Date().toISOString() }],
         {
           phase: PHASES.SUPPORT,
-          plan: currentPlan,
           anamnesis: priorSnapshot,
           mythProgress: updatedMythProgress,
           mythPlan,
           lilaState,
           pledgeText,
-          sessionBrief: priorSessionBrief,
           diceReady: false,
         },
       );
@@ -171,13 +163,11 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
           [...conversationHistory, { text: msg, isUser: true, timestamp: new Date().toISOString() }, botMsg],
           {
             phase: PHASES.SUPPORT,
-            plan: currentPlan,
             anamnesis: priorSnapshot,
             mythProgress: updatedMythProgress,
             mythPlan,
             lilaState,
             pledgeText,
-            sessionBrief: priorSessionBrief,
             diceReady: false,
           },
         );
@@ -204,13 +194,11 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       if (authContext.userId) {
         await saveOrchestratorConversation(authContext.userId, [...conversationHistory, botMsg], {
           phase: PHASES.MYTH_BUSTING,
-          plan: currentPlan,
           anamnesis: { ...priorSnapshot, mythPlan, lilaState },
           mythProgress: updatedMythProgress,
           mythPlan,
           lilaState,
           pledgeText,
-          sessionBrief: priorSessionBrief,
           diceReady: false,
         });
       }
@@ -261,7 +249,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
   let effectivePhase = phase;
   let currentMove = null;
 
-  if (isEarlyPhase(phase) && isDiceRollMessage(msg)) {
+  if (isLilaPhase(phase) && isDiceRollMessage(msg)) {
     const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
     currentMove = applyLilaMove(lilaState, roll);
     lilaState = {
@@ -271,19 +259,6 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     };
     lilaMoveContext = formatLilaMoveForAgent(currentMove);
   }
-
-  // Оркестратор только для coverage/фазы — инструкцию для Лилы задаём сами
-  const decision = await getOrchestratorDecision({
-    message: msg,
-    conversationHistory,
-    phase,
-    anamnesisData: priorSnapshot,
-    userProfile,
-    currentPlan,
-    priorSessionBrief,
-    authContext,
-    userInsights: {},
-  });
 
   const orchestratorInstruction = buildLilaInstruction({
     lilaState,
@@ -316,8 +291,7 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
   mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
   mergedAnamnesis.lilaState = lilaState;
 
-  effectivePhase = decision.phaseUpdate || phase;
-  if (isEarlyPhase(effectivePhase) && mergedAnamnesis.coverageReadyForMythBusting) {
+  if (isLilaPhase(effectivePhase) && mergedAnamnesis.coverageReadyForMythBusting) {
     effectivePhase = PHASES.MYTH_BUSTING;
   }
 
@@ -358,13 +332,11 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
       [...conversationHistory, { text: response, isUser: false, timestamp: new Date().toISOString() }],
       {
         phase: effectivePhase,
-        plan: decision.plan,
         anamnesis: mergedAnamnesis,
         mythProgress: updatedMythProgress,
         mythPlan,
         lilaState,
         pledgeText,
-        sessionBrief: decision.sessionBrief,
         diceReady,
       },
     );
@@ -374,7 +346,6 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     response,
     extractedData: agentResult.extractedData,
     phase: effectivePhase,
-    plan: decision.plan,
     anamnesisState: mergedAnamnesis,
     coverageScore: mergedAnamnesis.coverageScore,
     mythProgress: updatedMythProgress,
@@ -384,7 +355,9 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     diceReady,
     lilaPosition: lilaState.position,
     gameEntered: lilaState.gameEntered,
-    sessionBrief: decision.sessionBrief,
     session: { isAuthenticated: authContext.isAuthenticated },
   };
 }
+
+/** @deprecated используйте runJourneyRequest */
+export const runOrchestrationRequest = runJourneyRequest;

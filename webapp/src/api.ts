@@ -33,9 +33,7 @@ export async function postOrchestrator(
     anamnesisData: Record<string, unknown> | null;
     phase: string;
     userProfile: unknown;
-    currentPlan: Record<string, unknown> | null;
     mythProgress?: MythProgress;
-    sessionBrief?: string | null;
     lilaState?: LilaState | null;
     mythPlan?: MythPlan | null;
     pledgeText?: string | null;
@@ -45,7 +43,6 @@ export async function postOrchestrator(
   response: string;
   extractedData?: Record<string, unknown> | null;
   phase?: string | null;
-  plan?: Record<string, unknown> | null;
   session?: { isAuthenticated: boolean };
   anamnesisState?: Record<string, unknown> | null;
   coverageScore?: number;
@@ -53,7 +50,6 @@ export async function postOrchestrator(
   mythPlan?: MythPlan | null;
   lilaState?: LilaState | null;
   pledgeText?: string | null;
-  sessionBrief?: string | null;
   diceReady?: boolean;
   lilaPosition?: number | null;
   gameEntered?: boolean;
@@ -80,7 +76,6 @@ export async function putOrchestratorGuestSnapshot(
   snapshot: {
     messages: ChatMessage[];
     phase: string;
-    plan: Record<string, unknown> | null;
     anamnesis: Record<string, unknown> | null;
   },
 ): Promise<'saved' | 'exists'> {
@@ -99,7 +94,6 @@ export async function putOrchestratorGuestSnapshot(
       messages: snapshot.messages,
       orchestrator_state: {
         phase: snapshot.phase,
-        plan: snapshot.plan,
         anamnesis: snapshot.anamnesis,
       },
     }),

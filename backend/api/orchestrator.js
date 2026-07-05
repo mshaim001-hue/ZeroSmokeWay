@@ -1,6 +1,6 @@
 // Vercel Serverless Function: оркестратор диалога + восстановление сессии
-import { runOrchestrationRequest } from '../services/orchestratorPipeline.js';
-import { PHASES } from '../services/orchestratorService.js';
+import { runJourneyRequest } from '../services/journeyPipeline.js';
+import { PHASES } from '../services/journeyPhases.js';
 import { getUserIdFromAuthHeader, hasSupabaseAdmin } from '../lib/supabaseServer.js';
 import { getOrchestratorSession, saveOrchestratorConversation } from '../services/conversationStore.js';
 import { parseOrchestratorImportPayload } from '../services/orchestratorSnapshotImport.js';
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'message is required' });
     }
 
-    const payload = await runOrchestrationRequest({
+    const payload = await runJourneyRequest({
       body: req.body,
       authorizationHeader: req.headers.authorization,
     });
