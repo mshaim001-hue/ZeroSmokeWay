@@ -14,6 +14,7 @@ import {
   formatLilaMoveForAgent,
   normalizeLilaState,
 } from './lilaBoard.js';
+import { buildLilaInstruction, resolveDiceReady } from './lilaOrchestration.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
 
 function isEarlyPhase(ph) {
@@ -258,6 +259,20 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
 
   // --- Фаза Лилы ---
   let effectivePhase = phase;
+  let currentMove = null;
+
+  if (isEarlyPhase(phase) && isDiceRollMessage(msg)) {
+    const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
+    currentMove = applyLilaMove(lilaState, roll);
+    lilaState = {
+      position: currentMove.position,
+      gameEntered: currentMove.gameEntered,
+      visitedCells: currentMove.visitedCells,
+    };
+    lilaMoveContext = formatLilaMoveForAgent(currentMove);
+  }
+
+  // Оркестратор только для coverage/фазы — инструкцию для Лилы задаём сами
   const decision = await getOrchestratorDecision({
     message: msg,
     conversationHistory,
@@ -270,18 +285,12 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     userInsights: {},
   });
 
-  let orchestratorInstruction = decision.instructionToAgent;
-
-  if (isEarlyPhase(phase) && isDiceRollMessage(msg)) {
-    const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
-    const move = applyLilaMove(lilaState, roll);
-    lilaState = {
-      position: move.position,
-      gameEntered: move.gameEntered,
-      visitedCells: move.visitedCells,
-    };
-    lilaMoveContext = formatLilaMoveForAgent(move);
-  }
+  const orchestratorInstruction = buildLilaInstruction({
+    lilaState,
+    message: msg,
+    move: currentMove,
+    gameEntered: lilaState.gameEntered,
+  });
 
   const agentResult = await handleAgentRequest({
     message: msg,
@@ -289,14 +298,19 @@ export async function runOrchestrationRequest({ body, authorizationHeader }) {
     conversationHistory,
     anamnesisData: priorSnapshot,
     userProfile,
-    useAdaptiveMode: process.env.USE_ADAPTIVE_ANAMNESIS === 'true',
+    useAdaptiveMode: false,
     orchestratorInstruction,
     authContext,
     phase,
     lilaContext: lilaMoveContext,
   });
 
-  diceReady = Boolean(agentResult.diceReady);
+  diceReady = resolveDiceReady({
+    agentDiceReady: agentResult.diceReady,
+    lilaState,
+    message: msg,
+    move: currentMove,
+  });
 
   let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, agentResult.extractedData);
   mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
