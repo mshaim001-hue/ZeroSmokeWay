@@ -113,16 +113,6 @@ function formatMsgTime(iso: string): string {
   }
 }
 
-function BotAvatar({ lila }: { lila?: boolean }) {
-  return (
-    <div className="msg-avatar" aria-hidden>
-      <span className={'msg-avatar-letter' + (lila ? ' msg-avatar-letter--lila' : '')}>
-        {lila ? 'З' : 'А'}
-      </span>
-    </div>
-  );
-}
-
 function LogoMark() {
   return (
     <svg className="header-logo-icon" width="44" height="44" viewBox="0 0 40 40" aria-hidden>
@@ -686,7 +676,6 @@ export function ChatApp() {
 
                     return (
                       <div key={i} className="msg-row msg-row--bot">
-                        <BotAvatar lila={inLila} />
                         <div className="msg-column msg-column--bot">
                           {showBotName ? <span className="msg-sender">{botSenderName}</span> : null}
                           <div className="msg-bubble msg-bubble--bot">
@@ -703,7 +692,6 @@ export function ChatApp() {
                   })}
                   {!bootstrapping && loading && (
                     <div className="typing-row">
-                      <BotAvatar lila={inLila} />
                       <div className="typing-block">
                         <span className="msg-sender msg-sender--typing">{botSenderName}</span>
                         <div
