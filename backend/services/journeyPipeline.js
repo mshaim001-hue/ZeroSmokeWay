@@ -13,8 +13,10 @@ import {
   applyLilaMove,
   formatLilaMoveForAgent,
   normalizeLilaState,
+  describeLilaBoard,
 } from './lilaBoard.js';
-import { buildLilaInstruction, resolveDiceReady } from './lilaOrchestration.js';
+import { buildLilaInstruction, resolveDiceReady, looksLikeReadinessConfirmation } from './lilaOrchestration.js';
+import { updateLilaResearch } from './lilaResearch.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
 import { acceptsLilaSummary, updateLilaSummary } from './lilaCompletion.js';
 
@@ -252,14 +254,20 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
 
   if (isLilaPhase(phase) && isDiceRollMessage(msg)) {
     const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
+    const from = lilaState.position;
     currentMove = applyLilaMove(lilaState, roll);
     lilaState = {
       position: currentMove.position,
       gameEntered: currentMove.gameEntered,
       visitedCells: currentMove.visitedCells,
+      lastMove: { from, roll },
     };
     lilaMoveContext = formatLilaMoveForAgent(currentMove);
   }
+
+  // Mechanical facts survive later questions and page reloads.
+  const lilaBoardStatus = describeLilaBoard(lilaState);
+  lilaMoveContext = `${lilaMoveContext || ''}\nТОЧНАЯ МЕХАНИКА (не интерпретация):\n${lilaBoardStatus}`;
 
   const orchestratorInstruction = buildLilaInstruction({
     lilaState,
@@ -269,7 +277,13 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
   });
 
   const summaryAccepted = isLilaPhase(phase) && acceptsLilaSummary(msg, priorSnapshot);
-  const agentResult = summaryAccepted ? { response: '', extractedData: null } : await handleAgentRequest({
+  const mechanicalReply = !lilaState.gameEntered && looksLikeReadinessConfirmation(msg)
+    ? 'Начнём. Брось кубик — для входа нужна шестёрка.'
+    : currentMove?.entryAttempt && !currentMove.entrySuccess
+      ? 'Для входа нужна шестёрка. Можно бросить ещё раз.' : null;
+  const agentResult = summaryAccepted ? { response: '', extractedData: null }
+    : mechanicalReply ? { response: mechanicalReply, diceReady: true, extractedData: null }
+    : await handleAgentRequest({
     message: msg,
     agentType: 'anamnesis',
     conversationHistory,
@@ -295,6 +309,8 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
     mergedAnamnesis = updateLilaSummary(mergedAnamnesis, agentResult.journeySummary);
   }
   mergedAnamnesis.lilaState = lilaState;
+  mergedAnamnesis.lilaBoardStatus = lilaBoardStatus;
+  mergedAnamnesis.lilaResearch = updateLilaResearch(priorSnapshot.lilaResearch, agentResult.lilaResearch);
   if (agentResult.lilaDialogMemory) {
     mergedAnamnesis.lilaDialogSummary = agentResult.lilaDialogMemory.lilaDialogSummary;
     mergedAnamnesis.lilaSummarizedPairCount = agentResult.lilaDialogMemory.lilaSummarizedPairCount;

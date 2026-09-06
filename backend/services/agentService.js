@@ -7,6 +7,7 @@ import { createCompactContext } from './contextManagerService.js';
 import { finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
 import { prepareLilaDialogContext } from './lilaDialogMemory.js';
 import { extractLilaCoverage } from './lilaExtraction.js';
+import { normalizeLilaResearch, updateLilaResearch } from './lilaResearch.js';
 import {
   formatAuthContextForPrompt,
   formatAnamnesisAuthRules,
@@ -96,6 +97,7 @@ export async function handleAgentRequest({
       role: 'system',
       content:
         `Состояние игры: ${JSON.stringify(anamnesisData?.lilaState ?? {})}\n` +
+        `КАРТА ИССЛЕДОВАНИЯ: ${JSON.stringify(normalizeLilaResearch(anamnesisData?.lilaResearch))}\n` +
         `Предыдущий предложенный итог (его можно поправить): ${anamnesisData?.lilaJourneySummary || 'пока нет'}`,
     });
     if (lilaDialogMemory?.lilaDialogSummary) {
@@ -154,7 +156,7 @@ export async function handleAgentRequest({
     let analysisResults = null;
 
     const useSubAgents = process.env.USE_SUB_AGENTS === 'true';
-    if (useSubAgents) {
+    if (useSubAgents && !isLila) {
       const analysis = await analyzeResponseWithSubAgents({
         agentResponse: finalResponse,
         agentType,
@@ -176,6 +178,7 @@ export async function handleAgentRequest({
       currentStep: parsed.currentStep,
       diceReady: isLila ? parsed.diceReady === true : undefined,
       journeySummary: isLila ? parsed.journeySummary : undefined,
+      lilaResearch: isLila ? updateLilaResearch(anamnesisData?.lilaResearch, parsed.lilaResearch) : undefined,
       lilaDialogMemory,
       analysis: analysisResults,
       contextCompacted: !isLila && conversationHistory.length > 20,

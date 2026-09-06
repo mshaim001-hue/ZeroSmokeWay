@@ -26,8 +26,9 @@ const READINESS_SIGNALS = [
 
 /** Пользователь подтвердил готовность играть (не бросок кубика). */
 export function looksLikeReadinessConfirmation(text) {
-  const t = String(text || '').trim().toLowerCase();
-  if (!t || t.length > 120) return false;
+  const t = String(text || '').trim().toLowerCase().replace(/^я\s+/, '');
+  if (t === 'начать игру') return true;
+  if (!t) return false;
   if (/^🎲/.test(t)) return false;
   return READINESS_SIGNALS.some((s) => t === s || t.startsWith(`${s} `) || t.startsWith(`${s},`) || t.startsWith(`${s}.`));
 }
@@ -77,7 +78,7 @@ export function buildLilaInstruction({ lilaState, message, move, gameEntered }) 
     let inst =
       `Ход: бросок ${move.roll}, клетка ${move.position} «${move.cell?.name}». ` +
       `Намерение: «${LILA_INTENTION}». ` +
-      'Свяжи смысл клетки с уже сказанным человеком. Дай новый ракурс, не повторяй прежнюю трактовку. Один вопрос или приглашение рассказать. ' +
+      'Выбери новый ракурс из открытых тем исследования. Не задавай уже отвеченный вопрос. Если связь с клеткой слабая — не натягивай её. Вопрос необязателен: можно дать точное наблюдение или предложить следующий ход. ' +
       'Не анкета. Не советы.';
     if (move.jump) {
       inst +=
@@ -85,7 +86,7 @@ export function buildLilaInstruction({ lilaState, message, move, gameEntered }) 
           ? ` СТРЕЛА ${move.jump.from}→${move.jump.to}: вскрой восходящую связь.`
           : ` ЗМЕЯ ${move.jump.from}→${move.jump.to}: вскрой, что потянуло вниз.`;
     }
-    inst += ' diceReady: false.';
+    inst += ' Если ждёшь рассказа — diceReady: false; если предлагаешь дальше — true.';
     return inst;
   }
 
@@ -114,7 +115,7 @@ export function resolveDiceReady({ agentDiceReady, lilaState, message, move }) {
 
   if (move?.entryAttempt && !move.entrySuccess) return true;
   if (!entered && looksLikeReadinessConfirmation(message)) return true;
-  if (move?.entrySuccess || (move && entered && move.roll)) return false;
+  if (move?.entrySuccess) return false;
   if (entered && looksLikeCellReflection(message, true)) return agentDiceReady === true;
 
   return agentDiceReady === true;

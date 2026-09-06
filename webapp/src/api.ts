@@ -8,6 +8,7 @@ export type LilaState = {
   position: number;
   gameEntered: boolean;
   visitedCells: number[];
+  lastMove?: { from: number; roll: number } | null;
 };
 
 export type MythPlan = {

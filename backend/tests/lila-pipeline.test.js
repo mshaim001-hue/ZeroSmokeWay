@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 let agentReply;
 let agentCalls = 0;
 let receivedSummary;
+let receivedInstruction;
 mock.module('../services/agentService.js', { namedExports: {
-  handleAgentRequest: async () => { agentCalls++; return agentReply; },
+  handleAgentRequest: async (request) => { agentCalls++; receivedInstruction = request.lilaContext; return agentReply; },
   formatMythSectionResponse: (section) => section.content,
 } });
 mock.module('../services/authContext.js', { namedExports: {
@@ -21,6 +22,22 @@ mock.module('../services/mythPlanService.js', { namedExports: {
   looksLikePledge: () => false,
 } });
 const { runJourneyRequest } = await import('../services/journeyPipeline.js');
+
+test('start and failed entry rolls do not call the narrator; last move survives reflection', async () => {
+  const before = agentCalls;
+  const started = await runJourneyRequest({ body: { message: 'Начать игру' } });
+  assert.equal(started.diceReady, true);
+  const failed = await runJourneyRequest({ body: { message: '🎲 4', anamnesisData: started.anamnesisState } });
+  assert.equal(agentCalls, before);
+  assert.equal(failed.diceReady, true);
+  assert.match(failed.anamnesisState.lilaBoardStatus, /Выпало 4 — нужна 6/);
+  agentReply = { response: 'Наблюдение', diceReady: false, lilaResearch: { openThreads: ['Мысль о контроле'] } };
+  const moved = await runJourneyRequest({ body: { message: '🎲 3', lilaState: { position: 7, gameEntered: true } } });
+  assert.equal(moved.lilaState.position, 23);
+  assert.deepEqual(moved.lilaState.lastMove, { from: 7, roll: 3 });
+  await runJourneyRequest({ body: { message: 'Почему 23?', anamnesisData: moved.anamnesisState } });
+  assert.match(receivedInstruction, /10 «Отчаяние» → стрела → 23/);
+});
 
 test('full pipeline keeps reflection in the game and transitions only on the summary button', async () => {
   const base = {

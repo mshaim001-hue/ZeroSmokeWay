@@ -1,12 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyLilaMove } from '../services/lilaBoard.js';
+import { applyLilaMove, describeLilaBoard } from '../services/lilaBoard.js';
+import { updateLilaResearch } from '../services/lilaResearch.js';
+import { looksLikeReadinessConfirmation } from '../services/lilaOrchestration.js';
 import { buildLilaInstruction, resolveDiceReady } from '../services/lilaOrchestration.js';
 import { acceptsLilaSummary, updateLilaSummary } from '../services/lilaCompletion.js';
 import { EMPTY_CARR_COVERAGE, finalizeAnamnesisCoverage, mergeCarrCoverage } from '../services/anamnesisCoverage.js';
 import { extractLilaCoverage } from '../services/lilaExtraction.js';
 
 const lilaState = { position: 12, gameEntered: true, visitedCells: [1, 12] };
+
+test('start accepts a button and natural readiness without a short-message limit', () => {
+  assert.equal(looksLikeReadinessConfirmation('Начать игру'), true);
+  assert.equal(looksLikeReadinessConfirmation('Я готов. ' + 'Моя история. '.repeat(20)), true);
+  assert.equal(looksLikeReadinessConfirmation('Я не готов'), false);
+});
+
+test('board explanation survives questions and reconstructs both ends of jumps', () => {
+  const arrow = describeLilaBoard({ position: 23, gameEntered: true, lastMove: { from: 7, roll: 3 } });
+  assert.match(arrow, /7 → выпало 3 → 10 «Отчаяние» → стрела → 23 «Тревога»/);
+  const snake = describeLilaBoard({ position: 28, gameEntered: true, lastMove: { from: 42, roll: 5 } });
+  assert.match(snake, /42 → выпало 5 → 47 «Ложная опора» → змея → 28 «Ритуал»/);
+  assert.equal(describeLilaBoard({ position: 12, gameEntered: true, lastMove: { from: 7, roll: 3 } }), 'Сейчас: 12 — Привязанность');
+});
+
+test('research memory preserves missing fields and can close a resolved thread', () => {
+  const prior = { rejectedHypotheses: ['Курит ради компании'], openThreads: ['Возврат после праздника'], askedQuestions: ['Что даёт пауза?'] };
+  const next = updateLilaResearch(prior, { knownFacts: ['Паузы сохранялись без сигареты'], openThreads: [], lastAngle: 'Мысль об одной сигарете' });
+  assert.deepEqual(next.rejectedHypotheses, prior.rejectedHypotheses);
+  assert.deepEqual(next.openThreads, []);
+  assert.deepEqual(next.askedQuestions, prior.askedQuestions);
+  assert.deepEqual(updateLilaResearch(next, null), next);
+  assert.deepEqual(updateLilaResearch(next, { rejectedHypotheses: [] }).rejectedHypotheses, prior.rejectedHypotheses);
+});
 
 test('a reply or correction does not force the next roll', () => {
   for (const message of ['Не понимаю', 'Нет, я уже не курил год', 'Не знаю', 'Хочу рассказать историю']) {

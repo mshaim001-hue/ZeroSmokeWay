@@ -136,7 +136,28 @@ export function normalizeLilaState(raw) {
   const visitedCells = Array.isArray(raw.visitedCells)
     ? [...new Set(raw.visitedCells.map(Number).filter((n) => n >= 1 && n <= 72))]
     : [];
-  return { position, gameEntered, visitedCells };
+  const last = raw.lastMove;
+  const lastMove = last && Number.isInteger(last.from) && last.from >= 0 && last.from <= 72 &&
+    Number.isInteger(last.roll) && last.roll >= 1 && last.roll <= 6
+    ? { from: last.from, roll: last.roll } : null;
+  return { position, gameEntered, visitedCells, lastMove };
+}
+
+/** Reconstruct mechanics from numbers rather than the narrator's recollection. */
+export function describeLilaBoard(state) {
+  const s = normalizeLilaState(state);
+  const current = s.gameEntered ? `Сейчас: ${s.position} — ${getCellInfo(s.position).name}` : 'Вход в игру — при выпадении 6';
+  if (!s.lastMove) return current;
+  const { from, roll } = s.lastMove;
+  const move = applyLilaMove({ position: from, gameEntered: from > 0, visitedCells: [] }, roll);
+  if (move.position !== s.position) return current;
+  if (move.entryAttempt) return move.entrySuccess
+    ? `Выпало 6 → вход на клетку 1 «Рождение»\n${current}`
+    : `Выпало ${roll} — нужна 6. Можно бросить ещё раз.`;
+  const landing = move.jump?.from ?? move.position;
+  const path = `${from} → выпало ${roll} → ${landing} «${getCellInfo(landing).name}»`;
+  const jump = move.jump ? ` → ${move.jump.type === 'arrow' ? 'стрела' : 'змея'} → ${move.position} «${move.cell.name}»` : '';
+  return `${path}${jump}${move.overshot ? ' (отражение от 72)' : ''}\n${current}`;
 }
 
 /**

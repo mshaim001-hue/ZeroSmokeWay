@@ -26,7 +26,7 @@ const LILA_WELCOME =
   'Я — Зеркало, твой ведущий. Клетки игры помогут посмотреть на знакомую привычку с разных сторон. Твои слова будут определять, куда пойдёт разговор.\n\n' +
   'Намерение игры уже задано: «Почему я до сих пор курю?»\n\n' +
   'Здесь можно не знать ответа, не соглашаться со мной и рассказывать столько, сколько хочется. Кубик бросаешь ты.\n\n' +
-  'Когда будешь готов — напиши.';
+  'Когда будешь готов — нажми «Начать игру». Можно сначала рассказать о себе.';
 
 function isLilaPhase(phase: string) {
   return phase === 'welcome' || phase === 'anamnesis';
@@ -173,6 +173,7 @@ export function ChatApp() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [guestAuthReminder, setGuestAuthReminder] = useState<0 | 1 | 2 | 3>(0);
+  const [dismissedGuestReminder, setDismissedGuestReminder] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const guestReminderGuestRef = useRef(false);
 
@@ -193,6 +194,7 @@ export function ChatApp() {
   const guestComposerLocked = !bootstrapping && !accessToken && guestAuthReminder === 3;
 
   const startJourney = useCallback(() => {
+    setDismissedGuestReminder(0);
     setMessages([
       {
         text: LILA_WELCOME,
@@ -365,7 +367,7 @@ export function ChatApp() {
       setGuestAuthReminder(0);
       return;
     }
-    const userMsgCount = messages.filter((m) => m.isUser).length;
+    const userMsgCount = messages.filter((m) => m.isUser && !/^🎲\s*[1-6]$/.test(m.text.trim()) && m.text !== 'Начать игру').length;
     if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.third) {
       setGuestAuthReminder(3);
     } else if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.second) {
@@ -591,7 +593,7 @@ export function ChatApp() {
         </div>
       </header>
 
-      {!bootstrapping && !accessToken && guestAuthReminder > 0 ? (
+      {!bootstrapping && !accessToken && guestAuthReminder > dismissedGuestReminder ? (
         <aside
           className={
             'guest-auth-reminder' +
@@ -613,7 +615,7 @@ export function ChatApp() {
                 <button
                   type="button"
                   className="btn btn--secondary btn--compact"
-                  onClick={() => setGuestAuthReminder(0)}
+                  onClick={() => setDismissedGuestReminder(guestAuthReminder)}
                 >
                   Потом
                 </button>
@@ -800,7 +802,28 @@ export function ChatApp() {
               )}
               {inLila && (
                 <>
+                {typeof anamnesis?.lilaBoardStatus === 'string' && (
+                  <div className="lila-board-status" aria-label="Ход по доске">
+                    {anamnesis.lilaBoardStatus}
+                  </div>
+                )}
+                {!lilaState?.gameEntered && !diceReady && (
+                  <button type="button" className="btn btn--primary"
+                    disabled={loading || bootstrapping || guestComposerLocked}
+                    onClick={() => {
+                      const text = 'Начать игру';
+                      const history = [...messages, { text, isUser: true, timestamp: nowIso() }];
+                      setMessages(history);
+                      void sendToOrchestrator(text, history);
+                    }}>
+                    Начать игру
+                  </button>
+                )}
                 {canFinishLila && (
+                  <section className="lila-summary" aria-label="Итог игры">
+                  <strong>Итог игры</strong>
+                  <p>{String(anamnesis?.lilaJourneySummary)}</p>
+                  <p>Можно поправить итог в сообщении, бросить кубик и продолжить игру или перейти к разбору мифов.</p>
                   <button
                     type="button"
                     className="btn btn--secondary myth-continue-btn"
@@ -813,6 +836,7 @@ export function ChatApp() {
                   >
                     {LILA_FINISH}
                   </button>
+                  </section>
                 )}
                 <DiceRoller
                   disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
