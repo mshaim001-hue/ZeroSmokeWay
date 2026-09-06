@@ -8,7 +8,7 @@ import { finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
 import { prepareLilaDialogContext } from './lilaDialogMemory.js';
 import { extractLilaCoverage } from './lilaExtraction.js';
 import { normalizeLilaResearch, updateLilaResearch } from './lilaResearch.js';
-import { validateLilaSummary } from './lilaCompletion.js';
+import { normalizeJourneySummary } from './lilaCompletion.js';
 import {
   formatAuthContextForPrompt,
   formatAnamnesisAuthRules,
@@ -154,12 +154,7 @@ export async function handleAgentRequest({
     const parsed = JSON.parse(completion.choices[0].message.content);
 
     let finalResponse = parsed.message;
-    const journeySummary = isLila ? validateLilaSummary(parsed.journeySummary, parsed.summaryCheck,
-      [...conversationHistory.filter(m => m.isUser).map(m => m.text), message]) : undefined;
-    const summaryBlocked = isLila && Boolean(parsed.journeySummary) && !journeySummary;
-    if (summaryBlocked) {
-      finalResponse = 'Для итога пока не хватает точности. В какой из описанных ситуаций тебе сейчас труднее всего обойтись без сигареты?';
-    }
+    const journeySummary = isLila ? normalizeJourneySummary(parsed.journeySummary) : undefined;
     let analysisResults = null;
 
     const useSubAgents = process.env.USE_SUB_AGENTS === 'true';
@@ -183,7 +178,7 @@ export async function handleAgentRequest({
       extractedData: isLila ? extractedCoverage : parsed.extractedData,
       extractedProfile: parsed.extractedProfile,
       currentStep: parsed.currentStep,
-      diceReady: isLila ? !summaryBlocked && parsed.diceReady === true : undefined,
+      diceReady: isLila ? parsed.diceReady === true : undefined,
       journeySummary,
       lilaResearch: isLila ? updateLilaResearch(anamnesisData?.lilaResearch, parsed.lilaResearch) : undefined,
       lilaDialogMemory,
