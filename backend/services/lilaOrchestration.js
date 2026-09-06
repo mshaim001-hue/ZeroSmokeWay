@@ -2,7 +2,7 @@
  * Серверная логика ходов Лилы — без допроса-анкеты.
  */
 
-import { LILA_INTENTION } from './lilaBoard.js';
+import { LILA_INTENTION, getCellInfo } from './lilaBoard.js';
 
 const READINESS_SIGNALS = [
   'готов',
@@ -32,7 +32,7 @@ export function looksLikeReadinessConfirmation(text) {
   return READINESS_SIGNALS.some((s) => t === s || t.startsWith(`${s} `) || t.startsWith(`${s},`) || t.startsWith(`${s}.`));
 }
 
-/** Ответ на вопросы по клетке — пора снова бросать (только после входа в игру). */
+/** Текст внутри клетки; сам по себе не означает готовность к следующему броску. */
 export function looksLikeCellReflection(text, gameEntered) {
   if (!gameEntered) return false;
   const t = String(text || '').trim();
@@ -68,7 +68,7 @@ export function buildLilaInstruction({ lilaState, message, move, gameEntered }) 
     return (
       `ВХОД! Выпало 6 — Рождение. Стартовая клетка ${move.position} «${move.cell?.name}». ` +
       `Намерение: «${LILA_INTENTION}». ` +
-      'Разбери клетку ГЛУБОКО по формату: название клетки → что она значит для намерения → теневая сторона → 1–2 точных вопроса на осознание. ' +
+      'Представь клетку как начало исследования намерения. Предложи один конкретный ракурс, без готового вывода о человеке. ' +
       'НЕ спрашивай количество сигарет или стаж. diceReady: false.'
     );
   }
@@ -77,7 +77,7 @@ export function buildLilaInstruction({ lilaState, message, move, gameEntered }) 
     let inst =
       `Ход: бросок ${move.roll}, клетка ${move.position} «${move.cell?.name}». ` +
       `Намерение: «${LILA_INTENTION}». ` +
-      'Разбери клетку ГЛУБОКО: архетип → связь с тем, почему человек до сих пор курит → теневая сторона → 1–2 вопроса. ' +
+      'Свяжи смысл клетки с уже сказанным человеком. Дай новый ракурс, не повторяй прежнюю трактовку. Один вопрос или приглашение рассказать. ' +
       'Не анкета. Не советы.';
     if (move.jump) {
       inst +=
@@ -91,8 +91,10 @@ export function buildLilaInstruction({ lilaState, message, move, gameEntered }) 
 
   if (entered && looksLikeCellReflection(message, true)) {
     return (
-      'Пользователь ответил на вопросы по клетке. Кратко отрази суть его слов (1–2 предложения, без похвалы). ' +
-      'Попроси бросить кубик для следующего хода. diceReady: true.'
+      `Текущая клетка ${lilaState.position} «${getCellInfo(lilaState.position).name}». Нового броска не было. ` +
+      'Ответь по смыслу сказанного. Новая история, поправка, вопрос или непонимание — продолжи разговор на этой клетке (diceReady: false). ' +
+      'Если тема раскрыта или человек просит дальше — предложи бросок (diceReady: true). Не требуй ещё признаний. ' +
+      'Готовый итог можно предложить, но переход к мифам выбирает человек.'
     );
   }
 
@@ -113,7 +115,7 @@ export function resolveDiceReady({ agentDiceReady, lilaState, message, move }) {
   if (move?.entryAttempt && !move.entrySuccess) return true;
   if (!entered && looksLikeReadinessConfirmation(message)) return true;
   if (move?.entrySuccess || (move && entered && move.roll)) return false;
-  if (entered && looksLikeCellReflection(message, true)) return true;
+  if (entered && looksLikeCellReflection(message, true)) return agentDiceReady === true;
 
-  return Boolean(agentDiceReady);
+  return agentDiceReady === true;
 }

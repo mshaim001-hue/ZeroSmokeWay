@@ -37,7 +37,7 @@ export function DiceRoller({ disabled, onRoll }: Props) {
         onClick={handleClick}
         disabled={disabled || rolling}
         aria-label={disabled ? 'Кубик недоступен — дождись ответа' : 'Бросить кубик'}
-        title={disabled ? 'Сначала ответь на вопросы' : 'Бросить кубик (1–6)'}
+        title={disabled ? 'Продолжи разговор — можно попросить следующий ход' : 'Бросить кубик (1–6)'}
       >
         <span className="dice-roller__face" aria-hidden>
           {display ?? '?'}

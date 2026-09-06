@@ -6,6 +6,7 @@ import { analyzeResponseWithSubAgents } from './subAgentService.js';
 import { createCompactContext } from './contextManagerService.js';
 import { finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
 import { prepareLilaDialogContext } from './lilaDialogMemory.js';
+import { extractLilaCoverage } from './lilaExtraction.js';
 import {
   formatAuthContextForPrompt,
   formatAnamnesisAuthRules,
@@ -91,17 +92,16 @@ export async function handleAgentRequest({
   }
 
   if (isLila) {
-    const snapshot = finalizeAnamnesisCoverage(anamnesisData);
     messages.push({
       role: 'system',
       content:
-        `=== НАКОПЛЕННАЯ ТАБЛИЦА (carrCoverage) ===\n${JSON.stringify(snapshot.carrCoverage, null, 2)}\n` +
-        `coverageScore: ${snapshot.coverageScore}`,
+        `Состояние игры: ${JSON.stringify(anamnesisData?.lilaState ?? {})}\n` +
+        `Предыдущий предложенный итог (его можно поправить): ${anamnesisData?.lilaJourneySummary || 'пока нет'}`,
     });
     if (lilaDialogMemory?.lilaDialogSummary) {
       messages.push({
         role: 'system',
-        content: `=== РЕЗЮМЕ РАННЕГО ДИАЛОГА (до последних 5 пар) ===\n${lilaDialogMemory.lilaDialogSummary}`,
+        content: `=== РЕЗЮМЕ РАННЕГО ДИАЛОГА ===\n${lilaDialogMemory.lilaDialogSummary}`,
       });
     }
     if (lilaContext) {
@@ -135,11 +135,18 @@ export async function handleAgentRequest({
   messages.push({ role: 'user', content: message });
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
-      messages,
-      response_format: { type: 'json_object' },
-    });
+    const model = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
+    const [completion, extractedCoverage] = await Promise.all([
+      openai.chat.completions.create({
+        model,
+        messages,
+        response_format: { type: 'json_object' },
+      }),
+      isLila ? extractLilaCoverage({
+        openai, model, message, history: historyToUse,
+        priorCoverage: finalizeAnamnesisCoverage(anamnesisData).carrCoverage,
+      }) : Promise.resolve(null),
+    ]);
 
     const parsed = JSON.parse(completion.choices[0].message.content);
 
@@ -164,10 +171,11 @@ export async function handleAgentRequest({
 
     return {
       response: finalResponse,
-      extractedData: parsed.extractedData,
+      extractedData: isLila ? extractedCoverage : parsed.extractedData,
       extractedProfile: parsed.extractedProfile,
       currentStep: parsed.currentStep,
-      diceReady: isLila ? Boolean(parsed.diceReady) : undefined,
+      diceReady: isLila ? parsed.diceReady === true : undefined,
+      journeySummary: isLila ? parsed.journeySummary : undefined,
       lilaDialogMemory,
       analysis: analysisResults,
       contextCompacted: !isLila && conversationHistory.length > 20,

@@ -16,6 +16,7 @@ import {
 } from './lilaBoard.js';
 import { buildLilaInstruction, resolveDiceReady } from './lilaOrchestration.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
+import { acceptsLilaSummary, updateLilaSummary } from './lilaCompletion.js';
 
 function isDiceRollMessage(text) {
   return /^🎲\s*[1-6]$/.test(String(text || '').trim());
@@ -267,11 +268,12 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
     gameEntered: lilaState.gameEntered,
   });
 
-  const agentResult = await handleAgentRequest({
+  const summaryAccepted = isLilaPhase(phase) && acceptsLilaSummary(msg, priorSnapshot);
+  const agentResult = summaryAccepted ? { response: '', extractedData: null } : await handleAgentRequest({
     message: msg,
     agentType: 'anamnesis',
     conversationHistory,
-    anamnesisData: priorSnapshot,
+    anamnesisData: { ...priorSnapshot, lilaState },
     userProfile,
     useAdaptiveMode: false,
     orchestratorInstruction,
@@ -289,13 +291,16 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
 
   let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, agentResult.extractedData);
   mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
+  if (!summaryAccepted) {
+    mergedAnamnesis = updateLilaSummary(mergedAnamnesis, agentResult.journeySummary);
+  }
   mergedAnamnesis.lilaState = lilaState;
   if (agentResult.lilaDialogMemory) {
     mergedAnamnesis.lilaDialogSummary = agentResult.lilaDialogMemory.lilaDialogSummary;
     mergedAnamnesis.lilaSummarizedPairCount = agentResult.lilaDialogMemory.lilaSummarizedPairCount;
   }
 
-  if (isLilaPhase(effectivePhase) && mergedAnamnesis.coverageReadyForMythBusting) {
+  if (summaryAccepted) {
     effectivePhase = PHASES.MYTH_BUSTING;
   }
 
@@ -304,11 +309,14 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
   // Переход в myth_busting: генерируем план и сразу выдаём первую секцию
   if (effectivePhase === PHASES.MYTH_BUSTING && phase !== PHASES.MYTH_BUSTING) {
     if (!mythPlan) {
-      mythPlan = await generateMythPlan({ conversationHistory, carrCoverage: mergedAnamnesis.carrCoverage });
+      mythPlan = await generateMythPlan({
+        conversationHistory, carrCoverage: mergedAnamnesis.carrCoverage,
+        journeySummary: mergedAnamnesis.lilaJourneySummary,
+      });
     }
     mergedAnamnesis.mythPlan = mythPlan;
     const intro =
-      'Игра Лила завершена. Зеркало отступает. Сейчас Аллен Карр расставит всё по полочкам — просто читай.\n\n';
+      'Итог игры принят. Теперь разберём убеждения, которые прозвучали в твоей истории.\n\n';
     const narrative = deliverMythNarrative(mythPlan, updatedMythProgress);
     updatedMythProgress = narrative.mythProgress;
     response = intro + (narrative.response || '');

@@ -261,7 +261,7 @@ export function formatLilaMoveForAgent(move) {
   }
 
   if (move.visitedCells?.length) {
-    lines.push(`Уже посещённые клетки: ${move.visitedCells.join(', ')}. Не повторяй разбор пройденного.`);
+    lines.push(`Уже посещённые клетки: ${move.visitedCells.join(', ')}. При возвращении на клетку учти новый опыт, не повторяй прежний разбор дословно.`);
   }
 
   return lines.join('\n');

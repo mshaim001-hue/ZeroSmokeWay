@@ -55,7 +55,8 @@ function mergeScalarRow(prev, next) {
     } else if (k === 'note' || k === 'evidence') {
       const s = typeof n[k] === 'string' ? n[k].trim() : '';
       const o = typeof p[k] === 'string' ? p[k].trim() : '';
-      out[k] = s.length >= o.length ? n[k] : p[k];
+      // A short correction must replace an earlier, longer interpretation.
+      out[k] = k === 'evidence' && s ? n[k] : s.length >= o.length ? n[k] : p[k];
     } else {
       out[k] = n[k];
     }

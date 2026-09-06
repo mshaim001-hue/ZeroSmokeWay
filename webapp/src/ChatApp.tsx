@@ -23,9 +23,9 @@ const PHASE_WELCOME = 'welcome';
 
 const LILA_WELCOME =
   'Добро пожаловать в пространство Лилы.\n\n' +
-  'Я — Кристаллическое Зеркало Истины. Здесь нет утешений и эзотерической мишуры. Только правда.\n\n' +
+  'Я — Зеркало, твой ведущий. Клетки игры помогут посмотреть на знакомую привычку с разных сторон. Твои слова будут определять, куда пойдёт разговор.\n\n' +
   'Намерение игры уже задано: «Почему я до сих пор курю?»\n\n' +
-  'Подтверди одно: готов играть без масок и смотреть в лицо фактам.\n\n' +
+  'Здесь можно не знать ответа, не соглашаться со мной и рассказывать столько, сколько хочется. Кубик бросаешь ты.\n\n' +
   'Когда будешь готов — напиши.';
 
 function isLilaPhase(phase: string) {
@@ -37,6 +37,7 @@ function isMythPhase(phase: string) {
 }
 
 const MYTH_CONTINUE = '▶ Продолжить';
+const LILA_FINISH = 'Перейти к разбору мифов';
 
 /**
  * Регистрация предлагается по вовлечённости, не по таймеру.
@@ -161,7 +162,7 @@ export function ChatApp() {
   const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [mythProgress, setMythProgress] = useState<MythProgress>({});
   const [diceReady, setDiceReady] = useState(false);
-  const [lilaPosition, setLilaPosition] = useState<number | null>(null);
+  const [, setLilaPosition] = useState<number | null>(null);
   const [lilaState, setLilaState] = useState<LilaState | null>(null);
   const [mythPlan, setMythPlan] = useState<MythPlan | null>(null);
   const [pledgeText, setPledgeText] = useState<string | null>(null);
@@ -534,6 +535,8 @@ export function ChatApp() {
 
   const inLila = isLilaPhase(phase);
   const inMyth = isMythPhase(phase);
+  const canFinishLila = inLila && typeof anamnesis?.lilaJourneySummary === 'string' &&
+    anamnesis.lilaJourneySummary.trim().length > 0;
   const botSenderName = inLila ? 'Зеркало' : inMyth ? 'Карр' : 'Алекс';
   const showMythContinue = inMyth && !awaitingPledge && !loading && !bootstrapping;
 
@@ -796,10 +799,26 @@ export function ChatApp() {
                 </button>
               )}
               {inLila && (
+                <>
+                {canFinishLila && (
+                  <button
+                    type="button"
+                    className="btn btn--secondary myth-continue-btn"
+                    disabled={loading || bootstrapping || guestComposerLocked}
+                    onClick={() => {
+                      const history = [...messages, { text: LILA_FINISH, isUser: true, timestamp: nowIso() }];
+                      setMessages(history);
+                      void sendToOrchestrator(LILA_FINISH, history);
+                    }}
+                  >
+                    {LILA_FINISH}
+                  </button>
+                )}
                 <DiceRoller
                   disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
                   onRoll={handleDiceRoll}
                 />
+                </>
               )}
               <form className="chat-form" onSubmit={onSend}>
                 <div className="chat-form-input-wrap">
