@@ -967,22 +967,29 @@ input {
   min-width: 0;
 }
 
-.chat-form input {
+.chat-form textarea {
+  display: block;
   width: 100%;
+  min-height: 42px;
+  max-height: 8.5rem;
   padding: 10px 14px;
-  border-radius: var(--zsw-radius-pill);
+  border-radius: 21px;
   border: 1px solid var(--zsw-border);
   background: var(--zsw-bg-card);
+  font: inherit;
   font-size: 1rem;
+  line-height: 1.35;
   outline: none;
+  resize: none;
+  overflow-y: auto;
 }
 
-.chat-form input:focus {
+.chat-form textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-.chat-form input:disabled {
+.chat-form textarea:disabled {
   opacity: 0.7;
 }
 

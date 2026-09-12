@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChatMessage,
   fetchOrchestratorSession,
@@ -538,6 +538,19 @@ export function ChatApp() {
     await sendToOrchestrator(text, history);
   }
 
+  function isPhoneComposer() {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(pointer: coarse)').matches;
+  }
+
+  function onComposerKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== 'Enter') return;
+    if (e.shiftKey || isPhoneComposer()) return;
+    e.preventDefault();
+    const form = e.currentTarget.form;
+    if (form) form.requestSubmit();
+  }
+
   const handleDiceRoll = useCallback(
     (value: number) => {
       const gameStarted = Number(lilaState?.position) > 0;
@@ -863,9 +876,12 @@ export function ChatApp() {
               {(gameStarted || !inLila) && (
               <form className="chat-form" onSubmit={onSend}>
                 <div className="chat-form-input-wrap">
-                  <input
+                  <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={onComposerKeyDown}
+                    rows={1}
+                    enterKeyHint="enter"
                     placeholder={
                       guestComposerLocked
                         ? 'Только вход — отправка временно недоступна'
