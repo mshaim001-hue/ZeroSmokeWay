@@ -153,7 +153,7 @@ export function describeGameBoard(session, definition) {
     wrapped: turn.wrapped,
     revisit: turn.revisit,
   };
-  return `${describeMove(move)}\nСейчас: ${state.currentPosition} — ${title}`;
+  return describeMove(move);
 }
 
 /**

@@ -852,11 +852,6 @@ export function ChatApp() {
               )}
               {inLila && (
                 <>
-                {gameStarted && typeof anamnesis?.lilaBoardStatus === 'string' && anamnesis.lilaBoardStatus.trim() && (
-                  <div className="lila-board-status" aria-label="Ход по доске">
-                    {anamnesis.lilaBoardStatus}
-                  </div>
-                )}
                 {canFinishLila && (
                   <section className="lila-summary" aria-label="Переход к разбору">
                   <strong>Дальше</strong>
@@ -895,9 +890,23 @@ export function ChatApp() {
                     {START_GAME}
                   </button>
                 )}
-                {(gameStarted || awaitingFirstRoll) && (
+                {gameStarted && (
+                <div className="lila-turn-bar">
+                  {typeof anamnesis?.lilaBoardStatus === 'string' && anamnesis.lilaBoardStatus.trim() ? (
+                    <div className="lila-board-status" aria-label="Ход по доске">
+                      {anamnesis.lilaBoardStatus}
+                    </div>
+                  ) : null}
+                  <DiceRoller
+                    variant="roll"
+                    disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
+                    onRoll={handleDiceRoll}
+                  />
+                </div>
+                )}
+                {awaitingFirstRoll && (
                 <DiceRoller
-                  variant={gameStarted ? 'roll' : 'ready'}
+                  variant="ready"
                   disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
                   onRoll={handleDiceRoll}
                 />
