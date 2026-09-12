@@ -67,12 +67,16 @@ export async function runGameMasterTurn({
     definition,
     raw: parsed,
     userMessage,
+    extra,
     context,
   });
 }
 
-export function interpretGameMasterOutput({ session, definition, raw, userMessage = '', context = null } = {}) {
-  const applied = applyGameMasterResult(session, definition, raw, { userMessage });
+export function interpretGameMasterOutput({ session, definition, raw, userMessage = '', extra = {}, context = null } = {}) {
+  const applied = applyGameMasterResult(session, definition, raw, {
+    userMessage,
+    event: extra.event,
+  });
   let next = applied.session;
   const mirror = next.phase === GAME_PHASE.MIRROR && !next.finalAnswer
     ? buildMirror(next)

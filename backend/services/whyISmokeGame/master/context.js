@@ -26,6 +26,10 @@ export function buildGameMasterContext({ session, definition, userMessage = '', 
         visitCount: visit.count,
         previousQuestions: visit.questions,
         previousAnswers: visit.answers,
+        openingQuestion: turn?.openingQuestion || turn?.aiQuestion || visit.questions[0] || '',
+        thread: cellThread(state, turn),
+        exchangeCount: (turn?.userAnswers || []).length,
+        cellClosed: Boolean(turn?.cellClosed),
         revisit: visit.count > 1 || Boolean(turn?.revisit),
       }
       : null,
@@ -79,8 +83,25 @@ export function formatGameMasterContext(context) {
     context.phase === 'final_reality_check'
       ? 'Сейчас системный финальный reality check, не архетип «Проверка реальностью». Один вопрос, который пытается опровергнуть ведущую гипотезу.'
       : '',
+    context.event === 'user_answer' || context.event === 'follow_up'
+      ? [
+        'Сейчас живой диалог внутри клетки. Следующая реплика — из ПОСЛЕДНЕГО ответа, не из формы первого вопроса.',
+        cell?.openingQuestion ? `Первый вопрос клетки (не повторяй его): ${cell.openingQuestion}` : '',
+        cell?.thread?.length ? `Нитка этой клетки:\n${cell.thread.map((item) => `- ${item.role}: ${item.text}`).join('\n')}` : '',
+        'Если тема жива — один новый вопрос из последней нитки, diceReady=false.',
+        'Если поняли / исчерпали / клетка не про него / он не хочет глубже — question="", diceReady=true, короткое человеческое закрытие.',
+        'Без внутреннего языка: рабочая версия, гипотеза, недостаточно данных.',
+      ].filter(Boolean).join('\n')
+      : '',
     context.userMessage ? `Последнее сообщение человека: ${context.userMessage}` : '',
   ].filter(Boolean).join('\n');
+}
+
+function cellThread(session, turn) {
+  if (!turn) return [];
+  return (session.conversation || [])
+    .filter((item) => item.turnNumber === turn.turnNumber && item.text)
+    .map((item) => ({ role: item.role, text: item.text }));
 }
 
 function resolveCurrentCell(definition, session, turn) {

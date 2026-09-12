@@ -46,6 +46,89 @@ test('play button without a roll still opens a cell and calls the master', async
   assert.match(landed.response, /Первый вопрос/);
 });
 
+test('a short answer follows the new thread instead of re-asking and unlocking the dice', async () => {
+  const landed = await handleWhyISmokePhase({
+    message: '🎲 6',
+  }, {
+    runMaster: async ({ session }) => ({
+      session,
+      message: 'Контроль. Что произошло прямо перед этим?',
+      diceReady: false,
+    }),
+  });
+  const followed = await handleWhyISmokePhase({
+    message: 'устал вроде от сигарет',
+    anamnesis: { whyISmokeGame: landed.session },
+  }, {
+    runMaster: async ({ session }) => ({
+      session,
+      message: 'А что произошло прямо перед этим? Вспомните момент, когда рука потянулась.',
+      diceReady: false,
+    }),
+  });
+  assert.equal(followed.kind, 'master');
+  assert.equal(followed.diceReady, false);
+  assert.doesNotMatch(followed.response, /прямо перед|рука потянулась/i);
+  assert.match(followed.response, /устал|сигарет|\?/);
+  assert.equal(followed.session.turns.at(-1).userAnswer, 'устал вроде от сигарет');
+  assert.equal(followed.session.turns.at(-1).cellClosed, false);
+});
+
+test('a living follow-up can continue, then a human close unlocks the dice', async () => {
+  const landed = await handleWhyISmokePhase({
+    message: '🎲 6',
+  }, {
+    runMaster: async ({ session }) => ({
+      session,
+      message: 'Контроль. Что произошло прямо перед этим?',
+      diceReady: false,
+    }),
+  });
+  const mid = await handleWhyISmokePhase({
+    message: 'устал вроде от сигарет',
+    anamnesis: { whyISmokeGame: landed.session },
+  }, {
+    runMaster: async ({ session }) => ({
+      session,
+      message: 'Устал — это уже интереснее.\n\nЧто именно в самом курении тебя начало утомлять?',
+      diceReady: false,
+    }),
+  });
+  assert.equal(mid.diceReady, false);
+  assert.match(mid.response, /утомлять/);
+
+  const closed = await handleWhyISmokePhase({
+    message: 'надоело постоянно выходить, запах',
+    anamnesis: { whyISmokeGame: mid.session },
+  }, {
+    runMaster: async ({ session }) => ({
+      session,
+      message: 'То есть усталость не только от самой сигареты. Пока оставим это здесь.',
+      diceReady: true,
+    }),
+  });
+  assert.equal(closed.diceReady, true);
+  assert.doesNotMatch(closed.response, /\?/);
+  assert.doesNotMatch(closed.response, /рабоч|гипотез/i);
+  assert.equal(closed.session.turns.at(-1).cellClosed, true);
+  assert.equal(closed.session.turns.at(-1).userAnswers.length, 2);
+});
+
+test('master failure after an answer keeps the cell open', async () => {
+  const landed = await handleWhyISmokePhase({
+    message: '🎲 2',
+  }, {
+    runMaster: async ({ session }) => ({ session, message: 'Что здесь?', diceReady: false }),
+  });
+  const failed = await handleWhyISmokePhase({
+    message: 'не знаю',
+    anamnesis: { whyISmokeGame: landed.session },
+  }, { runMaster: async () => { throw new Error('OpenAI down'); } });
+  assert.equal(failed.kind, 'error');
+  assert.equal(failed.diceReady, false);
+  assert.match(failed.response, /этой теме|ещё раз/);
+});
+
 test('a later roll is blocked until the first question is answered', async () => {
   const landed = await handleWhyISmokePhase({
     message: '🎲 2',

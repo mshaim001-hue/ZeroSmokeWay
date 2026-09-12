@@ -4,6 +4,7 @@ import {
   addSessionHypothesis,
   addDiscoveredPattern,
   addUncoveredDomain,
+  closeCurrentCell,
   currentTurn,
   normalizeGameSession,
   recordNarration,
@@ -11,13 +12,13 @@ import {
   setGamePhase,
   updateSessionHypothesis,
 } from '../session.js';
-import { composeMasterMessage, normalizeGameMasterResult } from './result.js';
+import { composeMasterMessage, normalizeGameMasterResult, shapeCellDialogue } from './result.js';
 import { evaluateSaturation, leadingHypothesisHeld } from './saturation.js';
 import { lastPersonalizedTurnNumber, resolvePersonalizedTitle } from './titles.js';
 
-export function applyGameMasterResult(session, definition, rawResult, { userMessage = '' } = {}) {
+export function applyGameMasterResult(session, definition, rawResult, { userMessage = '', event = '' } = {}) {
   let state = normalizeGameSession(session);
-  const result = normalizeGameMasterResult(rawResult);
+  let result = normalizeGameMasterResult(rawResult);
   const turn = currentTurn(state);
 
   for (const update of result.hypothesisUpdates) {
@@ -64,11 +65,6 @@ export function applyGameMasterResult(session, definition, rawResult, { userMess
     }
   }
 
-  const message = composeMasterMessage(result);
-  if (message) {
-    state = recordNarration(state, { observation: result.observation || message, question: result.question });
-  }
-
   const saturation = evaluateSaturation(state, {
     aiPossible: result.possibleSaturation,
     userRecognizes: result.userRecognizesHypothesis,
@@ -88,9 +84,28 @@ export function applyGameMasterResult(session, definition, rawResult, { userMess
     state = advancePhase(state, result, saturation);
   }
 
+  if (state.phase === GAME_PHASE.PLAYING) {
+    const turn = currentTurn(state);
+    result = shapeCellDialogue(result, {
+      openingQuestion: turn?.openingQuestion || turn?.aiQuestion || '',
+      userMessage,
+      event,
+      exchangeCount: (turn?.userAnswers || []).length,
+    });
+  }
+
+  const message = composeMasterMessage(result);
+  if (message) {
+    state = recordNarration(state, { observation: result.observation || message, question: result.question });
+  }
+
+  if (result.diceReady && state.phase === GAME_PHASE.PLAYING) {
+    state = closeCurrentCell(state);
+  }
+
   const canRoll = state.phase === GAME_PHASE.PLAYING
     && state.status === 'active'
-    && Boolean(currentTurn(state)?.userAnswer || !currentTurn(state)?.cellId);
+    && Boolean(currentTurn(state)?.cellClosed || !currentTurn(state)?.cellId);
 
   return {
     session: state,

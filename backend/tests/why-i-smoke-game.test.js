@@ -18,6 +18,7 @@ import {
   enterReflection,
   isPatternIncomplete,
   listVisibleSlots,
+  closeCurrentCell,
   recordNarration,
   recordUserAnswer,
   resumePlay,
@@ -51,6 +52,7 @@ function play(definition, rolls, { answer = 'ок' } = {}) {
     session = result.session;
     if (result.move.cell) {
       session = recordUserAnswer(session, answer);
+      session = closeCurrentCell(session);
     }
   }
   return session;
@@ -100,7 +102,7 @@ test('first roll without a six lands on that cell', () => {
   assert.throws(() => applyDiceRoll(session, definition, 3), /waiting for an answer/);
 });
 
-test('a landed cell blocks the next roll until an answer', () => {
+test('a landed cell blocks the next roll until the cell dialogue closes', () => {
   const definition = tinyBoard();
   let { session } = applyDiceRoll(createGameSession({ definition }), definition, 4);
   session = recordNarration(session, {
@@ -108,8 +110,13 @@ test('a landed cell blocks the next roll until an answer', () => {
     question: 'Что здесь от тебя?',
   });
   session = recordUserAnswer(session, 'На балконе у старшего брата');
-  assert.equal(canApplyDiceRoll(session), true);
+  assert.equal(canApplyDiceRoll(session), false);
   assert.equal(currentTurn(session).userAnswer, 'На балконе у старшего брата');
+  session = recordUserAnswer(session, 'ещё подумал — запах тоже надоел');
+  assert.equal(currentTurn(session).userAnswers.length, 2);
+  assert.equal(canApplyDiceRoll(session), false);
+  session = closeCurrentCell(session);
+  assert.equal(canApplyDiceRoll(session), true);
 });
 
 test('board wraps and ignores leftover snakes or ladders', () => {
@@ -139,6 +146,7 @@ test('revisiting a cell is allowed and keeps previous questions', () => {
   session = applyDiceRoll(session, definition, 2).session;
   session = recordNarration(session, { question: 'Есть ли ситуации, когда сигарета ощущается как награда?' });
   session = recordUserAnswer(session, 'После задачи выхожу');
+  session = closeCurrentCell(session);
   session = applyDiceRoll(session, definition, 6).session;
   assert.equal(session.currentPosition, 2);
   assert.equal(currentTurn(session).revisit, true);

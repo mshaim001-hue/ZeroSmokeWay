@@ -9,7 +9,11 @@ import {
   SESSION_STATUS,
   addSessionHypothesis,
   applyDiceRoll,
+  closeCurrentCell,
   applyGameMasterResult,
+  stripQuestions,
+  stripSystemTalk,
+  isFormFillReask,
   buildGameMasterContext,
   formatGameMasterContext,
   buildGameMasterMessages,
@@ -78,6 +82,8 @@ test('game master prompt is a separate investigation config', () => {
   assert.match(prompt, /нет контекста/);
   assert.match(prompt, /hypothesisUpdates/);
   assert.match(prompt, /не защищай/);
+  assert.match(prompt, /ДИАЛОГ ВНУТРИ КЛЕТКИ/);
+  assert.match(prompt, /ПОСЛЕДНЕГО ответа/);
   assert.match(agentConfig, /why_i_smoke_master/);
   assert.match(agentConfig, /GAME_MASTER_PROMPT/);
 });
@@ -88,6 +94,7 @@ test('context tells the master when a cell is revisited', () => {
   session = applyDiceRoll(session, definition, 5).session;
   session = recordNarration(session, { question: 'Что тело делает в момент прикуривания?' });
   session = recordUserAnswer(session, 'Горло жжёт, руки сами');
+  session = closeCurrentCell(session);
   session = { ...session, currentPosition: 22 };
   session = applyDiceRoll(session, definition, 6).session;
   const context = buildGameMasterContext({ session, definition });
@@ -114,6 +121,172 @@ test('context given to the master includes intention, path, hypotheses and turn 
   const packed = buildGameMasterMessages({ session, definition, userMessage: 'ок' });
   assert.match(packed.user, /Намерение/);
   assert.match(packed.user, /Активные гипотезы/);
+});
+
+test('a short answer that leaves the first question is followed, not re-asked', () => {
+  const definition = createDefinition();
+  let session = createGameSession();
+  session = applyDiceRoll(session, definition, 6).session;
+  session = recordNarration(session, {
+    observation: 'Контроль.',
+    question: 'Вспомните недавний момент, когда вы решили не курить — и всё равно закурили. Что происходило перед этим?',
+  });
+  session = recordUserAnswer(session, 'устал вроде от сигарет');
+
+  const out = interpretGameMasterOutput({
+    session,
+    definition,
+    userMessage: 'устал вроде от сигарет',
+    extra: { event: 'user_answer' },
+    raw: {
+      observation: 'новая нитка: устал от сигарет',
+      messageToUser: 'Похоже, мысль не курить появляется из усталости. А что произошло прямо перед этим?',
+      question: 'Вспомните момент, когда рука потянулась. Можете привести конкретный пример?',
+      hypothesisUpdates: [
+        { action: 'create', statement: 'Мысль не курить появляется из усталости от самих сигарет.' },
+      ],
+      diceReady: false,
+    },
+  });
+
+  assert.equal(out.diceReady, false);
+  assert.equal(out.session.turns.at(-1).cellClosed, false);
+  assert.doesNotMatch(out.message, /произошло прямо перед|конкретный пример|рука потянулась/i);
+  assert.match(out.message, /устал|сигарет/i);
+  assert.match(out.result.question, /\?/);
+  assert.equal(out.session.hypotheses.length, 1);
+});
+
+test('a living follow-up from the last reply stays open and unlocks no dice', () => {
+  const definition = createDefinition();
+  let session = createGameSession();
+  session = applyDiceRoll(session, definition, 6).session;
+  session = recordNarration(session, {
+    question: 'Вспомните недавний момент, когда вы решили не курить — и всё равно закурили. Что происходило перед этим?',
+  });
+  session = recordUserAnswer(session, 'устал вроде от сигарет');
+
+  const applied = applyGameMasterResult(session, definition, {
+    messageToUser: 'Устал — это уже интереснее.',
+    question: 'Что именно в самом курении тебя начало утомлять?',
+    diceReady: false,
+  }, { userMessage: 'устал вроде от сигарет', event: 'user_answer' });
+
+  assert.equal(applied.diceReady, false);
+  assert.match(applied.result.question, /утомлять|курении/);
+  assert.match(applied.message, /Устал/);
+  assert.equal(applied.session.turns.at(-1).cellClosed, false);
+});
+
+test('the cell closes only when the host ends the thread in human language', () => {
+  const definition = createDefinition();
+  let session = createGameSession();
+  session = applyDiceRoll(session, definition, 6).session;
+  session = recordNarration(session, { question: 'Что произошло перед сигаретой?' });
+  session = recordUserAnswer(session, 'не знаю, просто хочется');
+
+  const applied = applyGameMasterResult(session, definition, {
+    messageToUser: 'Даже когда сигареты надоели, само «хочется» всё равно звучит как достаточная причина. Пока оставим это здесь.',
+    question: '',
+    diceReady: true,
+  }, { userMessage: 'не знаю, просто хочется', event: 'follow_up' });
+
+  assert.equal(applied.diceReady, true);
+  assert.equal(applied.result.question, '');
+  assert.doesNotMatch(applied.message, /\?/);
+  assert.doesNotMatch(applied.message, /рабоч|гипотез|зафиксир/i);
+  assert.equal(applied.session.turns.at(-1).cellClosed, true);
+});
+
+test('a no on Reward is not hunted back into the cell form', () => {
+  const definition = createDefinition();
+  let session = createGameSession();
+  session = applyDiceRoll(session, definition, 5).session;
+  session = {
+    ...session,
+    currentPosition: 11,
+    turns: [{
+      ...session.turns[0],
+      toPosition: 11,
+      landedSlot: 11,
+      cellId: 'reward',
+      cellTitleShownToUser: 'Награда',
+      openingQuestion: 'Бывает ли, что сигарета ощущается как награда после сделанного дела?',
+      aiQuestion: 'Бывает ли, что сигарета ощущается как награда после сделанного дела?',
+      userAnswer: 'Нет, я вообще об этом не думаю.',
+      userAnswers: ['Нет, я вообще об этом не думаю.'],
+      cellClosed: false,
+    }],
+  };
+
+  const applied = applyGameMasterResult(session, definition, {
+    messageToUser: 'Тогда давайте иначе. Когда сигарета всё-таки ощущается как награда?',
+    question: 'Можете вспомнить случай, когда сигарета была наградой?',
+    hypothesisUpdates: [
+      { action: 'create', statement: 'Сигарета как награда после дела.' },
+      { action: 'weaken', text: 'человек говорит, что об этом не думает' },
+    ],
+  }, { userMessage: 'Нет, я вообще об этом не думаю.', event: 'user_answer' });
+
+  assert.equal(applied.diceReady, true);
+  assert.equal(applied.result.question, '');
+  assert.doesNotMatch(applied.message, /всё-таки ощущается|была наградой|конкретный пример/i);
+  assert.match(applied.message, /не туда|Хорошо|не про/i);
+  assert.equal(applied.session.hypotheses[0].status, HYPOTHESIS_STATUS.WEAKENED);
+});
+
+test('apply without a user_answer event still keeps a landing question', () => {
+  let session = createGameSession({ initialAnswer: 'Не знаю' });
+  session = {
+    ...session,
+    entered: true,
+    turnNumber: 1,
+    turns: [{
+      turnNumber: 1,
+      diceValue: 6,
+      fromPosition: 0,
+      toPosition: 1,
+      cellId: 'birth',
+      cellTitleShownToUser: 'Рождение',
+      userAnswer: 'Первую украл у отца',
+      affectedHypothesisIds: [],
+    }],
+  };
+
+  const applied = applyGameMasterResult(session, createDefinition(), {
+    messageToUser: 'Похоже, здесь может быть связь с тем, как сигарета вообще вошла в жизнь.',
+    question: 'Что от той первой осталось сегодня?',
+  });
+
+  assert.match(applied.result.question, /первой осталось/);
+  assert.match(applied.message, /первой осталось/);
+});
+
+test('system talk is stripped and a form-fill re-ask is detected', () => {
+  assert.equal(
+    stripSystemTalk('Вот это интересно. Запомню это как рабочую версию.'),
+    'Вот это интересно.',
+  );
+  assert.equal(
+    stripQuestions('Похоже, здесь больше усталости от самого курения. А что произошло прямо перед этим?'),
+    'Похоже, здесь больше усталости от самого курения.',
+  );
+  assert.equal(isFormFillReask(
+    'А что произошло прямо перед этим?',
+    'Вспомните недавний момент, когда вы решили не курить. Что происходило перед этим?',
+  ), true);
+  assert.equal(isFormFillReask(
+    'Что именно в самом курении тебя начало утомлять?',
+    'Вспомните недавний момент, когда вы решили не курить. Что происходило перед этим?',
+  ), false);
+  assert.match(
+    formatGameMasterContext(buildGameMasterContext({
+      session: createGameSession(),
+      extra: { event: 'user_answer' },
+      userMessage: 'устал вроде от сигарет',
+    })),
+    /ПОСЛЕДНЕМУ ответу|живой диалог/i,
+  );
 });
 
 test('structured result keeps a single question and applies hypothesis updates', () => {

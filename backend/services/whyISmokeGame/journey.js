@@ -2,10 +2,12 @@ import { HANDOFF_COPY, GAME_PHASE, SESSION_STATUS } from './constants.js';
 import { createDefinition, getCellBySlot } from './definition.js';
 import { firstVisitQuestion } from './firstVisit.js';
 import { describeMove } from './movement.js';
+import { composeMasterMessage, shapeCellDialogue } from './master/result.js';
 import { runGameMasterTurn } from './master/run.js';
 import {
   applyDiceRoll,
   canApplyDiceRoll,
+  closeCurrentCell,
   createGameSession,
   currentTurn,
   normalizeGameSession,
@@ -255,12 +257,13 @@ export async function handleWhyISmokePhase({
   }
 
   const turn = currentTurn(session);
-  const awaitingAnswer = turn && turn.cellId && !turn.userAnswer;
-  if (awaitingAnswer) {
+  const cellOpen = Boolean(turn?.cellId && !turn.cellClosed);
+  const firstReply = cellOpen && !turn.userAnswer;
+  if (cellOpen) {
     try {
       session = recordUserAnswer(session, msg);
     } catch {
-      // already recorded — continue
+      // continue even if the reply was already stored
     }
   }
 
@@ -269,7 +272,7 @@ export async function handleWhyISmokePhase({
     session,
     definition,
     userMessage: msg,
-    extra: { event: awaitingAnswer ? 'user_answer' : 'follow_up' },
+    extra: { event: firstReply ? 'user_answer' : 'follow_up' },
   });
 }
 
@@ -301,11 +304,30 @@ async function beginFirstTurn({ runMaster, definition, userId, roll, userMessage
   });
 }
 
-async function callMaster({ runMaster, session, definition, userMessage, extra, appendHandoffCopy = false }) {
+async function callMaster({ runMaster, session, definition, userMessage, extra = {}, appendHandoffCopy = false }) {
   try {
     const master = await runMaster({ session, definition, userMessage, extra });
-    const next = master.session || session;
+    let next = master.session || session;
     let response = master.message || 'Продолжим.';
+    let diceReady = master.diceReady === true;
+    if ((extra.event === 'user_answer' || extra.event === 'follow_up') && next.phase === GAME_PHASE.PLAYING) {
+      const turn = currentTurn(next);
+      const shaped = shapeCellDialogue({
+        messageToUser: response,
+        question: '',
+        diceReady,
+      }, {
+        openingQuestion: turn?.openingQuestion || turn?.aiQuestion || '',
+        userMessage,
+        event: extra.event,
+        exchangeCount: (turn?.userAnswers || []).length,
+      });
+      response = composeMasterMessage(shaped) || response;
+      diceReady = shaped.diceReady === true;
+    }
+    if (diceReady && next.phase === GAME_PHASE.PLAYING && !currentTurn(next)?.cellClosed) {
+      next = closeCurrentCell(next);
+    }
     if ((appendHandoffCopy || master.handoff) && next.handoff?.transition?.message) {
       if (!response.includes(next.handoff.transition.message)) {
         response = `${response}\n\n${next.handoff.transition.message}`;
@@ -316,7 +338,7 @@ async function callMaster({ runMaster, session, definition, userMessage, extra, 
       response,
       session: next,
       definition,
-      diceReady: master.diceReady === true,
+      diceReady,
       pendingInitialAnswer: '',
       master,
     });
@@ -325,7 +347,7 @@ async function callMaster({ runMaster, session, definition, userMessage, extra, 
     const diceReady = canApplyDiceRoll(session);
     return pack({
       kind: 'error',
-      response: fallbackMasterMessage(session, definition, extra, diceReady),
+      response: fallbackMasterMessage(session, definition, extra, diceReady, userMessage),
       session,
       definition,
       diceReady,
@@ -334,10 +356,13 @@ async function callMaster({ runMaster, session, definition, userMessage, extra, 
   }
 }
 
-function fallbackMasterMessage(session, definition, extra, diceReady) {
+function fallbackMasterMessage(session, definition, extra, diceReady, userMessage = '') {
   const cell = getCellBySlot(definition, session?.currentPosition);
   if (extra?.event === 'new_cell' && cell) {
     return firstVisitQuestion(cell);
+  }
+  if (extra?.event === 'user_answer' || extra?.event === 'follow_up') {
+    return 'Не получилось продолжить. Напиши ещё раз — останемся в этой теме.';
   }
   if (diceReady) {
     return 'Не получилось продолжить. Напиши ещё раз или брось кубик.';

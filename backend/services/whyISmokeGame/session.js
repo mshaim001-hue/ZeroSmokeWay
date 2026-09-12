@@ -91,7 +91,7 @@ export function canApplyDiceRoll(session) {
   if (session.phase === GAME_PHASE.FINAL_REALITY_CHECK || session.phase === GAME_PHASE.MIRROR) return false;
   const turn = currentTurn(session);
   if (!turn || !turn.cellId) return true;
-  return Boolean(turn.userAnswer);
+  return turn.cellClosed === true;
 }
 
 export function applyDiceRoll(session, definition, diceValue) {
@@ -121,7 +121,10 @@ export function applyDiceRoll(session, definition, diceValue) {
     revisit: move.revisit,
     aiObservation: null,
     aiQuestion: null,
+    openingQuestion: null,
     userAnswer: null,
+    userAnswers: [],
+    cellClosed: false,
     affectedHypothesisIds: [],
     timestamp: nowIso(),
   };
@@ -149,10 +152,12 @@ export function applyDiceRoll(session, definition, diceValue) {
 export function recordNarration(session, { observation, question } = {}) {
   const state = normalizeGameSession(session);
   const turn = requireOpenTurn(state);
+  const nextQuestion = question ? String(question).trim().slice(0, 500) : '';
   const updated = {
     ...turn,
     aiObservation: observation ? String(observation).trim().slice(0, 2000) : turn.aiObservation,
-    aiQuestion: question ? String(question).trim().slice(0, 500) : turn.aiQuestion,
+    aiQuestion: nextQuestion || turn.aiQuestion,
+    openingQuestion: turn.openingQuestion || nextQuestion || null,
   };
   const next = replaceCurrentTurn(state, updated);
   if (updated.cellId && updated.aiQuestion) {
@@ -175,17 +180,31 @@ export function recordUserAnswer(session, answer) {
   if (!text) {
     throw new Error('userAnswer is required');
   }
-  const updated = { ...turn, userAnswer: text.slice(0, 4000) };
+  const clipped = text.slice(0, 4000);
+  const userAnswers = [...(turn.userAnswers || []).filter(Boolean), clipped].slice(-12);
+  const updated = {
+    ...turn,
+    userAnswer: clipped,
+    userAnswers,
+    cellClosed: false,
+  };
   const next = replaceCurrentTurn(state, updated);
   if (updated.cellId) {
-    next.cellVisits = rememberCellAnswer(next.cellVisits, updated.cellId, updated.userAnswer, updated.turnNumber);
+    next.cellVisits = rememberCellAnswer(next.cellVisits, updated.cellId, clipped, updated.turnNumber);
   }
   next.conversation = appendConversation(next.conversation, {
     role: 'user',
-    text: updated.userAnswer,
+    text: clipped,
     turnNumber: turn.turnNumber,
   });
   return touch(next);
+}
+
+export function closeCurrentCell(session) {
+  const state = normalizeGameSession(session);
+  const turn = currentTurn(state);
+  if (!turn) return state;
+  return touch(replaceCurrentTurn(state, { ...turn, cellClosed: true }));
 }
 
 export function addSessionHypothesis(session, input) {
@@ -465,7 +484,12 @@ function normalizeTurn(raw) {
     revisit: Boolean(raw?.revisit),
     aiObservation: raw?.aiObservation ? String(raw.aiObservation) : null,
     aiQuestion: raw?.aiQuestion ? String(raw.aiQuestion) : null,
-    userAnswer: raw?.userAnswer ? String(raw.userAnswer) : null,
+    openingQuestion: raw?.openingQuestion ? String(raw.openingQuestion) : (raw?.aiQuestion ? String(raw.aiQuestion) : null),
+    userAnswer: raw?.userAnswer ? String(raw.userAnswer) : (Array.isArray(raw?.userAnswers) ? String(raw.userAnswers.at(-1) || '') || null : null),
+    userAnswers: Array.isArray(raw?.userAnswers)
+      ? raw.userAnswers.map((item) => String(item).trim()).filter(Boolean).slice(-12)
+      : (raw?.userAnswer ? [String(raw.userAnswer)] : []),
+    cellClosed: raw?.cellClosed === true || (raw?.cellClosed !== false && !Array.isArray(raw?.userAnswers) && Boolean(raw?.userAnswer)),
     affectedHypothesisIds: Array.isArray(raw?.affectedHypothesisIds) ? raw.affectedHypothesisIds.map(String) : [],
     timestamp: typeof raw?.timestamp === 'string' ? raw.timestamp : nowIso(),
   };
