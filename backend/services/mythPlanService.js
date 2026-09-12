@@ -33,7 +33,7 @@ sections: 3–5 частей. Каждая content — готовый текст
  * Генерирует индивидуальный план развенчания мифов — «RAG» для агента Карра.
  * @param {{ conversationHistory: Array, carrCoverage: object }} params
  */
-export async function generateMythPlan({ conversationHistory = [], carrCoverage = {}, journeySummary = null }) {
+export async function generateMythPlan({ conversationHistory = [], carrCoverage = {}, journeySummary = null, stage2Handoff = null }) {
   const transcript = conversationHistory
     .map((m) => (m.isUser ? 'Человек' : 'Зеркало') + ': ' + (m.text || ''))
     .join('\n');
@@ -48,6 +48,9 @@ export async function generateMythPlan({ conversationHistory = [], carrCoverage 
           `Переписка Лилы:\n${transcript.slice(0, 120000)}\n\n` +
           `Структурированные данные (carrCoverage):\n${JSON.stringify(carrCoverage, null, 2)}\n\n` +
           `Принятый человеком итог игры: ${journeySummary || 'не передан'}.\n` +
+          (stage2Handoff
+            ? `Handoff этапа 1 (не спорь с этими утверждениями, разбери их):\n${JSON.stringify(stage2Handoff, null, 2)}\n`
+            : '') +
           'Поправки человека важнее прежних гипотез ведущего. Отвергнутые гипотезы не включай в план.',
       },
     ],

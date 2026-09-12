@@ -32,25 +32,6 @@ export function formatAuthContextForPrompt(ctx) {
 }
 
 /**
- * Доп. правила для агента анамнеза (гость / залогинен).
- */
-export function formatAnamnesisAuthRules(ctx) {
-  if (ctx.isAuthenticated) {
-    return [
-      '',
-      '=== ЛИЛА: авторизованный пользователь ===',
-      '- Веди игру по правилам. Напоминание про вход не нужно (человек уже в аккаунте).',
-    ].join('\n');
-  }
-
-  return [
-    '',
-    '=== ЛИЛА: гость ===',
-    '- Веди игру по правилам. Без аккаунта история живёт только в этом браузере; при входе сохранится на сервер — при уместности напомни мягко, без давления каждый раз.',
-  ].join('\n');
-}
-
-/**
  * Короткие правила для myth_buster и support.
  */
 export function formatSecondaryAgentAuthRules(agentType, ctx) {

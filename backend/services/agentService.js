@@ -1,17 +1,10 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { getAgentPrompt } from './agentConfig.js';
-import { handleAdaptiveAnamnesis, isAnamnesisComplete } from './adaptiveAnamnesisService.js';
 import { analyzeResponseWithSubAgents } from './subAgentService.js';
 import { createCompactContext } from './contextManagerService.js';
-import { finalizeAnamnesisCoverage } from './anamnesisCoverage.js';
-import { prepareLilaDialogContext } from './lilaDialogMemory.js';
-import { extractLilaCoverage } from './lilaExtraction.js';
-import { normalizeLilaResearch, updateLilaResearch } from './lilaResearch.js';
-import { normalizeJourneySummary } from './lilaCompletion.js';
 import {
   formatAuthContextForPrompt,
-  formatAnamnesisAuthRules,
   formatSecondaryAgentAuthRules,
 } from './authContext.js';
 
@@ -27,11 +20,8 @@ export async function handleAgentRequest({
   conversationHistory,
   anamnesisData,
   userProfile,
-  useAdaptiveMode = false,
   orchestratorInstruction = null,
   authContext = null,
-  phase = null,
-  lilaContext = null,
   mythPlan = null,
   pledgeText = null,
 }) {
@@ -40,49 +30,14 @@ export async function handleAgentRequest({
     userTurnCount: conversationHistory.filter((m) => m.isUser).length,
     assistantTurnCount: conversationHistory.filter((m) => !m.isUser).length,
   };
-  const authSystemBlock = `${formatAuthContextForPrompt(auth)}${agentType === 'anamnesis' ? formatAnamnesisAuthRules(auth) : formatSecondaryAgentAuthRules(agentType, auth)}`;
-
-  if (agentType === 'anamnesis' && useAdaptiveMode) {
-    const previousCoverage = anamnesisData?.coverage || null;
-    const previousExtractedData = anamnesisData?.extractedData || anamnesisData || null;
-
-    const result = await handleAdaptiveAnamnesis({
-      message,
-      conversationHistory,
-      previousExtractedData,
-      previousCoverage,
-      authSystemBlock,
-    });
-
-    const complete = isAnamnesisComplete(result.coverage);
-
-    return {
-      ...result,
-      isComplete: complete,
-      extractedData: result.extractedData || previousExtractedData,
-    };
-  }
-
-  const promptKey = agentType;
-  const systemPrompt = await getAgentPrompt(promptKey);
+  const authSystemBlock = `${formatAuthContextForPrompt(auth)}${formatSecondaryAgentAuthRules(agentType, auth)}`;
+  const systemPrompt = await getAgentPrompt(agentType);
 
   if (!systemPrompt) throw new Error(`Unknown agent: ${agentType}`);
 
-  const isLila = agentType === 'anamnesis';
-  let historyToUse = conversationHistory;
-  let lilaDialogMemory = null;
-
-  if (isLila) {
-    const lilaDialogPrep = await prepareLilaDialogContext({
-      conversationHistory,
-      anamnesisData,
-      visitedCells: anamnesisData?.lilaState?.visitedCells,
-    });
-    historyToUse = lilaDialogPrep.recentMessages;
-    lilaDialogMemory = lilaDialogPrep.lilaDialogMemory;
-  } else if (conversationHistory.length > 20) {
-    historyToUse = createCompactContext(conversationHistory, agentType).messages;
-  }
+  const historyToUse = conversationHistory.length > 20
+    ? createCompactContext(conversationHistory, agentType).messages
+    : conversationHistory;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -93,25 +48,8 @@ export async function handleAgentRequest({
     messages.push({ role: 'system', content: `Контекст юзера: ${JSON.stringify(userProfile)}` });
   }
 
-  if (isLila) {
-    messages.push({
-      role: 'system',
-      content:
-        `Состояние игры: ${JSON.stringify(anamnesisData?.lilaState ?? {})}\n` +
-        `КАРТА ИССЛЕДОВАНИЯ: ${JSON.stringify(normalizeLilaResearch(anamnesisData?.lilaResearch))}\n` +
-        `Предыдущий предложенный итог (его можно поправить): ${anamnesisData?.lilaJourneySummary || 'пока нет'}`,
-    });
-    if (lilaDialogMemory?.lilaDialogSummary) {
-      messages.push({
-        role: 'system',
-        content: `=== РЕЗЮМЕ РАННЕГО ДИАЛОГА ===\n${lilaDialogMemory.lilaDialogSummary}`,
-      });
-    }
-    if (lilaContext) {
-      messages.push({ role: 'system', content: lilaContext });
-    }
-  } else if (anamnesisData) {
-    messages.push({ role: 'system', content: `Данные из Лилы: ${JSON.stringify(anamnesisData)}` });
+  if (anamnesisData) {
+    messages.push({ role: 'system', content: `Данные из этапа 1: ${JSON.stringify(anamnesisData)}` });
   }
 
   if (agentType === 'support' && mythPlan) {
@@ -139,26 +77,18 @@ export async function handleAgentRequest({
 
   try {
     const model = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
-    const [completion, extractedCoverage] = await Promise.all([
-      openai.chat.completions.create({
-        model,
-        messages,
-        response_format: { type: 'json_object' },
-      }),
-      isLila ? extractLilaCoverage({
-        openai, model, message, history: historyToUse,
-        priorCoverage: finalizeAnamnesisCoverage(anamnesisData).carrCoverage,
-      }) : Promise.resolve(null),
-    ]);
+    const completion = await openai.chat.completions.create({
+      model,
+      messages,
+      response_format: { type: 'json_object' },
+    });
 
     const parsed = JSON.parse(completion.choices[0].message.content);
-
     let finalResponse = parsed.message;
-    const journeySummary = isLila ? normalizeJourneySummary(parsed.journeySummary) : undefined;
     let analysisResults = null;
 
     const useSubAgents = process.env.USE_SUB_AGENTS === 'true';
-    if (useSubAgents && !isLila) {
+    if (useSubAgents) {
       const analysis = await analyzeResponseWithSubAgents({
         agentResponse: finalResponse,
         agentType,
@@ -175,15 +105,11 @@ export async function handleAgentRequest({
 
     return {
       response: finalResponse,
-      extractedData: isLila ? extractedCoverage : parsed.extractedData,
+      extractedData: parsed.extractedData,
       extractedProfile: parsed.extractedProfile,
       currentStep: parsed.currentStep,
-      diceReady: isLila ? parsed.diceReady === true : undefined,
-      journeySummary,
-      lilaResearch: isLila ? updateLilaResearch(anamnesisData?.lilaResearch, parsed.lilaResearch) : undefined,
-      lilaDialogMemory,
       analysis: analysisResults,
-      contextCompacted: !isLila && conversationHistory.length > 20,
+      contextCompacted: conversationHistory.length > 20,
     };
   } catch (error) {
     console.error('AI Error:', error);

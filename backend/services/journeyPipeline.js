@@ -9,20 +9,14 @@ import {
   normalizeMythProgress,
   looksLikePledge,
 } from './mythPlanService.js';
-import {
-  applyLilaMove,
-  formatLilaMoveForAgent,
-  normalizeLilaState,
-  describeLilaBoard,
-} from './lilaBoard.js';
-import { buildLilaInstruction, resolveDiceReady, looksLikeReadinessConfirmation } from './lilaOrchestration.js';
-import { updateLilaResearch } from './lilaResearch.js';
 import { scheduleEmailSequence } from './emailSequenceService.js';
-import { acceptsLilaSummary, updateLilaSummary } from './lilaCompletion.js';
-
-function isDiceRollMessage(text) {
-  return /^🎲\s*[1-6]$/.test(String(text || '').trim());
-}
+import {
+  acceptsStage2Handoff,
+  handleWhyISmokePhase,
+  normalizeCompatBoardState,
+  readHandoff,
+  updateJourneySummary,
+} from './whyISmokeGame/journey.js';
 
 function isMythContinueMessage(text) {
   const t = String(text || '').trim().toLowerCase();
@@ -81,11 +75,10 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
   const authContext = await resolveAuthContext(authorizationHeader, conversationHistory);
   const msg = message.trim();
 
-  let lilaState = normalizeLilaState(rawLilaState ?? anamnesisData?.lilaState);
+  let lilaState = normalizeCompatBoardState(rawLilaState ?? anamnesisData?.lilaState);
   let mythPlan = normalizeMythPlan(rawMythPlan ?? anamnesisData?.mythPlan);
   let updatedMythProgress = normalizeMythProgress(mythProgress);
   let pledgeText = priorPledgeText ?? anamnesisData?.pledgeText ?? null;
-  let lilaMoveContext = null;
   let diceReady = false;
 
   const priorSnapshot = finalizeAnamnesisCoverage(anamnesisData);
@@ -248,78 +241,42 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
     };
   }
 
-  // --- Фаза Лилы ---
-  let effectivePhase = phase;
-  let currentMove = null;
-
-  if (isLilaPhase(phase) && isDiceRollMessage(msg)) {
-    const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
-    const from = lilaState.position;
-    currentMove = applyLilaMove(lilaState, roll);
-    lilaState = {
-      position: currentMove.position,
-      gameEntered: currentMove.gameEntered,
-      visitedCells: currentMove.visitedCells,
-      lastMove: { from, roll },
-    };
-    lilaMoveContext = formatLilaMoveForAgent(currentMove);
-  }
-
-  // Mechanical facts survive later questions and page reloads.
-  const lilaBoardStatus = describeLilaBoard(lilaState);
-  lilaMoveContext = `${lilaMoveContext || ''}\nТОЧНАЯ МЕХАНИКА (не интерпретация):\n${lilaBoardStatus}`;
-
-  const orchestratorInstruction = buildLilaInstruction({
-    lilaState,
+  // --- Этап 1: why_i_smoke_game ---
+  let effectivePhase = phase === PHASES.WELCOME ? PHASES.ANAMNESIS : phase;
+  const game = await handleWhyISmokePhase({
     message: msg,
-    move: currentMove,
-    gameEntered: lilaState.gameEntered,
-  });
-
-  const summaryAccepted = isLilaPhase(phase) && acceptsLilaSummary(msg, priorSnapshot);
-  const mechanicalReply = !lilaState.gameEntered && looksLikeReadinessConfirmation(msg)
-    ? 'Начнём. Брось кубик — для входа нужна шестёрка.'
-    : currentMove?.entryAttempt && !currentMove.entrySuccess
-      ? 'Для входа нужна шестёрка. Можно бросить ещё раз.' : null;
-  const agentResult = summaryAccepted ? { response: '', extractedData: null }
-    : mechanicalReply ? { response: mechanicalReply, diceReady: true, extractedData: null }
-    : await handleAgentRequest({
-    message: msg,
-    agentType: 'anamnesis',
+    anamnesis: priorSnapshot,
     conversationHistory,
-    anamnesisData: { ...priorSnapshot, lilaState },
-    userProfile,
-    useAdaptiveMode: false,
-    orchestratorInstruction,
-    authContext,
-    phase,
-    lilaContext: lilaMoveContext,
+    userId: authContext.userId,
   });
 
-  diceReady = resolveDiceReady({
-    agentDiceReady: agentResult.diceReady,
-    lilaState,
-    message: msg,
-    move: currentMove,
-  });
+  const summaryAccepted = isLilaPhase(phase) && (
+    game.kind === 'handoff_accept' || acceptsStage2Handoff(msg, {
+      ...priorSnapshot,
+      whyISmokeGame: game.session,
+      stage2Handoff: game.handoff || priorSnapshot.stage2Handoff,
+    })
+  );
 
-  let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, agentResult.extractedData);
+  diceReady = game.diceReady === true;
+  lilaState = game.lilaState || lilaState;
+
+  let mergedAnamnesis = mergeAnamnesisWithCoverage(anamnesisData, null);
   mergedAnamnesis = finalizeAnamnesisCoverage(mergedAnamnesis);
-  if (!summaryAccepted) {
-    mergedAnamnesis = updateLilaSummary(mergedAnamnesis, agentResult.journeySummary);
-  }
+  mergedAnamnesis = updateJourneySummary(mergedAnamnesis, game.journeySummary);
   mergedAnamnesis.lilaState = lilaState;
-  mergedAnamnesis.lilaBoardStatus = lilaBoardStatus;
-  mergedAnamnesis.lilaResearch = updateLilaResearch(priorSnapshot.lilaResearch, agentResult.lilaResearch);
-  if (agentResult.lilaDialogMemory) {
-    mergedAnamnesis.lilaDialogSummary = agentResult.lilaDialogMemory.lilaDialogSummary;
-    mergedAnamnesis.lilaSummarizedPairCount = agentResult.lilaDialogMemory.lilaSummarizedPairCount;
-  }
+  mergedAnamnesis.lilaBoardStatus = game.boardStatus;
+  mergedAnamnesis.whyISmokeGame = game.session;
+  mergedAnamnesis.pendingInitialAnswer = game.pendingInitialAnswer || '';
+  mergedAnamnesis.stage2Handoff = game.handoff || readHandoff(mergedAnamnesis);
 
   if (summaryAccepted) {
     effectivePhase = PHASES.MYTH_BUSTING;
+  } else if (isLilaPhase(phase)) {
+    effectivePhase = PHASES.ANAMNESIS;
   }
 
+  const agentResult = { response: game.response, extractedData: null };
   let response = agentResult.response;
 
   // Переход в myth_busting: генерируем план и сразу выдаём первую секцию
@@ -328,11 +285,13 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
       mythPlan = await generateMythPlan({
         conversationHistory, carrCoverage: mergedAnamnesis.carrCoverage,
         journeySummary: mergedAnamnesis.lilaJourneySummary,
+        stage2Handoff: mergedAnamnesis.stage2Handoff,
       });
     }
     mergedAnamnesis.mythPlan = mythPlan;
-    const intro =
-      'Итог игры принят. Теперь разберём убеждения, которые прозвучали в твоей истории.\n\n';
+    const intro = mergedAnamnesis.stage2Handoff?.transition?.message
+      ? `${mergedAnamnesis.stage2Handoff.transition.message}\n\n`
+      : 'Теперь разберём, действительно ли сигарета даёт то, что ты ей приписываешь.\n\n';
     const narrative = deliverMythNarrative(mythPlan, updatedMythProgress);
     updatedMythProgress = narrative.mythProgress;
     response = intro + (narrative.response || '');

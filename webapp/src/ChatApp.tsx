@@ -23,9 +23,9 @@ const PHASE_WELCOME = 'welcome';
 
 const LILA_WELCOME =
   'Добро пожаловать в пространство Лилы.\n\n' +
-  'Я — Зеркало, твой ведущий. Клетки игры помогут посмотреть на знакомую привычку с разных сторон. Твои слова будут определять, куда пойдёт разговор.\n\n' +
-  'Намерение игры уже задано: «Почему я до сих пор курю?»\n\n' +
-  'Здесь можно не знать ответа, не соглашаться со мной и рассказывать столько, сколько хочется. Кубик бросаешь ты.\n\n' +
+  'Я — Зеркало, твой ведущий. Мы будем исследовать вопрос «Почему я до сих пор курю?» — не как тест и не как анкету.\n\n' +
+  'Ход простой: ты бросаешь кубик, выпадает клетка, я смотрю на путь, который уже сложился, и задаю один вопрос. Твой ответ меняет гипотезу. Я не знаю правильного ответа заранее.\n\n' +
+  'Если клетка не про тебя — так и скажи. Это тоже результат.\n\n' +
   'Когда будешь готов — нажми «Начать игру». Можно сначала рассказать о себе.';
 
 function isLilaPhase(phase: string) {
@@ -37,7 +37,18 @@ function isMythPhase(phase: string) {
 }
 
 const MYTH_CONTINUE = '▶ Продолжить';
-const LILA_FINISH = 'Перейти к разбору мифов';
+const LILA_FINISH = 'Перейти к разбору';
+
+function readStage2Handoff(anamnesis: Record<string, unknown> | null) {
+  if (!anamnesis || typeof anamnesis !== 'object') return null;
+  const direct = anamnesis.stage2Handoff;
+  if (direct && typeof direct === 'object') return direct as Record<string, unknown>;
+  const game = anamnesis.whyISmokeGame;
+  if (game && typeof game === 'object' && (game as { handoff?: unknown }).handoff) {
+    return (game as { handoff: Record<string, unknown> }).handoff;
+  }
+  return null;
+}
 
 /**
  * Регистрация предлагается по вовлечённости, не по таймеру.
@@ -537,8 +548,8 @@ export function ChatApp() {
 
   const inLila = isLilaPhase(phase);
   const inMyth = isMythPhase(phase);
-  const canFinishLila = inLila && typeof anamnesis?.lilaJourneySummary === 'string' &&
-    anamnesis.lilaJourneySummary.trim().length > 0;
+  const stage2Handoff = readStage2Handoff(anamnesis);
+  const canFinishLila = inLila && Boolean(stage2Handoff);
   const botSenderName = inLila ? 'Зеркало' : inMyth ? 'Карр' : 'Алекс';
   const showMythContinue = inMyth && !awaitingPledge && !loading && !bootstrapping;
 
@@ -820,10 +831,19 @@ export function ChatApp() {
                   </button>
                 )}
                 {canFinishLila && (
-                  <section className="lila-summary" aria-label="Итог игры">
-                  <strong>Итог игры</strong>
-                  <p>{String(anamnesis?.lilaJourneySummary)}</p>
-                  <p>Можно поправить итог в сообщении, бросить кубик и продолжить игру или перейти к разбору мифов.</p>
+                  <section className="lila-summary" aria-label="Переход к разбору">
+                  <strong>Дальше</strong>
+                  <p>{String(
+                    (stage2Handoff?.transition && typeof stage2Handoff.transition === 'object'
+                      ? (stage2Handoff.transition as { message?: string }).message
+                      : null)
+                    || anamnesis?.lilaJourneySummary
+                    || 'Теперь мы лучше понимаем, что сигарета делает для тебя.',
+                  )}</p>
+                  {typeof stage2Handoff?.userFinalExplanation === 'string' && stage2Handoff.userFinalExplanation.trim() ? (
+                    <p>{stage2Handoff.userFinalExplanation}</p>
+                  ) : null}
+                  <p>Этап 2 не начнётся сам. Когда будешь готов — перейди к разбору.</p>
                   <button
                     type="button"
                     className="btn btn--secondary myth-continue-btn"
