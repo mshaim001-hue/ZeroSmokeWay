@@ -12,7 +12,7 @@ import {
   updateSessionHypothesis,
 } from '../session.js';
 import { composeMasterMessage, normalizeGameMasterResult } from './result.js';
-import { evaluateSaturation } from './saturation.js';
+import { evaluateSaturation, leadingHypothesisHeld } from './saturation.js';
 import { lastPersonalizedTurnNumber, resolvePersonalizedTitle } from './titles.js';
 
 export function applyGameMasterResult(session, definition, rawResult, { userMessage = '' } = {}) {
@@ -85,24 +85,40 @@ export function applyGameMasterResult(session, definition, rawResult, { userMess
   };
 
   if (state.status !== 'completed') {
-    if (saturation.readyForMirror && (state.phase === GAME_PHASE.REALITY_CHECK || result.userRecognizesHypothesis)) {
-      state = setGamePhase(state, GAME_PHASE.MIRROR);
-    } else if (result.shouldRealityCheck || saturation.shouldRealityCheck) {
-      if (state.phase === GAME_PHASE.PLAY || state.phase === GAME_PHASE.CIRCLING) {
-        state = setGamePhase(state, GAME_PHASE.REALITY_CHECK);
-      }
-    } else if (saturation.shouldOfferCircling) {
-      state = setGamePhase(state, GAME_PHASE.CIRCLING);
-    }
+    state = advancePhase(state, result, saturation);
   }
+
+  const canRoll = state.phase === GAME_PHASE.PLAYING
+    && state.status === 'active'
+    && Boolean(currentTurn(state)?.userAnswer || !currentTurn(state)?.cellId);
 
   return {
     session: state,
     result,
     message,
     saturation,
-    diceReady: result.diceReady && state.phase !== GAME_PHASE.MIRROR && state.phase !== GAME_PHASE.REALITY_CHECK,
+    diceReady: canRoll,
   };
+}
+
+function advancePhase(state, result, saturation) {
+  if (state.phase === GAME_PHASE.FINAL_REALITY_CHECK && state.finalRealityCheckPending) {
+    const resolved = { ...state, finalRealityCheckPending: false };
+    if (saturation.hardLimitReached || leadingHypothesisHeld(resolved, result)) {
+      return setGamePhase(resolved, GAME_PHASE.MIRROR);
+    }
+    return setGamePhase(resolved, GAME_PHASE.PLAYING);
+  }
+
+  const turnAnswered = Boolean(currentTurn(state)?.userAnswer);
+  if (
+    state.phase === GAME_PHASE.PLAYING
+    && turnAnswered
+    && (result.shouldRealityCheck || saturation.shouldFinalRealityCheck)
+  ) {
+    return setGamePhase({ ...state, finalRealityCheckPending: true }, GAME_PHASE.FINAL_REALITY_CHECK);
+  }
+  return state;
 }
 
 function applyHypothesisUpdate(session, update) {

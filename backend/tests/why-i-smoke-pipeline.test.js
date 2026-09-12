@@ -47,39 +47,40 @@ mock.module('../services/mythPlanService.js', { namedExports: {
 } });
 const { runJourneyRequest } = await import('../services/journeyPipeline.js');
 
-test('start and failed entry rolls do not call the game master', async () => {
-  const before = masterCalls;
-  const started = await runJourneyRequest({ body: { message: 'Начать игру' } });
-  assert.equal(started.diceReady, true);
-  assert.equal(started.phase, 'anamnesis');
-  assert.match(started.response, /шестёрк/);
-  assert.equal(started.anamnesisState.whyISmokeGame.entered, false);
+function startBody() {
+  return {
+    message: 'Начать игру',
+    conversationHistory: [{ text: 'Потому что мне нравится', isUser: true }],
+    anamnesisData: { pendingInitialAnswer: 'Потому что мне нравится' },
+  };
+}
 
-  const failed = await runJourneyRequest({
-    body: { message: '🎲 4', phase: 'anamnesis', anamnesisData: started.anamnesisState },
-  });
-  assert.equal(masterCalls, before);
-  assert.equal(failed.diceReady, true);
-  assert.match(failed.anamnesisState.lilaBoardStatus, /Выпало 4 — нужна 6/);
+test('start without an initial answer does not open the dice', async () => {
+  const blocked = await runJourneyRequest({ body: { message: 'Начать игру' } });
+  assert.equal(blocked.diceReady, false);
+  assert.match(blocked.response, /Как ты сам сейчас отвечаешь/);
 });
 
-test('a successful entry calls the game master and stays in stage 1', async () => {
-  const started = await runJourneyRequest({ body: { message: 'Начать игру' } });
+test('any first roll after start calls the game master', async () => {
+  const started = await runJourneyRequest({ body: startBody() });
+  assert.equal(started.diceReady, true);
+  assert.equal(started.phase, 'anamnesis');
+  assert.match(started.response, /Брось кубик/);
+  assert.doesNotMatch(started.response, /шестёрк/);
+
   const before = masterCalls;
-  const entered = await runJourneyRequest({
-    body: { message: '🎲 6', phase: 'anamnesis', anamnesisData: started.anamnesisState },
+  const landed = await runJourneyRequest({
+    body: { message: '🎲 4', phase: 'anamnesis', anamnesisData: started.anamnesisState },
   });
   assert.equal(masterCalls, before + 1);
-  assert.equal(entered.phase, 'anamnesis');
-  assert.equal(entered.lilaState.position, 1);
-  assert.equal(entered.lilaState.gameEntered, true);
-  assert.equal(entered.diceReady, false);
-  assert.match(entered.response, /Наблюдение/);
-  assert.match(entered.anamnesisState.lilaBoardStatus, /Рождение/);
+  assert.equal(landed.phase, 'anamnesis');
+  assert.equal(landed.lilaState.position, 4);
+  assert.equal(landed.diceReady, false);
+  assert.match(landed.anamnesisState.lilaBoardStatus, /Не отпускаю/);
 });
 
 test('handoff CTA starts stage 2 only after the game is finished', async () => {
-  const started = await runJourneyRequest({ body: { message: 'Начать игру' } });
+  const started = await runJourneyRequest({ body: startBody() });
   const blocked = await runJourneyRequest({
     body: { message: 'Перейти к разбору', phase: 'anamnesis', anamnesisData: started.anamnesisState },
   });
@@ -88,7 +89,7 @@ test('handoff CTA starts stage 2 only after the game is finished', async () => {
   const handoff = {
     userFinalExplanation: 'Курю, чтобы разрешить паузу после задачи.',
     startNextStage: false,
-    transition: { message: 'действительно ли она всё это даёт?', cta: 'Перейти к разбору' },
+    transition: { message: 'действительно ли сигарета даёт тебе то, что ты ей приписываешь?', cta: 'Перейти к разбору' },
   };
   const finished = {
     ...started.anamnesisState,
@@ -110,6 +111,6 @@ test('handoff CTA starts stage 2 only after the game is finished', async () => {
   assert.equal(next.phase, 'myth_busting');
   assert.equal(receivedSummary, handoff.userFinalExplanation);
   assert.equal(receivedHandoff.userFinalExplanation, handoff.userFinalExplanation);
-  assert.match(next.response, /действительно ли она всё это даёт/);
+  assert.match(next.response, /действительно ли сигарета даёт/);
   assert.match(next.response, /Разбор/);
 });

@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   HYPOTHESIS_STATUS,
-  OVERSHOOT,
   SESSION_STATUS,
   addDiscoveredPattern,
   addSessionHypothesis,
@@ -10,6 +9,7 @@ import {
   applyDefinitionMove,
   applyDiceRoll,
   canApplyDiceRoll,
+  cellVisitHistory,
   completeGame,
   createDefinition,
   createGameSession,
@@ -24,6 +24,7 @@ import {
   sessionResearchView,
   toPublicHypothesis,
   updateSessionHypothesis,
+  wrapPosition,
 } from '../services/whyISmokeGame/index.js';
 
 function tinyBoard(overrides = {}) {
@@ -39,121 +40,123 @@ function tinyBoard(overrides = {}) {
     slotCount,
     cells,
     links: overrides.links ?? [],
-    overshoot: overrides.overshoot,
-    entryRoll: overrides.entryRoll,
     dice: overrides.dice,
   });
 }
 
 function play(definition, rolls, { answer = 'ок' } = {}) {
-  let session = createGameSession({ definition });
+  let session = createGameSession({ definition, initialAnswer: 'Не знаю' });
   for (const roll of rolls) {
     const result = applyDiceRoll(session, definition, roll);
     session = result.session;
-    if (result.move.entrySuccess || result.move.entered && result.move.cell) {
+    if (result.move.cell) {
       session = recordUserAnswer(session, answer);
     }
   }
   return session;
 }
 
-test('default definition is a configurable 24-cell investigation board', () => {
+test('default definition is a 23-cell investigation board without Mirror', () => {
   const definition = createDefinition();
   assert.equal(definition.id, 'why_i_smoke_game');
-  assert.equal(definition.board.slotCount, 24);
-  assert.equal(definition.board.cells.length, 24);
+  assert.equal(definition.board.slotCount, 23);
+  assert.equal(definition.board.cells.length, 23);
   assert.equal(definition.intention, 'Почему я до сих пор курю?');
   assert.equal(definition.narratorRules.oneQuestionPerTurn, true);
   assert.equal(definition.narratorRules.mayAdviseQuit, false);
   assert.ok(definition.narratorRules.forbidden.includes('новый автомат'));
-  assert.deepEqual(listVisibleSlots(definition).map((s) => s.slot), Array.from({ length: 24 }, (_, i) => i + 1));
-  assert.equal(definition.board.cells[3].title, 'Пауза');
-  assert.match(definition.board.cells[3].aiInstruction, /не утверждай|склеилась|пауза/i);
+  assert.deepEqual(listVisibleSlots(definition).map((s) => s.title), [
+    'Рождение', 'Иллюзия', 'Гнев', 'Не отпускаю', 'Тело', 'Контроль',
+    'Вкус момента', 'Стимуляция', 'Пустота', 'Фантазия', 'Награда', 'Автомат',
+    'Вина', 'Окружение', 'Печаль', 'Бунт', 'Баланс', 'Наблюдатель',
+    'Осознание', 'Проверка реальностью', 'Рационализация', 'Тьма', 'Внутреннее пространство',
+  ]);
+  assert.equal(definition.board.links.length, 0);
+  assert.equal('entryRoll' in definition, false);
+  assert.ok(!definition.board.cells.some((cell) => cell.id === 'mirror' || cell.title === 'Зеркало'));
+  assert.match(definition.board.cells[10].aiInstruction, /наград|пауз|завершен/i);
 });
 
-test('createGameSession starts off the board with empty research', () => {
+test('createGameSession starts in the game with empty research and no entry gate', () => {
   const session = createGameSession({ userId: 'user-1', initialAnswer: 'Не знаю' });
   assert.equal(session.status, SESSION_STATUS.ACTIVE);
   assert.equal(session.userId, 'user-1');
   assert.equal(session.currentPosition, 0);
-  assert.equal(session.entered, false);
+  assert.equal(session.entered, true);
+  assert.equal(session.phase, 'playing');
   assert.equal(session.turnNumber, 0);
-  assert.equal(session.initialIntention, 'Почему я до сих пор курю?');
   assert.equal(session.initialAnswer, 'Не знаю');
   assert.deepEqual(session.hypotheses, []);
-  assert.deepEqual(session.discoveredPatterns, []);
-});
-
-test('failed entry stays off the board and allows another roll', () => {
-  const definition = tinyBoard();
-  let { session, move, turn } = applyDiceRoll(createGameSession({ definition }), definition, 4);
-  assert.equal(move.entrySuccess, false);
-  assert.equal(session.currentPosition, 0);
-  assert.equal(session.entered, false);
-  assert.equal(turn.cellId, null);
   assert.equal(canApplyDiceRoll(session), true);
 });
 
-test('successful entry uses definition title and blocks the next roll until an answer', () => {
+test('first roll without a six lands on that cell', () => {
   const definition = tinyBoard();
-  let { session, move } = applyDiceRoll(createGameSession({ definition }), definition, 6);
-  assert.equal(move.entrySuccess, true);
-  assert.equal(session.currentPosition, 1);
-  assert.equal(currentTurn(session).cellTitleShownToUser, 'Клетка 1');
+  const { session, move } = applyDiceRoll(createGameSession({ definition }), definition, 2);
+  assert.equal(move.toPosition, 2);
+  assert.equal(session.currentPosition, 2);
+  assert.equal(currentTurn(session).cellTitleShownToUser, 'Клетка 2');
   assert.equal(canApplyDiceRoll(session), false);
-  assert.throws(() => applyDiceRoll(session, definition, 2), /waiting for an answer/);
+  assert.throws(() => applyDiceRoll(session, definition, 3), /waiting for an answer/);
+});
 
+test('a landed cell blocks the next roll until an answer', () => {
+  const definition = tinyBoard();
+  let { session } = applyDiceRoll(createGameSession({ definition }), definition, 4);
   session = recordNarration(session, {
     observation: 'Похоже, здесь может быть связь с началом.',
-    question: 'Как появилась первая сигарета?',
+    question: 'Что здесь от тебя?',
   });
   session = recordUserAnswer(session, 'На балконе у старшего брата');
   assert.equal(canApplyDiceRoll(session), true);
   assert.equal(currentTurn(session).userAnswer, 'На балконе у старшего брата');
-  assert.equal(session.conversation.length, 2);
 });
 
-test('arrows, snakes and bounce overshoot follow the definition, not hardcoded cells', () => {
-  const definition = tinyBoard({
-    links: [
-      { type: 'arrow', fromSlot: 3, toSlot: 6 },
-      { type: 'snake', fromSlot: 5, toSlot: 2 },
-    ],
+test('board wraps and ignores leftover snakes or ladders', () => {
+  assert.equal(wrapPosition(20, 2, 23), 22);
+  assert.equal(wrapPosition(20, 3, 23), 23);
+  assert.equal(wrapPosition(20, 4, 23), 1);
+  assert.equal(wrapPosition(22, 4, 23), 3);
+  assert.equal(wrapPosition(0, 5, 23), 5);
+
+  const definition = createDefinition();
+  const fromTwenty = applyDefinitionMove(definition, { position: 20 }, 4);
+  assert.equal(fromTwenty.toPosition, 1);
+  assert.equal(fromTwenty.wrapped, true);
+  assert.equal(fromTwenty.jump, null);
+
+  const withDeadLinks = tinyBoard({
+    links: [{ type: 'arrow', fromSlot: 3, toSlot: 6 }],
   });
-  let session = play(definition, [6]);
-  let result = applyDiceRoll(session, definition, 2);
-  assert.equal(result.move.landedSlot, 3);
-  assert.equal(result.move.jump.type, 'arrow');
-  assert.equal(result.session.currentPosition, 6);
-  assert.equal(result.turn.cellId, 'c6');
-
-  session = recordUserAnswer(result.session, 'дальше');
-  result = applyDiceRoll(session, definition, 5);
-  // 6 + 5 = 11 → bounce to 1
-  assert.equal(result.move.overshot, true);
-  assert.equal(result.session.currentPosition, 1);
-
-  const stay = tinyBoard({ overshoot: OVERSHOOT.STAY });
-  const fromFive = applyDefinitionMove(stay, { position: 5, entered: true }, 3);
-  assert.equal(fromFive.overshot, true);
-  assert.equal(fromFive.toPosition, 5);
-
-  session = play(definition, [6]);
-  session = recordUserAnswer(applyDiceRoll(session, definition, 4).session, 'змея');
-  // from 1 + 4 = 5 → snake to 2
-  const snake = applyDefinitionMove(definition, { position: 1, entered: true }, 4);
-  assert.equal(snake.jump.type, 'snake');
-  assert.equal(snake.toPosition, 2);
+  const moved = applyDefinitionMove(withDeadLinks, { position: 1 }, 2);
+  assert.equal(moved.toPosition, 3);
+  assert.equal(moved.jump, null);
 });
 
-test('30 and 36 slot boards are valid GameDefinitions', () => {
+test('revisiting a cell is allowed and keeps previous questions', () => {
+  const definition = tinyBoard({ slotCount: 6 });
+  let session = createGameSession({ definition, initialAnswer: 'Потому что нравится' });
+  session = applyDiceRoll(session, definition, 2).session;
+  session = recordNarration(session, { question: 'Есть ли ситуации, когда сигарета ощущается как награда?' });
+  session = recordUserAnswer(session, 'После задачи выхожу');
+  session = applyDiceRoll(session, definition, 6).session;
+  assert.equal(session.currentPosition, 2);
+  assert.equal(currentTurn(session).revisit, true);
+  const visit = cellVisitHistory(session, 'c2');
+  assert.equal(visit.count, 2);
+  assert.ok(visit.questions.some((q) => /награда/.test(q)));
+  assert.ok(visit.answers.some((a) => /задачи/.test(a)));
+});
+
+test('30 and 36 slot boards wrap instead of bouncing', () => {
   for (const slotCount of [30, 36]) {
     const definition = tinyBoard({ slotCount });
     assert.equal(definition.board.slotCount, slotCount);
-    const move = applyDefinitionMove(definition, { position: 0, entered: false }, 6);
-    assert.equal(move.toPosition, 1);
-    const later = applyDefinitionMove(definition, { position: slotCount - 1, entered: true }, 3);
-    assert.ok(later.toPosition >= 1 && later.toPosition <= slotCount);
+    const first = applyDefinitionMove(definition, { position: 0 }, 6);
+    assert.equal(first.toPosition, 6);
+    const later = applyDefinitionMove(definition, { position: slotCount - 1 }, 3);
+    assert.equal(later.toPosition, 2);
+    assert.equal(later.wrapped, true);
   }
 });
 
@@ -218,7 +221,7 @@ test('discovered patterns may be incomplete trigger-action-function-belief chain
 
 test('status transitions: active → reflection → completed, with no rolls after lock', () => {
   const definition = tinyBoard();
-  let session = play(definition, [6]);
+  let session = play(definition, [2]);
   session = enterReflection(session);
   assert.equal(session.status, SESSION_STATUS.REFLECTION);
   assert.equal(canApplyDiceRoll(session), false);

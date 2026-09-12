@@ -18,7 +18,7 @@ export {
   getLinkFromSlot,
   listVisibleSlots,
 } from './definition.js';
-export { applyDefinitionMove, clampDiceValue, describeMove } from './movement.js';
+export { applyDefinitionMove, clampDiceValue, describeMove, wrapPosition } from './movement.js';
 export {
   createHypothesis,
   normalizeHypothesis,
@@ -43,6 +43,7 @@ export {
   enterReflection,
   resumePlay,
   completeGame,
+  cellVisitHistory,
   sessionResearchView,
   setDisplayTitle,
   setGamePhase,
@@ -57,6 +58,7 @@ export {
   composeMasterMessage,
   applyGameMasterResult,
   evaluateSaturation,
+  leadingHypothesisHeld,
   resolvePersonalizedTitle,
   buildMirror,
   buildFinalEcho,

@@ -11,17 +11,19 @@ export function evaluateSaturation(session, { aiPossible = false, userRecognizes
   const recognized = userRecognizes
     || state.userRecognizedHypothesisIds.some((id) => stable.some((h) => h.id === id))
     || stable.some((h) => h.hasBeenRealityChecked && h.status === HYPOTHESIS_STATUS.SUPPORTED);
-  const repeating = lastTurnsRepeat(answeredTurns);
-  const enoughTurns = turnCount >= SATURATION.SOFT_HINT_TURNS || aiPossible || hardLimitReached;
+  const repeating = lastTurnsRepeat(answeredTurns) || lastTurnsGiveNoNewInfo(answeredTurns);
+  const hasCounters = (state.hypotheses || []).some((h) => (h.counterEvidence || []).length > 0);
 
   const reasons = [];
   if (stable.length >= SATURATION.MIN_STABLE && stable.length <= SATURATION.MAX_STABLE) {
     reasons.push('stable_hypotheses');
   }
+  if (hasMultipleEpisodes(stable)) reasons.push('repeated_episodes');
   if (keyChecked) reasons.push('reality_checked');
   if (recognized) reasons.push('user_recognizes');
   if (repeating) reasons.push('repeating_turns');
-  if (hardLimitReached) reasons.push('hard_limit');
+  if (hasCounters) reasons.push('counterexamples');
+  if (hardLimitReached) reasons.push('safety_limit');
 
   const materialReady = stable.length >= SATURATION.MIN_STABLE
     && stable.length <= SATURATION.MAX_STABLE
@@ -30,31 +32,35 @@ export function evaluateSaturation(session, { aiPossible = false, userRecognizes
     && recognized
     && repeating;
 
-  const possible = (materialReady && enoughTurns) || (hardLimitReached && stable.length >= SATURATION.MIN_STABLE);
-  const readyForMirror = (materialReady && keyChecked && recognized)
-    || (hardLimitReached && state.phase === GAME_PHASE.REALITY_CHECK && (recognized || keyChecked))
-    || (hardLimitReached && state.saturation.circlingOffered && state.phase === GAME_PHASE.REALITY_CHECK);
-
-  const shouldOfferCircling = possible
-    && !readyForMirror
-    && !state.saturation.circlingOffered
-    && state.phase === GAME_PHASE.PLAY;
-
-  const shouldRealityCheck = (possible || state.phase === GAME_PHASE.CIRCLING)
-    && !readyForMirror
-    && (state.phase === GAME_PHASE.CIRCLING || state.saturation.circlingOffered)
-    && state.phase !== GAME_PHASE.MIRROR;
+  const possible = materialReady || (aiPossible && stable.length >= SATURATION.MIN_STABLE && repeating && recognized);
+  const shouldFinalRealityCheck = (possible && state.phase === GAME_PHASE.PLAYING)
+    || (hardLimitReached && state.phase === GAME_PHASE.PLAYING);
 
   return {
     possible,
-    readyForMirror,
-    shouldOfferCircling,
-    shouldRealityCheck,
+    readyForMirror: false,
+    shouldFinalRealityCheck,
+    shouldRealityCheck: shouldFinalRealityCheck,
+    shouldOfferCircling: false,
     hardLimitReached,
     turnCount,
     stableHypotheses: stable.map((h) => h.id),
     reasons,
   };
+}
+
+export function leadingHypothesisHeld(session, result = {}) {
+  if (result.userRecognizesHypothesis) return true;
+  const state = normalizeGameSession(session);
+  const stable = stableHypotheses(state);
+  const discardedNow = (result.hypothesisUpdates || []).some((item) => (
+    item.action === 'discard' || item.action === 'weaken'
+  ));
+  if (stable.length === 0) return false;
+  if (discardedNow && !stable.some((h) => h.status === HYPOTHESIS_STATUS.SUPPORTED)) {
+    return false;
+  }
+  return true;
 }
 
 export function stableHypotheses(session) {
@@ -86,6 +92,12 @@ function lastTurnsRepeat(answeredTurns) {
   const texts = window.map((turn) => normalizeRepeatText(turn.userAnswer));
   const sameText = texts[0] && texts.every((text) => text === texts[0] || looksLikeRepeat(text));
   return sameIds || sameText;
+}
+
+function lastTurnsGiveNoNewInfo(answeredTurns) {
+  const window = answeredTurns.slice(-SATURATION.REPEAT_WINDOW);
+  if (window.length < SATURATION.REPEAT_WINDOW) return false;
+  return window.every((turn) => looksLikeRepeat(normalizeRepeatText(turn.userAnswer)));
 }
 
 function normalizeRepeatText(text) {

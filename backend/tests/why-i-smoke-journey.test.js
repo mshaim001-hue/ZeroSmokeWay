@@ -10,72 +10,83 @@ import {
 import { HANDOFF_COPY } from '../services/whyISmokeGame/constants.js';
 import { EMPTY_CARR_COVERAGE, mergeCarrCoverage } from '../services/anamnesisCoverage.js';
 
-test('prestart text is stored and does not call the master', async () => {
+test('prestart text is stored as initialAnswer and does not call the master', async () => {
   let called = 0;
   const result = await handleWhyISmokePhase({
-    message: 'Курю после работы на балконе',
+    message: 'Потому что мне нравится',
     conversationHistory: [],
   }, { runMaster: async () => { called += 1; throw new Error('should not run'); } });
   assert.equal(called, 0);
   assert.equal(result.diceReady, false);
-  assert.match(result.pendingInitialAnswer, /балконе/);
+  assert.match(result.pendingInitialAnswer, /нравится/);
   assert.match(result.response, /Начать игру/);
 });
 
-test('start uses earlier words as initialAnswer and failed entry stays mechanical', async () => {
+test('start requires an initial answer; «Не знаю» is valid', async () => {
+  const blocked = await handleWhyISmokePhase({
+    message: 'Начать игру',
+    conversationHistory: [],
+  }, { runMaster: async () => { throw new Error('no master'); } });
+  assert.equal(blocked.kind, 'need_initial');
+  assert.equal(blocked.diceReady, false);
+
   const started = await handleWhyISmokePhase({
     message: 'Начать игру',
-    conversationHistory: [{ text: 'После созвона сразу на балкон', isUser: true }],
-    anamnesis: { pendingInitialAnswer: 'Не знаю почему курю' },
+    conversationHistory: [{ text: 'Не знаю', isUser: true }],
+    anamnesis: { pendingInitialAnswer: 'Не знаю' },
   }, { runMaster: async () => { throw new Error('no master on start'); } });
   assert.equal(started.kind, 'start');
   assert.equal(started.diceReady, true);
-  assert.match(started.session.initialAnswer, /созвона/);
-  assert.match(started.session.initialAnswer, /Не знаю/);
+  assert.equal(started.session.initialAnswer, 'Не знаю');
+  assert.match(started.response, /Брось кубик/);
+  assert.doesNotMatch(started.response, /шестёрк/i);
+});
 
-  const failed = await handleWhyISmokePhase({
+test('first roll without a six calls the master and locks the dice', async () => {
+  const started = await handleWhyISmokePhase({
+    message: 'Начать игру',
+    anamnesis: { pendingInitialAnswer: 'Потому что нравится' },
+    conversationHistory: [{ text: 'Потому что нравится', isUser: true }],
+  }, { runMaster: async () => ({}) });
+
+  const landed = await handleWhyISmokePhase({
     message: '🎲 2',
-    anamnesis: { whyISmokeGame: started.session },
-  }, { runMaster: async () => { throw new Error('no master on failed entry'); } });
-  assert.equal(failed.kind, 'failed_entry');
-  assert.equal(failed.diceReady, true);
-  assert.match(failed.boardStatus, /Выпало 2 — нужна 6/);
-});
-
-test('master failure after entry keeps the cell and asks to write, not roll', async () => {
-  const started = await handleWhyISmokePhase({ message: 'Начать игру' }, { runMaster: async () => ({}) });
-  const entered = await handleWhyISmokePhase({
-    message: '🎲 6',
-    anamnesis: { whyISmokeGame: started.session },
-  }, { runMaster: async () => { throw new Error('OpenAI client is required'); } });
-  assert.equal(entered.kind, 'error');
-  assert.equal(entered.diceReady, false);
-  assert.equal(entered.lilaState.gameEntered, true);
-  assert.equal(entered.lilaState.position, 1);
-  assert.match(entered.response, /Рождение/);
-  assert.doesNotMatch(entered.response, /брось кубик/i);
-});
-
-test('a landed cell asks the master; a second roll is blocked until an answer', async () => {
-  const started = await handleWhyISmokePhase({ message: 'Начать игру' }, { runMaster: async () => ({}) });
-  const entered = await handleWhyISmokePhase({
-    message: '🎲 6',
     anamnesis: { whyISmokeGame: started.session },
   }, {
     runMaster: async ({ session, extra }) => ({
       session,
-      message: extra.event === 'new_cell' ? 'Что осталось от первой сигареты?' : 'нет',
+      message: extra.event === 'new_cell' ? 'Что здесь от тебя?' : 'нет',
       diceReady: false,
     }),
   });
-  assert.match(entered.response, /первой сигареты/);
-  assert.equal(entered.diceReady, false);
+  assert.equal(landed.lilaState.position, 2);
+  assert.equal(landed.lilaState.gameEntered, true);
+  assert.match(landed.response, /что здесь/i);
+  assert.equal(landed.diceReady, false);
+  assert.match(landed.boardStatus, /Иллюзия/);
 
   const blocked = await handleWhyISmokePhase({
     message: '🎲 3',
-    anamnesis: { whyISmokeGame: entered.session },
+    anamnesis: { whyISmokeGame: landed.session },
   }, { runMaster: async () => { throw new Error('blocked roll must not call master'); } });
   assert.equal(blocked.kind, 'wait_answer');
+});
+
+test('master failure after a landing keeps the cell and asks to write, not roll', async () => {
+  const started = await handleWhyISmokePhase({
+    message: 'Начать игру',
+    anamnesis: { pendingInitialAnswer: 'Не знаю' },
+    conversationHistory: [{ text: 'Не знаю', isUser: true }],
+  }, { runMaster: async () => ({}) });
+  const entered = await handleWhyISmokePhase({
+    message: '🎲 1',
+    anamnesis: { whyISmokeGame: started.session },
+  }, { runMaster: async () => { throw new Error('OpenAI client is required'); } });
+  assert.equal(entered.kind, 'error');
+  assert.equal(entered.diceReady, false);
+  assert.equal(entered.lilaState.position, 1);
+  assert.match(entered.response, /Рождение/);
+  assert.doesNotMatch(entered.response, /брось кубик/i);
 });
 
 test('a populated questionnaire alone cannot accept the handoff CTA', () => {

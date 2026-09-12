@@ -11,6 +11,7 @@ import {
   applyDiceRoll,
   applyGameMasterResult,
   buildGameMasterContext,
+  formatGameMasterContext,
   buildGameMasterMessages,
   buildMirror,
   buildStage2Handoff,
@@ -20,6 +21,8 @@ import {
   finalizeWithEcho,
   interpretGameMasterOutput,
   normalizeGameMasterResult,
+  recordNarration,
+  recordUserAnswer,
   resolvePersonalizedTitle,
   runGameMasterTurn,
 } from '../services/whyISmokeGame/index.js';
@@ -70,10 +73,27 @@ test('game master prompt is a separate investigation config', () => {
   assert.match(prompt, /замену сигарете/);
   assert.match(prompt, /internalName/);
   assert.match(prompt, /Почему ты до сих пор куришь/);
+  assert.match(prompt, /Повторное посещение/);
+  assert.match(prompt, /не клетка/);
   assert.match(prompt, /hypothesisUpdates/);
   assert.match(prompt, /не защищай/);
   assert.match(agentConfig, /why_i_smoke_master/);
   assert.match(agentConfig, /GAME_MASTER_PROMPT/);
+});
+
+test('context tells the master when a cell is revisited', () => {
+  const definition = createDefinition();
+  let session = createGameSession({ initialAnswer: 'Нравится' });
+  session = applyDiceRoll(session, definition, 5).session;
+  session = recordNarration(session, { question: 'Что тело делает в момент прикуривания?' });
+  session = recordUserAnswer(session, 'Горло жжёт, руки сами');
+  session = { ...session, currentPosition: 22 };
+  session = applyDiceRoll(session, definition, 6).session;
+  const context = buildGameMasterContext({ session, definition });
+  assert.equal(context.currentCell.id, 'body');
+  assert.equal(context.currentCell.revisit, true);
+  assert.ok(context.currentCell.previousQuestions.some((q) => /тело/.test(q)));
+  assert.match(formatGameMasterContext(context), /Повторное посещение/);
 });
 
 test('context given to the master includes intention, path, hypotheses and turn count', () => {
@@ -205,17 +225,18 @@ test('saturation needs stable hypotheses, episodes, reality check and repetition
   assert.ok(saturation.reasons.includes('repeating_turns'));
 });
 
-test('circling and reality check happen before mirror, then handoff does not start stage 2', () => {
+test('saturation goes playing → final reality check → mirror, then handoff does not start stage 2', () => {
   const definition = createDefinition();
   let session = researchedSession();
   let out = applyGameMasterResult(session, definition, {
-    messageToUser: 'Похоже, мы уже начали ходить вокруг одной и той же вещи. Проверим ещё одну гипотезу.',
-    question: 'Узнаёшь, что сигарета разрешает паузу после задачи?',
+    messageToUser: 'Кажется, мы уже несколько раз возвращаемся к одному и тому же механизму. Проверим его ещё с одной стороны.',
+    question: 'А теперь вспомни случай, когда ты спокойно сделал такую же паузу без сигареты.',
     shouldRealityCheck: true,
     possibleSaturation: true,
     userRecognizesHypothesis: false,
   });
-  assert.equal(out.session.phase, GAME_PHASE.REALITY_CHECK);
+  assert.equal(out.session.phase, GAME_PHASE.FINAL_REALITY_CHECK);
+  assert.equal(out.session.finalRealityCheckPending, true);
   assert.equal(out.session.status, SESSION_STATUS.ACTIVE);
   assert.equal(out.diceReady, false);
 
@@ -241,10 +262,30 @@ test('circling and reality check happen before mirror, then handoff does not sta
   assert.equal(finished.session.finalAnswer.includes('переключиться'), true);
   assert.equal(finished.handoff.startNextStage, false);
   assert.equal(finished.handoff.transition.cta, HANDOFF_COPY.cta);
-  assert.match(finished.handoff.transition.message, /действительно ли она всё это даёт/);
+  assert.match(finished.handoff.transition.message, /действительно ли сигарета даёт тебе то/);
   assert.ok(finished.handoff.validatedHypotheses.length >= 1);
   assert.match(finished.message, /Запомню это твоими словами/);
   assert.equal(finished.result.question, '');
+});
+
+test('a collapsed reality check returns to playing instead of mirror', () => {
+  const definition = createDefinition();
+  let session = researchedSession();
+  session = applyGameMasterResult(session, definition, {
+    messageToUser: 'Проверим ещё раз.',
+    question: 'Бывала ли такая пауза без сигареты?',
+    shouldRealityCheck: true,
+  }).session;
+  assert.equal(session.phase, GAME_PHASE.FINAL_REALITY_CHECK);
+
+  const out = applyGameMasterResult(session, definition, {
+    messageToUser: 'Тогда это не держится.',
+    question: 'Где тогда появляется сигарета?',
+    hypothesisUpdates: [{ action: 'discard', hypothesisId: 'hyp_pause', text: 'пауза без сигареты уже была' }],
+  });
+  assert.equal(out.session.phase, GAME_PHASE.PLAYING);
+  assert.equal(out.session.hypotheses[0].status, HYPOTHESIS_STATUS.DISCARDED);
+  assert.equal(out.diceReady, true);
 });
 
 test('mirror and handoff keep the user words and do not invent a diagnosis', () => {
@@ -265,7 +306,7 @@ test('mirror and handoff keep the user words and do not invent a diagnosis', () 
 test('runGameMasterTurn uses the injected OpenAI client', async () => {
   const definition = createDefinition();
   const started = createGameSession({ initialAnswer: 'Курю после задачи' });
-  const { session } = applyDiceRoll(started, definition, 6);
+  const { session } = applyDiceRoll(started, definition, 3);
   let calls = 0;
   const out = await runGameMasterTurn({
     session,

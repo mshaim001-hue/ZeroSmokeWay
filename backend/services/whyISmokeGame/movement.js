@@ -1,5 +1,4 @@
-import { LINK_TYPE, OVERSHOOT } from './constants.js';
-import { getCellBySlot, getLinkFromSlot } from './definition.js';
+import { getCellBySlot } from './definition.js';
 
 export function clampDiceValue(definition, value) {
   const n = Number(value);
@@ -13,65 +12,39 @@ export function clampDiceValue(definition, value) {
   return n;
 }
 
+export function wrapPosition(position, roll, slotCount) {
+  if (!Number.isInteger(slotCount) || slotCount < 1) {
+    throw new Error('slotCount must be a positive integer');
+  }
+  const from = Number.isInteger(position) && position > 0 ? position : 0;
+  if (from < 1) {
+    return ((roll - 1) % slotCount) + 1;
+  }
+  return ((from - 1 + roll) % slotCount) + 1;
+}
+
 /**
- * Чистый ход по GameDefinition. Не знает о UI и об AI.
- * @param {{ position: number, entered: boolean }} state
+ * Чистый ход по GameDefinition. Без входа-шестёрки, без змей/стрел, без отскока.
+ * @param {{ position?: number }} state
  * @param {number} diceValue
  */
 export function applyDefinitionMove(definition, state, diceValue) {
   const roll = clampDiceValue(definition, diceValue);
-  const position = Number.isInteger(state?.position) ? state.position : 0;
-  const entered = Boolean(state?.entered);
   const slotCount = definition.board.slotCount;
+  const fromPosition = Number.isInteger(state?.position) && state.position > 0 ? state.position : 0;
+  const toPosition = wrapPosition(fromPosition, roll, slotCount);
+  const wrapped = fromPosition >= 1 && (fromPosition - 1 + roll) >= slotCount;
 
-  const result = {
+  return {
     roll,
-    fromPosition: entered ? position : 0,
-    toPosition: entered ? position : 0,
-    landedSlot: null,
-    cell: null,
+    fromPosition,
+    toPosition,
+    landedSlot: toPosition,
+    cell: requireCell(definition, toPosition),
     jump: null,
-    entryAttempt: !entered,
-    entrySuccess: false,
-    overshot: false,
-    entered,
+    wrapped,
+    revisit: false,
   };
-
-  if (!entered) {
-    if (roll !== definition.entryRoll) {
-      return result;
-    }
-    const cell = requireCell(definition, 1);
-    result.entrySuccess = true;
-    result.entered = true;
-    result.toPosition = 1;
-    result.landedSlot = 1;
-    result.cell = cell;
-    return result;
-  }
-
-  let next = position + roll;
-  if (next > slotCount) {
-    result.overshot = true;
-    if (definition.board.overshoot === OVERSHOOT.STAY) {
-      next = position;
-    } else {
-      next = slotCount - (next - slotCount);
-      if (next < 1) next = 1;
-    }
-  }
-
-  result.landedSlot = next;
-  const link = getLinkFromSlot(definition, next);
-  if (link) {
-    result.jump = { type: link.type, fromSlot: link.fromSlot, toSlot: link.toSlot };
-    next = link.toSlot;
-  }
-
-  result.toPosition = next;
-  result.entered = true;
-  result.cell = requireCell(definition, next);
-  return result;
 }
 
 function requireCell(definition, slot) {
@@ -82,20 +55,14 @@ function requireCell(definition, slot) {
   return cell;
 }
 
-export function describeMove(move, definition) {
-  if (!move) return '';
-  if (move.entryAttempt && !move.entrySuccess) {
-    const needed = definition?.entryRoll ?? 'входной бросок';
-    return `Выпало ${move.roll} — для входа нужна ${needed}.`;
+export function describeMove(move) {
+  if (!move?.cell) return '';
+  const title = move.cell.title || '';
+  if (!move.fromPosition) {
+    return `Ход ${move.roll} → клетка ${move.toPosition} «${title}»`;
   }
-  if (move.entrySuccess) {
-    return `Вход на клетку ${move.toPosition} «${move.cell.title}»`;
-  }
-  const landing = move.jump?.fromSlot ?? move.toPosition;
-  let text = `${move.fromPosition} → ${move.roll} → ${landing} «${move.cell.title}»`;
-  if (move.jump) {
-    text += ` → ${move.jump.type === LINK_TYPE.ARROW ? 'стрела' : 'змея'} → ${move.toPosition}`;
-  }
-  if (move.overshot) text += ' (отражение)';
+  let text = `${move.fromPosition} → ${move.roll} → ${move.toPosition} «${title}»`;
+  if (move.wrapped) text += ' (круг)';
+  if (move.revisit) text += ' — уже были здесь';
   return text;
 }

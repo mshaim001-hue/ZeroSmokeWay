@@ -1,13 +1,14 @@
 import { DEFAULT_INTENTION, HYPOTHESIS_STATUS } from '../constants.js';
 import { getCellById, getCellBySlot } from '../definition.js';
 import { isPatternIncomplete } from '../patterns.js';
-import { currentTurn, normalizeGameSession } from '../session.js';
+import { cellVisitHistory, currentTurn, normalizeGameSession } from '../session.js';
 import { toPublicHypothesis } from '../hypotheses.js';
 
 export function buildGameMasterContext({ session, definition, userMessage = '', extra = {} } = {}) {
   const state = normalizeGameSession(session);
   const turn = currentTurn(state);
   const cell = resolveCurrentCell(definition, state, turn);
+  const visit = cell ? cellVisitHistory(state, cell.id) : cellVisitHistory(state, null);
 
   return {
     intention: state.initialIntention || definition?.intention || DEFAULT_INTENTION,
@@ -22,6 +23,10 @@ export function buildGameMasterContext({ session, definition, userMessage = '', 
         defaultTitle: cell.title,
         titleShownToUser: turn?.cellTitleShownToUser || state.displayTitles[cell.id] || cell.title,
         aiInstruction: cell.aiInstruction || '',
+        visitCount: visit.count,
+        previousQuestions: visit.questions,
+        previousAnswers: visit.answers,
+        revisit: visit.count > 1 || Boolean(turn?.revisit),
       }
       : null,
     path: state.turns
@@ -30,7 +35,7 @@ export function buildGameMasterContext({ session, definition, userMessage = '', 
         turnNumber: item.turnNumber,
         cellId: item.cellId,
         title: item.cellTitleShownToUser,
-        jump: item.jump,
+        revisit: Boolean(item.revisit),
       })),
     recentAnswers: relevantAnswers(state),
     activeHypotheses: state.hypotheses
@@ -52,18 +57,25 @@ export function buildGameMasterContext({ session, definition, userMessage = '', 
 }
 
 export function formatGameMasterContext(context) {
+  const cell = context.currentCell;
   return [
     `Намерение: «${context.intention}»`,
     `Исходный ответ: ${context.initialAnswer || '—'}`,
     `Ход: ${context.turnNumber}. Фаза: ${context.phase}.`,
-    context.currentCell
-      ? `Клетка: internalName=${context.currentCell.internalName}; показано «${context.currentCell.titleShownToUser}»; инструкция: ${context.currentCell.aiInstruction}`
-      : 'Клетки ещё нет — вход не состоялся или зеркало.',
-    `Путь: ${context.path.map((p) => `${p.turnNumber}:${p.title || p.cellId}`).join(' → ') || '—'}`,
+    cell
+      ? `Клетка: internalName=${cell.internalName}; показано «${cell.titleShownToUser}»; посещений ${cell.visitCount}; инструкция: ${cell.aiInstruction}`
+      : 'Клетки ещё нет — игра начата, первого броска не было.',
+    cell?.revisit
+      ? `Повторное посещение. Предыдущие вопросы: ${JSON.stringify(cell.previousQuestions)}. Не повторяй их буквально. Смотри глубже в накопленный опыт.`
+      : '',
+    `Путь: ${context.path.map((p) => `${p.turnNumber}:${p.title || p.cellId}${p.revisit ? '*' : ''}`).join(' → ') || '—'}`,
     `Релевантные ответы:\n${context.recentAnswers.map((a) => `- ход ${a.turnNumber}: ${a.text}`).join('\n') || '—'}`,
     `Активные гипотезы: ${JSON.stringify(context.activeHypotheses)}`,
     `Противоречия: ${JSON.stringify(context.contradictions)}`,
     `Паттерны: ${JSON.stringify(context.patterns)}`,
+    context.phase === 'final_reality_check'
+      ? 'Сейчас системный финальный reality check, не архетип «Проверка реальностью». Один вопрос, который пытается опровергнуть ведущую гипотезу.'
+      : '',
     context.userMessage ? `Последнее сообщение человека: ${context.userMessage}` : '',
   ].filter(Boolean).join('\n');
 }

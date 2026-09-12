@@ -22,11 +22,9 @@ import { SupportProjectScreen } from './SupportProjectScreen';
 const PHASE_WELCOME = 'welcome';
 
 const LILA_WELCOME =
-  'Добро пожаловать в пространство Лилы.\n\n' +
-  'Я — Зеркало, твой ведущий. Мы будем исследовать вопрос «Почему я до сих пор курю?» — не как тест и не как анкету.\n\n' +
-  'Ход простой: ты бросаешь кубик, выпадает клетка, я смотрю на путь, который уже сложился, и задаю один вопрос. Твой ответ меняет гипотезу. Я не знаю правильного ответа заранее.\n\n' +
-  'Если клетка не про тебя — так и скажи. Это тоже результат.\n\n' +
-  'Когда будешь готов — нажми «Начать игру». Можно сначала рассказать о себе.';
+  'Почему я до сих пор курю?\n\n' +
+  'Как ты сам сейчас отвечаешь на этот вопрос?\n\n' +
+  'Можно написать «Не знаю». Когда ответишь — нажми «Начать игру».';
 
 function isLilaPhase(phase: string) {
   return phase === 'welcome' || phase === 'anamnesis';
@@ -818,7 +816,7 @@ export function ChatApp() {
                     {anamnesis.lilaBoardStatus}
                   </div>
                 )}
-                {!lilaState?.gameEntered && !diceReady && (
+                {!lilaState?.gameEntered && !diceReady && Boolean(String(anamnesis?.pendingInitialAnswer || '').trim()) && (
                   <button type="button" className="btn btn--primary"
                     disabled={loading || bootstrapping || guestComposerLocked}
                     onClick={() => {

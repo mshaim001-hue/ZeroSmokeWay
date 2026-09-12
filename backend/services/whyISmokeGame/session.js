@@ -24,17 +24,19 @@ export function createGameSession({
     initialIntention: String(initialIntention || def.intention),
     initialAnswer: String(initialAnswer || '').trim().slice(0, 2000),
     currentPosition: 0,
-    entered: false,
+    entered: true,
     turnNumber: 0,
     visitedCells: [],
+    cellVisits: {},
     turns: [],
     conversation: [],
     hypotheses: [],
     discoveredPatterns: [],
     uncoveredDomains: [],
     displayTitles: {},
-    phase: GAME_PHASE.PLAY,
+    phase: GAME_PHASE.PLAYING,
     saturation: emptySaturation(),
+    finalRealityCheckPending: false,
     userRecognizedHypothesisIds: [],
     handoff: null,
     finalAnswer: null,
@@ -57,9 +59,10 @@ export function normalizeGameSession(raw) {
     initialIntention: String(raw.initialIntention || DEFAULT_INTENTION),
     initialAnswer: String(raw.initialAnswer || ''),
     currentPosition: Number.isInteger(raw.currentPosition) ? raw.currentPosition : 0,
-    entered: Boolean(raw.entered),
+    entered: raw.entered !== false,
     turnNumber: Number.isInteger(raw.turnNumber) ? raw.turnNumber : 0,
     visitedCells: Array.isArray(raw.visitedCells) ? raw.visitedCells.map(String) : [],
+    cellVisits: normalizeCellVisits(raw.cellVisits),
     turns: Array.isArray(raw.turns) ? raw.turns.map(normalizeTurn) : [],
     conversation: Array.isArray(raw.conversation) ? raw.conversation.map(normalizeConversationRef).filter(Boolean) : [],
     hypotheses: Array.isArray(raw.hypotheses) ? raw.hypotheses.map((h) => createHypothesis(h)) : [],
@@ -68,8 +71,9 @@ export function normalizeGameSession(raw) {
     displayTitles: raw.displayTitles && typeof raw.displayTitles === 'object' && !Array.isArray(raw.displayTitles)
       ? Object.fromEntries(Object.entries(raw.displayTitles).filter(([, title]) => typeof title === 'string' && title.trim()).map(([id, title]) => [id, title.trim().slice(0, 80)]))
       : {},
-    phase: Object.values(GAME_PHASE).includes(raw.phase) ? raw.phase : GAME_PHASE.PLAY,
+    phase: normalizePhase(raw.phase),
     saturation: normalizeSaturation(raw.saturation),
+    finalRealityCheckPending: Boolean(raw.finalRealityCheckPending),
     userRecognizedHypothesisIds: Array.isArray(raw.userRecognizedHypothesisIds) ? raw.userRecognizedHypothesisIds.map(String) : [],
     handoff: raw.handoff && typeof raw.handoff === 'object' ? raw.handoff : null,
     finalAnswer: raw.finalAnswer ? String(raw.finalAnswer) : null,
@@ -84,10 +88,9 @@ export function currentTurn(session) {
 
 export function canApplyDiceRoll(session) {
   if (session.status !== SESSION_STATUS.ACTIVE) return false;
-  if (session.phase === GAME_PHASE.REALITY_CHECK || session.phase === GAME_PHASE.MIRROR) return false;
+  if (session.phase === GAME_PHASE.FINAL_REALITY_CHECK || session.phase === GAME_PHASE.MIRROR) return false;
   const turn = currentTurn(session);
-  if (!turn) return true;
-  if (turn.entryAttempt && !turn.entrySuccess) return true;
+  if (!turn || !turn.cellId) return true;
   return Boolean(turn.userAnswer);
 }
 
@@ -101,8 +104,9 @@ export function applyDiceRoll(session, definition, diceValue) {
 
   const move = applyDefinitionMove(definition, {
     position: state.currentPosition,
-    entered: state.entered,
   }, diceValue);
+  const priorVisits = cellVisitHistory(state, move.cell?.id);
+  move.revisit = priorVisits.count > 0;
 
   const turnNumber = state.turnNumber + 1;
   const turn = {
@@ -113,10 +117,8 @@ export function applyDiceRoll(session, definition, diceValue) {
     landedSlot: move.landedSlot,
     cellId: move.cell?.id ?? null,
     cellTitleShownToUser: resolveShownTitle(state, move.cell),
-    jump: move.jump,
-    entryAttempt: move.entryAttempt,
-    entrySuccess: move.entrySuccess,
-    overshot: move.overshot,
+    wrapped: Boolean(move.wrapped),
+    revisit: move.revisit,
     aiObservation: null,
     aiQuestion: null,
     userAnswer: null,
@@ -133,9 +135,10 @@ export function applyDiceRoll(session, definition, diceValue) {
     session: touch({
       ...state,
       currentPosition: move.toPosition,
-      entered: move.entered,
+      entered: true,
       turnNumber,
       visitedCells,
+      cellVisits: bumpCellVisit(state.cellVisits, move.cell?.id, turnNumber),
       turns: [...state.turns, turn],
     }),
     turn,
@@ -145,13 +148,16 @@ export function applyDiceRoll(session, definition, diceValue) {
 
 export function recordNarration(session, { observation, question } = {}) {
   const state = normalizeGameSession(session);
-  const turn = requireOpenTurn(state, { allowFailedEntry: true });
+  const turn = requireOpenTurn(state);
   const updated = {
     ...turn,
     aiObservation: observation ? String(observation).trim().slice(0, 2000) : turn.aiObservation,
     aiQuestion: question ? String(question).trim().slice(0, 500) : turn.aiQuestion,
   };
   const next = replaceCurrentTurn(state, updated);
+  if (updated.cellId && updated.aiQuestion) {
+    next.cellVisits = rememberCellQuestion(next.cellVisits, updated.cellId, updated.aiQuestion, updated.turnNumber);
+  }
   if (observation) {
     next.conversation = appendConversation(next.conversation, {
       role: 'assistant',
@@ -164,13 +170,16 @@ export function recordNarration(session, { observation, question } = {}) {
 
 export function recordUserAnswer(session, answer) {
   const state = normalizeGameSession(session);
-  const turn = requireOpenTurn(state, { allowFailedEntry: true });
+  const turn = requireOpenTurn(state);
   const text = String(answer || '').trim();
   if (!text) {
     throw new Error('userAnswer is required');
   }
   const updated = { ...turn, userAnswer: text.slice(0, 4000) };
   const next = replaceCurrentTurn(state, updated);
+  if (updated.cellId) {
+    next.cellVisits = rememberCellAnswer(next.cellVisits, updated.cellId, updated.userAnswer, updated.turnNumber);
+  }
   next.conversation = appendConversation(next.conversation, {
     role: 'user',
     text: updated.userAnswer,
@@ -268,7 +277,19 @@ export function resumePlay(session) {
   if (state.status !== SESSION_STATUS.REFLECTION) {
     throw new Error('Only a reflection session can resume play');
   }
-  return touch({ ...state, status: SESSION_STATUS.ACTIVE, phase: GAME_PHASE.PLAY });
+  return touch({ ...state, status: SESSION_STATUS.ACTIVE, phase: GAME_PHASE.PLAYING });
+}
+
+export function cellVisitHistory(session, cellId) {
+  if (!cellId) return emptyCellVisit();
+  const raw = session?.cellVisits?.[cellId];
+  if (!raw || typeof raw !== 'object') return emptyCellVisit();
+  return {
+    count: Number(raw.count) || 0,
+    turnNumbers: Array.isArray(raw.turnNumbers) ? raw.turnNumbers.map(Number) : [],
+    questions: Array.isArray(raw.questions) ? raw.questions.map(String) : [],
+    answers: Array.isArray(raw.answers) ? raw.answers.map(String) : [],
+  };
 }
 
 export function completeGame(session, finalAnswer) {
@@ -294,6 +315,7 @@ export function sessionResearchView(session) {
     turnNumber: state.turnNumber,
     currentPosition: state.currentPosition,
     visitedCells: state.visitedCells,
+    cellVisits: state.cellVisits,
     phase: state.phase,
     hypotheses: state.hypotheses.map((h) => ({
       id: h.id,
@@ -335,6 +357,74 @@ export function setGamePhase(session, phase) {
   return touch({ ...state, phase, status: state.status === SESSION_STATUS.COMPLETED ? state.status : status });
 }
 
+function normalizePhase(phase) {
+  if (phase === 'play' || phase === 'circling') return GAME_PHASE.PLAYING;
+  if (phase === 'reality_check') return GAME_PHASE.FINAL_REALITY_CHECK;
+  if (Object.values(GAME_PHASE).includes(phase)) return phase;
+  return GAME_PHASE.PLAYING;
+}
+
+function emptyCellVisit() {
+  return { count: 0, turnNumbers: [], questions: [], answers: [] };
+}
+
+function normalizeCellVisits(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .filter(([, value]) => value && typeof value === 'object')
+      .map(([id, value]) => [String(id), {
+        count: Number(value.count) || 0,
+        turnNumbers: Array.isArray(value.turnNumbers) ? value.turnNumbers.map(Number).slice(-12) : [],
+        questions: Array.isArray(value.questions) ? value.questions.map(String).slice(-8) : [],
+        answers: Array.isArray(value.answers) ? value.answers.map(String).slice(-8) : [],
+      }]),
+  );
+}
+
+function bumpCellVisit(visits, cellId, turnNumber) {
+  if (!cellId) return visits || {};
+  const prior = cellVisitHistory({ cellVisits: visits }, cellId);
+  return {
+    ...visits,
+    [cellId]: {
+      ...prior,
+      count: prior.count + 1,
+      turnNumbers: [...prior.turnNumbers, turnNumber].slice(-12),
+    },
+  };
+}
+
+function rememberCellQuestion(visits, cellId, question, turnNumber) {
+  const prior = cellVisitHistory({ cellVisits: visits }, cellId);
+  const text = String(question || '').trim();
+  if (!text) return visits || {};
+  return {
+    ...visits,
+    [cellId]: {
+      ...prior,
+      count: Math.max(prior.count, 1),
+      turnNumbers: prior.turnNumbers.includes(turnNumber) ? prior.turnNumbers : [...prior.turnNumbers, turnNumber].slice(-12),
+      questions: [...prior.questions.filter((item) => item !== text), text].slice(-8),
+    },
+  };
+}
+
+function rememberCellAnswer(visits, cellId, answer, turnNumber) {
+  const prior = cellVisitHistory({ cellVisits: visits }, cellId);
+  const text = String(answer || '').trim();
+  if (!text) return visits || {};
+  return {
+    ...visits,
+    [cellId]: {
+      ...prior,
+      count: Math.max(prior.count, 1),
+      turnNumbers: prior.turnNumbers.includes(turnNumber) ? prior.turnNumbers : [...prior.turnNumbers, turnNumber].slice(-12),
+      answers: [...prior.answers.filter((item) => item !== text), text].slice(-8),
+    },
+  };
+}
+
 function emptySaturation() {
   return {
     possible: false,
@@ -371,10 +461,8 @@ function normalizeTurn(raw) {
     landedSlot: Number.isInteger(raw?.landedSlot) ? raw.landedSlot : null,
     cellId: raw?.cellId ? String(raw.cellId) : null,
     cellTitleShownToUser: raw?.cellTitleShownToUser ? String(raw.cellTitleShownToUser) : null,
-    jump: raw?.jump && typeof raw.jump === 'object' ? raw.jump : null,
-    entryAttempt: Boolean(raw?.entryAttempt),
-    entrySuccess: Boolean(raw?.entrySuccess),
-    overshot: Boolean(raw?.overshot),
+    wrapped: Boolean(raw?.wrapped),
+    revisit: Boolean(raw?.revisit),
     aiObservation: raw?.aiObservation ? String(raw.aiObservation) : null,
     aiQuestion: raw?.aiQuestion ? String(raw.aiQuestion) : null,
     userAnswer: raw?.userAnswer ? String(raw.userAnswer) : null,
@@ -393,13 +481,10 @@ function normalizeConversationRef(raw) {
   };
 }
 
-function requireOpenTurn(session, { allowFailedEntry = false } = {}) {
+function requireOpenTurn(session) {
   const turn = currentTurn(session);
   if (!turn) {
     throw new Error('No current turn');
-  }
-  if (turn.entryAttempt && !turn.entrySuccess && !allowFailedEntry) {
-    throw new Error('Entry was not successful');
   }
   return { ...turn };
 }

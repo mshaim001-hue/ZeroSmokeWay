@@ -1,4 +1,4 @@
-import { HANDOFF_COPY, SESSION_STATUS } from './constants.js';
+import { HANDOFF_COPY, GAME_PHASE, INITIAL_ANSWER_PROMPT, SESSION_STATUS } from './constants.js';
 import { createDefinition, getCellBySlot } from './definition.js';
 import { describeMove } from './movement.js';
 import { runGameMasterTurn } from './master/run.js';
@@ -106,33 +106,25 @@ export function toCompatLilaState(session) {
 export function describeGameBoard(session, definition) {
   const def = definition || createDefinition();
   if (!session) {
-    return `Вход в игру — при выпадении ${def.entryRoll}`;
+    return INITIAL_ANSWER_PROMPT;
   }
   const state = normalizeGameSession(session);
   const turn = currentTurn(state);
-  const title = shownTitle(state, def, state.currentPosition);
-  const current = state.entered
-    ? `Сейчас: ${state.currentPosition} — ${title}`
-    : `Вход в игру — при выпадении ${def.entryRoll}`;
-
-  if (!turn) return current;
-  if (turn.entryAttempt && !turn.entrySuccess) {
-    return `Выпало ${turn.diceValue} — нужна ${def.entryRoll}. Можно бросить ещё раз.`;
+  if (!turn || !state.currentPosition) {
+    return 'Брось кубик — первый ход откроет клетку.';
   }
-
+  const title = shownTitle(state, def, state.currentPosition);
   const cell = getCellBySlot(def, turn.toPosition);
   const move = {
     roll: turn.diceValue,
     fromPosition: turn.fromPosition,
     toPosition: turn.toPosition,
     landedSlot: turn.landedSlot,
-    cell: { title: turn.cellTitleShownToUser || cell?.title || '' },
-    jump: turn.jump,
-    entryAttempt: turn.entryAttempt,
-    entrySuccess: turn.entrySuccess,
-    overshot: turn.overshot,
+    cell: { title: turn.cellTitleShownToUser || cell?.title || title },
+    wrapped: turn.wrapped,
+    revisit: turn.revisit,
   };
-  return `${describeMove(move, def)}\n${current}`;
+  return `${describeMove(move)}\nСейчас: ${state.currentPosition} — ${title}`;
 }
 
 /**
@@ -162,15 +154,26 @@ export async function handleWhyISmokePhase({
     });
   }
 
-  if ((!session || !session.entered) && looksLikeReadinessConfirmation(msg)) {
+  if (!session && looksLikeReadinessConfirmation(msg)) {
+    const initialAnswer = collectInitialAnswer(conversationHistory, pendingInitialAnswer);
+    if (!initialAnswer) {
+      return pack({
+        kind: 'need_initial',
+        response: `Сначала ответь: ${INITIAL_ANSWER_PROMPT} Можно написать «Не знаю».`,
+        session: null,
+        definition,
+        diceReady: false,
+        pendingInitialAnswer: '',
+      });
+    }
     session = createGameSession({
       userId,
       definition,
-      initialAnswer: collectInitialAnswer(conversationHistory, pendingInitialAnswer),
+      initialAnswer,
     });
     return pack({
       kind: 'start',
-      response: `Начнём. Брось кубик — для входа нужна ${definition.entryRoll === 6 ? 'шестёрка' : definition.entryRoll}.`,
+      response: 'Начнём. Брось кубик.',
       session,
       definition,
       diceReady: true,
@@ -182,7 +185,9 @@ export async function handleWhyISmokePhase({
     if (isDiceRollMessage(msg)) {
       return pack({
         kind: 'need_start',
-        response: 'Сначала нажми «Начать игру». Для входа потом понадобится шестёрка.',
+        response: pendingInitialAnswer
+          ? 'Сначала нажми «Начать игру».'
+          : `Сначала ответь: ${INITIAL_ANSWER_PROMPT} Потом нажми «Начать игру».`,
         session: null,
         definition,
         diceReady: false,
@@ -192,7 +197,7 @@ export async function handleWhyISmokePhase({
     pendingInitialAnswer = [pendingInitialAnswer, msg].filter(Boolean).join('\n').slice(0, 2000);
     return pack({
       kind: 'prestart',
-      response: 'Намерение уже есть: «Почему я до сих пор курю?» Когда будешь готов — нажми «Начать игру».',
+      response: 'Запомню это как твой первый ответ. Когда будешь готов — нажми «Начать игру».',
       session: null,
       definition,
       diceReady: false,
@@ -238,16 +243,6 @@ export async function handleWhyISmokePhase({
         pendingInitialAnswer: '',
       });
     }
-    if (move.entryAttempt && !move.entrySuccess) {
-      return pack({
-        kind: 'failed_entry',
-        response: `Для входа нужна шестёрка. Можно бросить ещё раз.`,
-        session,
-        definition,
-        diceReady: true,
-        pendingInitialAnswer: '',
-      });
-    }
     return callMaster({
       runMaster,
       session,
@@ -257,7 +252,17 @@ export async function handleWhyISmokePhase({
     });
   }
 
-  if (session.phase === 'mirror' && !session.finalAnswer) {
+  if (session.phase === GAME_PHASE.FINAL_REALITY_CHECK) {
+    return callMaster({
+      runMaster,
+      session,
+      definition,
+      userMessage: msg,
+      extra: { event: 'reality_check_answer' },
+    });
+  }
+
+  if (session.phase === GAME_PHASE.MIRROR && !session.finalAnswer) {
     return callMaster({
       runMaster,
       session,
@@ -269,7 +274,7 @@ export async function handleWhyISmokePhase({
   }
 
   const turn = currentTurn(session);
-  const awaitingAnswer = turn && !turn.userAnswer && !(turn.entryAttempt && !turn.entrySuccess);
+  const awaitingAnswer = turn && turn.cellId && !turn.userAnswer;
   if (awaitingAnswer) {
     try {
       session = recordUserAnswer(session, msg);
@@ -322,7 +327,7 @@ async function callMaster({ runMaster, session, definition, userMessage, extra, 
 
 function fallbackMasterMessage(session, definition, extra, diceReady) {
   const title = shownTitle(session, definition, session?.currentPosition);
-  if (extra?.event === 'new_cell' && session?.entered && title) {
+  if (extra?.event === 'new_cell' && session?.currentPosition && title) {
     return `Ты на клетке ${session.currentPosition} «${title}». Что здесь откликается — или совсем не откликается — в том, как ты куришь?`;
   }
   if (diceReady) {

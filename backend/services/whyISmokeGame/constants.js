@@ -15,9 +15,8 @@ export const HYPOTHESIS_STATUS = {
 };
 
 export const GAME_PHASE = {
-  PLAY: 'play',
-  CIRCLING: 'circling',
-  REALITY_CHECK: 'reality_check',
+  PLAYING: 'playing',
+  FINAL_REALITY_CHECK: 'final_reality_check',
   MIRROR: 'mirror',
 };
 
@@ -42,18 +41,22 @@ export const SATURATION = {
 
 export const HANDOFF_COPY = {
   message:
-    'Теперь мы лучше понимаем, что сигарета делает для тебя.\n\nСледующий вопрос:\nдействительно ли она всё это даёт?',
+    'Ты увидел, какую роль сигарета играет именно у тебя.\n\nТеперь проверим следующий вопрос:\nдействительно ли сигарета даёт тебе то, что ты ей приписываешь?',
   cta: 'Перейти к разбору',
 };
 
+/** Architectural leftover. Runtime movement does not apply snakes or arrows. */
 export const LINK_TYPE = {
   ARROW: 'arrow',
   SNAKE: 'snake',
 };
 
+/** Architectural leftover. Runtime movement wraps; it does not bounce. */
 export const OVERSHOOT = {
+  WRAP: 'wrap',
   BOUNCE: 'bounce',
   STAY: 'stay',
 };
 
 export const DEFAULT_INTENTION = 'Почему я до сих пор курю?';
+export const INITIAL_ANSWER_PROMPT = 'Как ты сам сейчас отвечаешь на этот вопрос?';
