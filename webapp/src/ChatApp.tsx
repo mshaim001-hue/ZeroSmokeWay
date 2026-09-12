@@ -26,8 +26,17 @@ const LILA_WELCOME =
   'Вы здесь, потому что думаете о том, как бросить курить, и вам нужна помощь.\n\n' +
   'Я обязательно помогу. Но сначала нам нужно найти ответ на один важный вопрос:\n\n' +
   '**Почему вы до сих пор курите?**\n\n' +
-  'И в этом нам поможет игра.\n\n' +
-  'Нажмите «Играть», и мы вместе попробуем найти ответ.';
+  'И в этом нам поможет небольшая игра.';
+
+const START_GAME = 'Начать игру';
+
+function renderChatText(text: string) {
+  return String(text || '').split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    const bold = part.match(/^\*\*([^*]+)\*\*$/);
+    if (bold) return <strong key={index}>{bold[1]}</strong>;
+    return <span key={index}>{part}</span>;
+  });
+}
 
 function isLilaPhase(phase: string) {
   return phase === 'welcome' || phase === 'anamnesis';
@@ -381,7 +390,7 @@ export function ChatApp() {
     }
     const userMsgCount = messages.filter((m) => {
       const t = m.text.trim().toLowerCase();
-      return m.isUser && !/^🎲\s*[1-6]$/.test(t) && t !== 'начать игру' && t !== 'играть' && t !== '🎲 играть';
+      return m.isUser && !/^🎲\s*[1-6]$/.test(t) && t !== 'начать игру' && t !== 'играть' && t !== '🎲 играть' && t !== START_GAME.toLowerCase();
     }).length;
     if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.third) {
       setGuestAuthReminder(3);
@@ -551,22 +560,32 @@ export function ChatApp() {
     if (form) form.requestSubmit();
   }
 
+  const handleStartGame = useCallback(() => {
+    if (bootstrapping || guestComposerLocked || loading) return;
+    const text = START_GAME;
+    const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    void sendToOrchestrator(text, history);
+  }, [bootstrapping, guestComposerLocked, loading, messages, sendToOrchestrator]);
+
   const handleDiceRoll = useCallback(
     (value: number) => {
-      const gameStarted = Number(lilaState?.position) > 0;
-      if (bootstrapping || guestComposerLocked || loading) return;
-      if (gameStarted && !diceReady) return;
+      if (bootstrapping || guestComposerLocked || loading || !diceReady) return;
       const text = `🎲 ${value}`;
       const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
       const history = [...messages, userMsg];
       setMessages(history);
       void sendToOrchestrator(text, history);
     },
-    [bootstrapping, diceReady, guestComposerLocked, lilaState?.position, loading, messages, sendToOrchestrator],
+    [bootstrapping, diceReady, guestComposerLocked, loading, messages, sendToOrchestrator],
   );
 
   const inLila = isLilaPhase(phase);
   const gameStarted = Number(lilaState?.position) > 0;
+  const gameIntroSeen = anamnesis?.gameIntroSeen === true;
+  const awaitingFirstRoll = inLila && !gameStarted && (gameIntroSeen || diceReady);
+  const showStartCta = inLila && !gameStarted && !awaitingFirstRoll;
   const inMyth = isMythPhase(phase);
   const stage2Handoff = readStage2Handoff(anamnesis);
   const canFinishLila = inLila && Boolean(stage2Handoff);
@@ -699,7 +718,7 @@ export function ChatApp() {
                         <div className="msg-column msg-column--bot">
                           {showBotName ? <span className="msg-sender">{botSenderName}</span> : null}
                           <div className="msg-bubble msg-bubble--bot">
-                            <p className="msg-text">{m.text}</p>
+                            <p className="msg-text">{renderChatText(m.text)}</p>
                             {timeStr ? (
                               <div className="msg-meta">
                                 <span className="msg-time">{timeStr}</span>
@@ -866,11 +885,23 @@ export function ChatApp() {
                   </button>
                   </section>
                 )}
+                {showStartCta && (
+                  <button
+                    type="button"
+                    className="btn btn--primary start-game-btn"
+                    disabled={loading || bootstrapping || guestComposerLocked}
+                    onClick={handleStartGame}
+                  >
+                    {START_GAME}
+                  </button>
+                )}
+                {(gameStarted || awaitingFirstRoll) && (
                 <DiceRoller
-                  variant={gameStarted ? 'roll' : 'play'}
-                  disabled={gameStarted ? (!diceReady || loading || bootstrapping || guestComposerLocked) : (loading || bootstrapping || guestComposerLocked)}
+                  variant={gameStarted ? 'roll' : 'ready'}
+                  disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
                   onRoll={handleDiceRoll}
                 />
+                )}
                 </>
               )}
               {(gameStarted || !inLila) && (

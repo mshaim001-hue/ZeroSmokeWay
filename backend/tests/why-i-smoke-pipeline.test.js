@@ -47,6 +47,18 @@ mock.module('../services/mythPlanService.js', { namedExports: {
 } });
 const { runJourneyRequest } = await import('../services/journeyPipeline.js');
 
+test('start button returns the intro and does not call the master', async () => {
+  const before = masterCalls;
+  const intro = await runJourneyRequest({ body: { message: 'Начать игру' } });
+  assert.equal(masterCalls, before);
+  assert.equal(intro.phase, 'anamnesis');
+  assert.equal(intro.lilaState.position, 0);
+  assert.equal(intro.diceReady, true);
+  assert.equal(intro.anamnesisState.gameIntroSeen, true);
+  assert.match(intro.response, /Как проходит игра/);
+  assert.match(intro.response, /бросайте кубик/);
+});
+
 test('first play roll creates the session and calls the master', async () => {
   const before = masterCalls;
   const landed = await runJourneyRequest({ body: { message: '🎲 4' } });

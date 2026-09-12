@@ -269,6 +269,7 @@ export async function runJourneyRequest({ body, authorizationHeader }) {
   mergedAnamnesis.whyISmokeGame = game.session;
   mergedAnamnesis.pendingInitialAnswer = game.pendingInitialAnswer || '';
   mergedAnamnesis.stage2Handoff = game.handoff || readHandoff(mergedAnamnesis);
+  mergedAnamnesis.gameIntroSeen = Boolean(priorSnapshot.gameIntroSeen || game.gameIntroSeen);
 
   if (summaryAccepted) {
     effectivePhase = PHASES.MYTH_BUSTING;

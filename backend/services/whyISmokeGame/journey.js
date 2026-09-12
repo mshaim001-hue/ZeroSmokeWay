@@ -22,6 +22,27 @@ const READINESS_SIGNALS = [
 
 export const STAGE2_CTA = HANDOFF_COPY.cta;
 export const LEGACY_STAGE2_CTA = 'Перейти к разбору мифов';
+export const START_GAME_CTA = 'Начать игру';
+
+export const GAME_INTRO_COPY = [
+  '**Как проходит игра**',
+  '',
+  'Вы бросаете кубик и попадаете на разные клетки.',
+  '',
+  'Каждая клетка поможет посмотреть на ваше курение с другой стороны.',
+  '',
+  'Я буду задавать вопросы и разговаривать с вами о том, что появляется по ходу игры.',
+  '',
+  'Здесь нет правильных ответов — говорите то, что действительно приходит в голову.',
+  '',
+  'Наша задача — понять:',
+  '',
+  '**что до сих пор удерживает сигарету в вашей жизни.**',
+  '',
+  'Когда будете готовы — бросайте кубик.',
+].join('\n');
+
+const READY_TO_ROLL_COPY = 'Когда будете готовы — бросайте кубик.';
 
 export function looksLikePlayButton(text) {
   const t = String(text || '').trim().toLowerCase().replace(/^🎲\s*/, '');
@@ -162,10 +183,10 @@ export async function handleWhyISmokePhase({
     });
   }
 
-  if (!session && (isDiceRollMessage(msg) || looksLikePlayButton(msg))) {
-    const roll = isDiceRollMessage(msg)
-      ? Number.parseInt(msg.replace(/^🎲\s*/, ''), 10)
-      : (1 + Math.floor(Math.random() * 6));
+  const introSeen = anamnesis.gameIntroSeen === true;
+
+  if (!session && isDiceRollMessage(msg)) {
+    const roll = Number.parseInt(msg.replace(/^🎲\s*/, ''), 10);
     return beginFirstTurn({
       runMaster,
       definition,
@@ -176,15 +197,28 @@ export async function handleWhyISmokePhase({
     });
   }
 
+  if (!session && looksLikePlayButton(msg)) {
+    return pack({
+      kind: introSeen ? 'ready_to_roll' : 'game_intro',
+      response: introSeen ? READY_TO_ROLL_COPY : GAME_INTRO_COPY,
+      session: null,
+      definition,
+      diceReady: true,
+      pendingInitialAnswer,
+      gameIntroSeen: true,
+    });
+  }
+
   if (!session) {
     pendingInitialAnswer = [pendingInitialAnswer, msg].filter(Boolean).join('\n').slice(0, 2000);
     return pack({
       kind: 'prestart',
-      response: 'Когда будете готовы — нажмите «Играть».',
+      response: 'Когда будете готовы — нажмите «Начать игру».',
       session: null,
       definition,
       diceReady: false,
       pendingInitialAnswer,
+      gameIntroSeen: introSeen,
     });
   }
 
@@ -370,7 +404,7 @@ function fallbackMasterMessage(session, definition, extra, diceReady, userMessag
   return 'Не получилось продолжить. Напиши, что думаешь сейчас — попробуем ещё раз.';
 }
 
-function pack({ kind, response, session, definition, diceReady, pendingInitialAnswer, master = null }) {
+function pack({ kind, response, session, definition, diceReady, pendingInitialAnswer, master = null, gameIntroSeen = false }) {
   const boardStatus = describeGameBoard(session, definition);
   const lilaState = toCompatLilaState(session);
   const handoff = session?.handoff || null;
@@ -386,6 +420,7 @@ function pack({ kind, response, session, definition, diceReady, pendingInitialAn
     pendingInitialAnswer: pendingInitialAnswer || '',
     journeySummary: handoff?.userFinalExplanation || session?.finalAnswer || null,
     master,
+    gameIntroSeen: Boolean(gameIntroSeen || session?.currentPosition),
   };
 }
 

@@ -80,6 +80,8 @@ export {
   handleWhyISmokePhase,
   acceptsStage2Handoff,
   STAGE2_CTA,
+  START_GAME_CTA,
+  GAME_INTRO_COPY,
   describeGameBoard,
   toCompatLilaState,
   looksLikeReadinessConfirmation,

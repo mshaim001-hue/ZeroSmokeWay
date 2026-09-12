@@ -946,6 +946,11 @@ input {
   100% { transform: rotate(-8deg) scale(1); }
 }
 
+.start-game-btn {
+  align-self: center;
+  min-width: 168px;
+}
+
 .myth-continue-btn {
   width: 100%;
   margin-bottom: 4px;

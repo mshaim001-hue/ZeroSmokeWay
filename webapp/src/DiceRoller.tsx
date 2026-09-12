@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 type Props = {
   disabled: boolean;
   onRoll: (value: number) => void;
-  variant?: 'roll' | 'play';
+  variant?: 'roll' | 'play' | 'ready';
 };
 
 export function DiceRoller({ disabled, onRoll, variant = 'roll' }: Props) {
@@ -36,19 +36,32 @@ export function DiceRoller({ disabled, onRoll, variant = 'roll' }: Props) {
         type="button"
         className={
           'dice-roller__btn'
-          + (variant === 'play' ? ' dice-roller__btn--play' : '')
+          + (variant === 'play' || variant === 'ready' ? ' dice-roller__btn--play' : '')
           + (rolling ? ' dice-roller__btn--rolling' : '')
           + (disabled ? ' dice-roller__btn--disabled' : '')
         }
         onClick={handleClick}
         disabled={disabled || rolling}
-        aria-label={variant === 'play' ? 'Играть' : disabled ? 'Кубик недоступен — дождись ответа' : 'Бросить кубик'}
-        title={variant === 'play' ? 'Играть' : disabled ? 'Сначала ответь — потом можно бросить' : 'Бросить кубик (1–6)'}
+        aria-label={
+          variant === 'play'
+            ? 'Играть'
+            : variant === 'ready'
+              ? 'Бросить кубик'
+              : disabled ? 'Кубик недоступен — дождись ответа' : 'Бросить кубик'
+        }
+        title={
+          variant === 'play'
+            ? 'Играть'
+            : variant === 'ready'
+              ? 'Бросить кубик (1–6)'
+              : disabled ? 'Сначала ответь — потом можно бросить' : 'Бросить кубик (1–6)'
+        }
       >
         <span className="dice-roller__face" aria-hidden>
           {display ?? '🎲'}
         </span>
         {variant === 'play' && <span className="dice-roller__cta">{rolling ? 'Игра…' : 'Играть'}</span>}
+        {variant === 'ready' && <span className="dice-roller__cta">{rolling ? 'Бросок…' : 'Бросить кубик'}</span>}
       </button>
       {variant === 'roll' && !disabled && !rolling && (
         <span className="dice-roller__hint">Бросить кубик</span>
