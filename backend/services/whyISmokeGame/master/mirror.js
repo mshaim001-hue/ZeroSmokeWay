@@ -5,15 +5,26 @@ export function buildMirror(session) {
   const state = normalizeGameSession(session);
   const observations = pickUserObservations(state, 4);
   const question = 'Почему ты до сих пор куришь?';
-  const lines = [
-    `Исходный вопрос: «${state.initialIntention || DEFAULT_INTENTION}»`,
-    `Твой первый ответ: ${state.initialAnswer || 'ты тогда ещё не знал, что сказать.'}`,
-    '',
-    'Что уже проступило твоими словами:',
-    ...observations.map((text) => `— ${text}`),
-    '',
-    question,
-  ];
+  const lines = state.initialAnswer
+    ? [
+      `Исходный вопрос: «${state.initialIntention || DEFAULT_INTENTION}»`,
+      `В начале ты сказал: «${state.initialAnswer}»`,
+      '',
+      'Что уже проступило твоими словами:',
+      ...observations.map((text) => `— ${text}`),
+      '',
+      question,
+    ]
+    : [
+      'В начале у нас был один вопрос:',
+      `**${state.initialIntention || DEFAULT_INTENTION}**`,
+      '',
+      'За игру мы несколько раз возвращались к тому, что уже проступило твоими словами:',
+      ...observations.map((text) => `— ${text}`),
+      '',
+      'А теперь попробуйте ответить сами:',
+      `**${question}**`,
+    ];
 
   return {
     intention: state.initialIntention || DEFAULT_INTENTION,

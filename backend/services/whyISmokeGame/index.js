@@ -77,6 +77,7 @@ export {
   describeGameBoard,
   toCompatLilaState,
   looksLikeReadinessConfirmation,
+  looksLikePlayButton,
   updateJourneySummary,
   normalizeCompatBoardState,
 } from './journey.js';

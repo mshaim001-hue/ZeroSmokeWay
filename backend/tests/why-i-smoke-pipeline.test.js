@@ -47,40 +47,19 @@ mock.module('../services/mythPlanService.js', { namedExports: {
 } });
 const { runJourneyRequest } = await import('../services/journeyPipeline.js');
 
-function startBody() {
-  return {
-    message: 'Начать игру',
-    conversationHistory: [{ text: 'Потому что мне нравится', isUser: true }],
-    anamnesisData: { pendingInitialAnswer: 'Потому что мне нравится' },
-  };
-}
-
-test('start without an initial answer does not open the dice', async () => {
-  const blocked = await runJourneyRequest({ body: { message: 'Начать игру' } });
-  assert.equal(blocked.diceReady, false);
-  assert.match(blocked.response, /Как ты сам сейчас отвечаешь/);
-});
-
-test('any first roll after start calls the game master', async () => {
-  const started = await runJourneyRequest({ body: startBody() });
-  assert.equal(started.diceReady, true);
-  assert.equal(started.phase, 'anamnesis');
-  assert.match(started.response, /Брось кубик/);
-  assert.doesNotMatch(started.response, /шестёрк/);
-
+test('first play roll creates the session and calls the master', async () => {
   const before = masterCalls;
-  const landed = await runJourneyRequest({
-    body: { message: '🎲 4', phase: 'anamnesis', anamnesisData: started.anamnesisState },
-  });
+  const landed = await runJourneyRequest({ body: { message: '🎲 4' } });
   assert.equal(masterCalls, before + 1);
   assert.equal(landed.phase, 'anamnesis');
   assert.equal(landed.lilaState.position, 4);
   assert.equal(landed.diceReady, false);
   assert.match(landed.anamnesisState.lilaBoardStatus, /Не отпускаю/);
+  assert.doesNotMatch(landed.response, /Брось кубик/);
 });
 
 test('handoff CTA starts stage 2 only after the game is finished', async () => {
-  const started = await runJourneyRequest({ body: startBody() });
+  const started = await runJourneyRequest({ body: { message: '🎲 2' } });
   const blocked = await runJourneyRequest({
     body: { message: 'Перейти к разбору', phase: 'anamnesis', anamnesisData: started.anamnesisState },
   });

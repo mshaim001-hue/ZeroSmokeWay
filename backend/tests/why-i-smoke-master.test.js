@@ -75,6 +75,7 @@ test('game master prompt is a separate investigation config', () => {
   assert.match(prompt, /Почему ты до сих пор куришь/);
   assert.match(prompt, /Повторное посещение/);
   assert.match(prompt, /не клетка/);
+  assert.match(prompt, /нет контекста/);
   assert.match(prompt, /hypothesisUpdates/);
   assert.match(prompt, /не защищай/);
   assert.match(agentConfig, /why_i_smoke_master/);
@@ -286,6 +287,14 @@ test('a collapsed reality check returns to playing instead of mirror', () => {
   assert.equal(out.session.phase, GAME_PHASE.PLAYING);
   assert.equal(out.session.hypotheses[0].status, HYPOTHESIS_STATUS.DISCARDED);
   assert.equal(out.diceReady, true);
+});
+
+test('mirror works without an initialAnswer', () => {
+  const session = researchedSession({ initialAnswer: '' });
+  const mirror = buildMirror(session);
+  assert.match(mirror.messageToUser, /В начале у нас был один вопрос/);
+  assert.doesNotMatch(mirror.messageToUser, /первый ответ/);
+  assert.match(mirror.messageToUser, /Почему ты до сих пор куришь/);
 });
 
 test('mirror and handoff keep the user words and do not invent a diagnosis', () => {

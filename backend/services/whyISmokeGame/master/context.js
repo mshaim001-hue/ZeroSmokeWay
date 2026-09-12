@@ -60,11 +60,14 @@ export function formatGameMasterContext(context) {
   const cell = context.currentCell;
   return [
     `Намерение: «${context.intention}»`,
-    `Исходный ответ: ${context.initialAnswer || '—'}`,
+    context.initialAnswer ? `Исходный ответ: ${context.initialAnswer}` : 'Исходного ответа ещё нет. Не проси его и не комментируй отсутствие.',
     `Ход: ${context.turnNumber}. Фаза: ${context.phase}.`,
     cell
       ? `Клетка: internalName=${cell.internalName}; показано «${cell.titleShownToUser}»; посещений ${cell.visitCount}; инструкция: ${cell.aiInstruction}`
-      : 'Клетки ещё нет — игра начата, первого броска не было.',
+      : '',
+    (!cell?.revisit && !(context.recentAnswers || []).length)
+      ? 'Первый ход / мало опыта. НЕ пиши про отсутствие контекста. Название + один вопрос про конкретный эпизод.'
+      : '',
     cell?.revisit
       ? `Повторное посещение. Предыдущие вопросы: ${JSON.stringify(cell.previousQuestions)}. Не повторяй их буквально. Смотри глубже в накопленный опыт.`
       : '',

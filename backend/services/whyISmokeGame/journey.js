@@ -1,5 +1,6 @@
-import { HANDOFF_COPY, GAME_PHASE, INITIAL_ANSWER_PROMPT, SESSION_STATUS } from './constants.js';
+import { HANDOFF_COPY, GAME_PHASE, SESSION_STATUS } from './constants.js';
 import { createDefinition, getCellBySlot } from './definition.js';
+import { firstVisitQuestion } from './firstVisit.js';
 import { describeMove } from './movement.js';
 import { runGameMasterTurn } from './master/run.js';
 import {
@@ -20,9 +21,14 @@ const READINESS_SIGNALS = [
 export const STAGE2_CTA = HANDOFF_COPY.cta;
 export const LEGACY_STAGE2_CTA = 'Перейти к разбору мифов';
 
+export function looksLikePlayButton(text) {
+  const t = String(text || '').trim().toLowerCase().replace(/^🎲\s*/, '');
+  return t === 'играть' || t === 'начать игру';
+}
+
 export function looksLikeReadinessConfirmation(text) {
+  if (looksLikePlayButton(text)) return true;
   const t = String(text || '').trim().toLowerCase().replace(/^я\s+/, '');
-  if (t === 'начать игру') return true;
   if (!t) return false;
   if (/^🎲/.test(t)) return false;
   return READINESS_SIGNALS.some((s) => t === s || t.startsWith(`${s} `) || t.startsWith(`${s},`) || t.startsWith(`${s}.`));
@@ -77,7 +83,7 @@ export function collectInitialAnswer(conversationHistory = [], pending = '') {
   const fromHistory = conversationHistory
     .filter((item) => item?.isUser && typeof item.text === 'string')
     .map((item) => item.text.trim())
-    .filter((text) => text && !isDiceRollMessage(text) && text !== 'Начать игру' && text !== STAGE2_CTA && text !== LEGACY_STAGE2_CTA);
+    .filter((text) => text && !isDiceRollMessage(text) && !looksLikePlayButton(text) && text !== STAGE2_CTA && text !== LEGACY_STAGE2_CTA);
   const chunks = [pending, ...fromHistory].map((text) => String(text || '').trim()).filter(Boolean);
   return [...new Set(chunks)].join('\n').slice(0, 2000);
 }
@@ -106,7 +112,7 @@ export function toCompatLilaState(session) {
 export function describeGameBoard(session, definition) {
   const def = definition || createDefinition();
   if (!session) {
-    return INITIAL_ANSWER_PROMPT;
+    return '';
   }
   const state = normalizeGameSession(session);
   const turn = currentTurn(state);
@@ -154,50 +160,25 @@ export async function handleWhyISmokePhase({
     });
   }
 
-  if (!session && looksLikeReadinessConfirmation(msg)) {
-    const initialAnswer = collectInitialAnswer(conversationHistory, pendingInitialAnswer);
-    if (!initialAnswer) {
-      return pack({
-        kind: 'need_initial',
-        response: `Сначала ответь: ${INITIAL_ANSWER_PROMPT} Можно написать «Не знаю».`,
-        session: null,
-        definition,
-        diceReady: false,
-        pendingInitialAnswer: '',
-      });
-    }
-    session = createGameSession({
+  if (!session && (isDiceRollMessage(msg) || looksLikePlayButton(msg))) {
+    const roll = isDiceRollMessage(msg)
+      ? Number.parseInt(msg.replace(/^🎲\s*/, ''), 10)
+      : (1 + Math.floor(Math.random() * 6));
+    return beginFirstTurn({
+      runMaster,
+      definition,
       userId,
-      definition,
-      initialAnswer,
-    });
-    return pack({
-      kind: 'start',
-      response: 'Начнём. Брось кубик.',
-      session,
-      definition,
-      diceReady: true,
-      pendingInitialAnswer: '',
+      roll,
+      userMessage: msg,
+      initialAnswer: collectInitialAnswer(conversationHistory, pendingInitialAnswer),
     });
   }
 
   if (!session) {
-    if (isDiceRollMessage(msg)) {
-      return pack({
-        kind: 'need_start',
-        response: pendingInitialAnswer
-          ? 'Сначала нажми «Начать игру».'
-          : `Сначала ответь: ${INITIAL_ANSWER_PROMPT} Потом нажми «Начать игру».`,
-        session: null,
-        definition,
-        diceReady: false,
-        pendingInitialAnswer,
-      });
-    }
     pendingInitialAnswer = [pendingInitialAnswer, msg].filter(Boolean).join('\n').slice(0, 2000);
     return pack({
       kind: 'prestart',
-      response: 'Запомню это как твой первый ответ. Когда будешь готов — нажми «Начать игру».',
+      response: 'Когда будете готовы — нажмите «Играть».',
       session: null,
       definition,
       diceReady: false,
@@ -292,6 +273,34 @@ export async function handleWhyISmokePhase({
   });
 }
 
+async function beginFirstTurn({ runMaster, definition, userId, roll, userMessage, initialAnswer }) {
+  let session = createGameSession({
+    userId,
+    definition,
+    initialAnswer: initialAnswer || '',
+  });
+  try {
+    const applied = applyDiceRoll(session, definition, roll);
+    session = applied.session;
+  } catch (error) {
+    return pack({
+      kind: 'error',
+      response: error.message || 'Не получилось начать игру.',
+      session,
+      definition,
+      diceReady: true,
+      pendingInitialAnswer: '',
+    });
+  }
+  return callMaster({
+    runMaster,
+    session,
+    definition,
+    userMessage,
+    extra: { event: 'new_cell', firstVisit: true },
+  });
+}
+
 async function callMaster({ runMaster, session, definition, userMessage, extra, appendHandoffCopy = false }) {
   try {
     const master = await runMaster({ session, definition, userMessage, extra });
@@ -326,9 +335,9 @@ async function callMaster({ runMaster, session, definition, userMessage, extra, 
 }
 
 function fallbackMasterMessage(session, definition, extra, diceReady) {
-  const title = shownTitle(session, definition, session?.currentPosition);
-  if (extra?.event === 'new_cell' && session?.currentPosition && title) {
-    return `Ты на клетке ${session.currentPosition} «${title}». Что здесь откликается — или совсем не откликается — в том, как ты куришь?`;
+  const cell = getCellBySlot(definition, session?.currentPosition);
+  if (extra?.event === 'new_cell' && cell) {
+    return firstVisitQuestion(cell);
   }
   if (diceReady) {
     return 'Не получилось продолжить. Напиши ещё раз или брось кубик.';

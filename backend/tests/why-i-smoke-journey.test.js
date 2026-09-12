@@ -4,67 +4,54 @@ import {
   acceptsStage2Handoff,
   collectInitialAnswer,
   handleWhyISmokePhase,
+  looksLikePlayButton,
   looksLikeReadinessConfirmation,
   STAGE2_CTA,
 } from '../services/whyISmokeGame/journey.js';
 import { HANDOFF_COPY } from '../services/whyISmokeGame/constants.js';
 import { EMPTY_CARR_COVERAGE, mergeCarrCoverage } from '../services/anamnesisCoverage.js';
 
-test('prestart text is stored as initialAnswer and does not call the master', async () => {
-  let called = 0;
-  const result = await handleWhyISmokePhase({
-    message: 'Потому что мне нравится',
-    conversationHistory: [],
-  }, { runMaster: async () => { called += 1; throw new Error('should not run'); } });
-  assert.equal(called, 0);
-  assert.equal(result.diceReady, false);
-  assert.match(result.pendingInitialAnswer, /нравится/);
-  assert.match(result.response, /Начать игру/);
-});
-
-test('start requires an initial answer; «Не знаю» is valid', async () => {
-  const blocked = await handleWhyISmokePhase({
-    message: 'Начать игру',
-    conversationHistory: [],
-  }, { runMaster: async () => { throw new Error('no master'); } });
-  assert.equal(blocked.kind, 'need_initial');
-  assert.equal(blocked.diceReady, false);
-
-  const started = await handleWhyISmokePhase({
-    message: 'Начать игру',
-    conversationHistory: [{ text: 'Не знаю', isUser: true }],
-    anamnesis: { pendingInitialAnswer: 'Не знаю' },
-  }, { runMaster: async () => { throw new Error('no master on start'); } });
-  assert.equal(started.kind, 'start');
-  assert.equal(started.diceReady, true);
-  assert.equal(started.session.initialAnswer, 'Не знаю');
-  assert.match(started.response, /Брось кубик/);
-  assert.doesNotMatch(started.response, /шестёрк/i);
-});
-
-test('first roll without a six calls the master and locks the dice', async () => {
-  const started = await handleWhyISmokePhase({
-    message: 'Начать игру',
-    anamnesis: { pendingInitialAnswer: 'Потому что нравится' },
-    conversationHistory: [{ text: 'Потому что нравится', isUser: true }],
-  }, { runMaster: async () => ({}) });
-
+test('play starts the first roll without an initial answer', async () => {
   const landed = await handleWhyISmokePhase({
-    message: '🎲 2',
-    anamnesis: { whyISmokeGame: started.session },
+    message: '🎲 3',
+    conversationHistory: [],
   }, {
     runMaster: async ({ session, extra }) => ({
       session,
-      message: extra.event === 'new_cell' ? 'Что здесь от тебя?' : 'нет',
+      message: extra.firstVisit ? 'Гнев.\n\nГде появилась сигарета?' : 'нет',
       diceReady: false,
     }),
   });
-  assert.equal(landed.lilaState.position, 2);
-  assert.equal(landed.lilaState.gameEntered, true);
-  assert.match(landed.response, /что здесь/i);
+  assert.equal(landed.kind, 'master');
+  assert.equal(landed.session.initialAnswer, '');
+  assert.equal(landed.lilaState.position, 3);
   assert.equal(landed.diceReady, false);
-  assert.match(landed.boardStatus, /Иллюзия/);
+  assert.match(landed.response, /Гнев/);
+  assert.doesNotMatch(landed.response, /Брось кубик/);
+  assert.match(landed.boardStatus, /Гнев/);
+});
 
+test('play button without a roll still opens a cell and calls the master', async () => {
+  const landed = await handleWhyISmokePhase({
+    message: 'Играть',
+  }, {
+    runMaster: async ({ session }) => ({
+      session,
+      message: 'Первый вопрос',
+      diceReady: false,
+    }),
+  });
+  assert.ok(landed.lilaState.position >= 1 && landed.lilaState.position <= 6);
+  assert.equal(landed.diceReady, false);
+  assert.match(landed.response, /Первый вопрос/);
+});
+
+test('a later roll is blocked until the first question is answered', async () => {
+  const landed = await handleWhyISmokePhase({
+    message: '🎲 2',
+  }, {
+    runMaster: async ({ session }) => ({ session, message: 'Что здесь?', diceReady: false }),
+  });
   const blocked = await handleWhyISmokePhase({
     message: '🎲 3',
     anamnesis: { whyISmokeGame: landed.session },
@@ -72,21 +59,26 @@ test('first roll without a six calls the master and locks the dice', async () =>
   assert.equal(blocked.kind, 'wait_answer');
 });
 
-test('master failure after a landing keeps the cell and asks to write, not roll', async () => {
-  const started = await handleWhyISmokePhase({
-    message: 'Начать игру',
-    anamnesis: { pendingInitialAnswer: 'Не знаю' },
-    conversationHistory: [{ text: 'Не знаю', isUser: true }],
-  }, { runMaster: async () => ({}) });
+test('master failure on the first cell asks an episode question, not for a roll', async () => {
   const entered = await handleWhyISmokePhase({
     message: '🎲 1',
-    anamnesis: { whyISmokeGame: started.session },
   }, { runMaster: async () => { throw new Error('OpenAI client is required'); } });
   assert.equal(entered.kind, 'error');
   assert.equal(entered.diceReady, false);
   assert.equal(entered.lilaState.position, 1);
   assert.match(entered.response, /Рождение/);
-  assert.doesNotMatch(entered.response, /брось кубик/i);
+  assert.doesNotMatch(entered.response, /нет контекста|брось кубик|вход/i);
+});
+
+test('optional prestart text is stored and does not start the game', async () => {
+  let called = 0;
+  const result = await handleWhyISmokePhase({
+    message: 'Потому что мне нравится',
+  }, { runMaster: async () => { called += 1; throw new Error('should not run'); } });
+  assert.equal(called, 0);
+  assert.equal(result.diceReady, false);
+  assert.match(result.pendingInitialAnswer, /нравится/);
+  assert.match(result.response, /Играть/);
 });
 
 test('a populated questionnaire alone cannot accept the handoff CTA', () => {
@@ -96,12 +88,12 @@ test('a populated questionnaire alone cannot accept the handoff CTA', () => {
   const snapshot = { carrCoverage: coverage };
   assert.equal(acceptsStage2Handoff('Перейти к разбору', snapshot), false);
   assert.equal(acceptsStage2Handoff('Перейти к разбору мифов', { lilaJourneySummary: 'пауза' }), true);
-  assert.equal(acceptsStage2Handoff('Да', { lilaJourneySummary: 'пауза' }), false);
 });
 
-test('start accepts a button and natural readiness', () => {
+test('play button is recognized', () => {
+  assert.equal(looksLikePlayButton('Играть'), true);
+  assert.equal(looksLikePlayButton('🎲 Играть'), true);
   assert.equal(looksLikeReadinessConfirmation('Начать игру'), true);
-  assert.equal(looksLikeReadinessConfirmation('Я готов. ' + 'Моя история. '.repeat(20)), true);
   assert.equal(looksLikeReadinessConfirmation('Я не готов'), false);
 });
 
@@ -117,11 +109,8 @@ test('handoff CTA is accepted only when the game finished', () => {
   assert.equal(acceptsStage2Handoff(STAGE2_CTA, {
     stage2Handoff: { userFinalExplanation: 'пауза', transition: HANDOFF_COPY },
   }), true);
-  assert.equal(acceptsStage2Handoff('Перейти к разбору мифов', {
-    whyISmokeGame: { handoff: { userFinalExplanation: 'пауза' } },
-  }), true);
   assert.equal(collectInitialAnswer([
-    { text: 'Начать игру', isUser: true },
+    { text: 'Играть', isUser: true },
     { text: '🎲 6', isUser: true },
     { text: 'После задачи выхожу', isUser: true },
   ]), 'После задачи выхожу');

@@ -22,9 +22,12 @@ import { SupportProjectScreen } from './SupportProjectScreen';
 const PHASE_WELCOME = 'welcome';
 
 const LILA_WELCOME =
-  'Почему я до сих пор курю?\n\n' +
-  'Как ты сам сейчас отвечаешь на этот вопрос?\n\n' +
-  'Можно написать «Не знаю». Когда ответишь — нажми «Начать игру».';
+  'Здравствуйте!\n\n' +
+  'Вы здесь, потому что думаете о том, как бросить курить, и вам нужна помощь.\n\n' +
+  'Я обязательно помогу. Но сначала нам нужно найти ответ на один важный вопрос:\n\n' +
+  '**Почему вы до сих пор курите?**\n\n' +
+  'И в этом нам поможет игра.\n\n' +
+  'Нажмите «Играть», и мы вместе попробуем найти ответ.';
 
 function isLilaPhase(phase: string) {
   return phase === 'welcome' || phase === 'anamnesis';
@@ -376,7 +379,10 @@ export function ChatApp() {
       setGuestAuthReminder(0);
       return;
     }
-    const userMsgCount = messages.filter((m) => m.isUser && !/^🎲\s*[1-6]$/.test(m.text.trim()) && m.text !== 'Начать игру').length;
+    const userMsgCount = messages.filter((m) => {
+      const t = m.text.trim().toLowerCase();
+      return m.isUser && !/^🎲\s*[1-6]$/.test(t) && t !== 'начать игру' && t !== 'играть' && t !== '🎲 играть';
+    }).length;
     if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.third) {
       setGuestAuthReminder(3);
     } else if (userMsgCount >= GUEST_AUTH_MESSAGES_THRESHOLD.second) {
@@ -534,17 +540,20 @@ export function ChatApp() {
 
   const handleDiceRoll = useCallback(
     (value: number) => {
-      if (bootstrapping || guestComposerLocked || loading || !diceReady) return;
+      const gameStarted = Number(lilaState?.position) > 0;
+      if (bootstrapping || guestComposerLocked || loading) return;
+      if (gameStarted && !diceReady) return;
       const text = `🎲 ${value}`;
       const userMsg: ChatMessage = { text, isUser: true, timestamp: nowIso() };
       const history = [...messages, userMsg];
       setMessages(history);
       void sendToOrchestrator(text, history);
     },
-    [bootstrapping, diceReady, guestComposerLocked, loading, messages, sendToOrchestrator],
+    [bootstrapping, diceReady, guestComposerLocked, lilaState?.position, loading, messages, sendToOrchestrator],
   );
 
   const inLila = isLilaPhase(phase);
+  const gameStarted = Number(lilaState?.position) > 0;
   const inMyth = isMythPhase(phase);
   const stage2Handoff = readStage2Handoff(anamnesis);
   const canFinishLila = inLila && Boolean(stage2Handoff);
@@ -811,22 +820,10 @@ export function ChatApp() {
               )}
               {inLila && (
                 <>
-                {typeof anamnesis?.lilaBoardStatus === 'string' && (
+                {gameStarted && typeof anamnesis?.lilaBoardStatus === 'string' && anamnesis.lilaBoardStatus.trim() && (
                   <div className="lila-board-status" aria-label="Ход по доске">
                     {anamnesis.lilaBoardStatus}
                   </div>
-                )}
-                {!lilaState?.gameEntered && !diceReady && Boolean(String(anamnesis?.pendingInitialAnswer || '').trim()) && (
-                  <button type="button" className="btn btn--primary"
-                    disabled={loading || bootstrapping || guestComposerLocked}
-                    onClick={() => {
-                      const text = 'Начать игру';
-                      const history = [...messages, { text, isUser: true, timestamp: nowIso() }];
-                      setMessages(history);
-                      void sendToOrchestrator(text, history);
-                    }}>
-                    Начать игру
-                  </button>
                 )}
                 {canFinishLila && (
                   <section className="lila-summary" aria-label="Переход к разбору">
@@ -857,11 +854,13 @@ export function ChatApp() {
                   </section>
                 )}
                 <DiceRoller
-                  disabled={!diceReady || loading || bootstrapping || guestComposerLocked}
+                  variant={gameStarted ? 'roll' : 'play'}
+                  disabled={gameStarted ? (!diceReady || loading || bootstrapping || guestComposerLocked) : (loading || bootstrapping || guestComposerLocked)}
                   onRoll={handleDiceRoll}
                 />
                 </>
               )}
+              {(gameStarted || !inLila) && (
               <form className="chat-form" onSubmit={onSend}>
                 <div className="chat-form-input-wrap">
                   <input
@@ -902,6 +901,7 @@ export function ChatApp() {
                   )}
                 </button>
               </form>
+              )}
             </div>
             )}
           </div>
