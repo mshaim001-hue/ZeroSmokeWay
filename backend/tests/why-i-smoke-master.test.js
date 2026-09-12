@@ -8,6 +8,7 @@ import {
   HYPOTHESIS_STATUS,
   SESSION_STATUS,
   addSessionHypothesis,
+  applyDiceRoll,
   applyGameMasterResult,
   buildGameMasterContext,
   buildGameMasterMessages,
@@ -20,6 +21,7 @@ import {
   interpretGameMasterOutput,
   normalizeGameMasterResult,
   resolvePersonalizedTitle,
+  runGameMasterTurn,
 } from '../services/whyISmokeGame/index.js';
 
 function researchedSession(overrides = {}) {
@@ -258,6 +260,42 @@ test('mirror and handoff keep the user words and do not invent a diagnosis', () 
   assert.match(handoff.userFinalExplanation, /паузу/);
   assert.ok(handoff.importantUserQuotes.some((q) => /паузу/.test(q)));
   assert.equal(handoff.startNextStage, false);
+});
+
+test('runGameMasterTurn uses the injected OpenAI client', async () => {
+  const definition = createDefinition();
+  const started = createGameSession({ initialAnswer: 'Курю после задачи' });
+  const { session } = applyDiceRoll(started, definition, 6);
+  let calls = 0;
+  const out = await runGameMasterTurn({
+    session,
+    definition,
+    extra: { event: 'new_cell' },
+    openai: {
+      chat: {
+        completions: {
+          create: async () => {
+            calls += 1;
+            return {
+              choices: [{
+                message: {
+                  content: JSON.stringify({
+                    observation: 'вход',
+                    messageToUser: 'Что осталось от первой сигареты?',
+                    question: 'Что осталось от первой сигареты?',
+                    diceReady: false,
+                  }),
+                },
+              }],
+            };
+          },
+        },
+      },
+    },
+  });
+  assert.equal(calls, 1);
+  assert.match(out.message, /первой сигареты/);
+  assert.equal(out.diceReady, false);
 });
 
 test('normalizeGameMasterResult drops unknown hypothesis actions', () => {

@@ -308,15 +308,27 @@ async function callMaster({ runMaster, session, definition, userMessage, extra, 
     });
   } catch (error) {
     console.error('why_i_smoke game master error:', error);
+    const diceReady = canApplyDiceRoll(session);
     return pack({
       kind: 'error',
-      response: 'Не удалось получить ответ ведущего. Напиши ещё раз или брось кубик, когда он будет доступен.',
+      response: fallbackMasterMessage(session, definition, extra, diceReady),
       session,
       definition,
-      diceReady: canApplyDiceRoll(session),
+      diceReady,
       pendingInitialAnswer: '',
     });
   }
+}
+
+function fallbackMasterMessage(session, definition, extra, diceReady) {
+  const title = shownTitle(session, definition, session?.currentPosition);
+  if (extra?.event === 'new_cell' && session?.entered && title) {
+    return `Ты на клетке ${session.currentPosition} «${title}». Что здесь откликается — или совсем не откликается — в том, как ты куришь?`;
+  }
+  if (diceReady) {
+    return 'Не получилось продолжить. Напиши ещё раз или брось кубик.';
+  }
+  return 'Не получилось продолжить. Напиши, что думаешь сейчас — попробуем ещё раз.';
 }
 
 function pack({ kind, response, session, definition, diceReady, pendingInitialAnswer, master = null }) {

@@ -7,6 +7,17 @@ import { buildFinalEcho, buildMirror, recordMirrorAnswer } from './mirror.js';
 import { GAME_MASTER_PROMPT, GAME_MASTER_RESULT_SCHEMA } from './prompt.js';
 import { composeMasterMessage, normalizeGameMasterResult } from './result.js';
 
+let defaultOpenAI = null;
+
+async function resolveOpenAIClient(openai) {
+  if (openai?.chat?.completions?.create) return openai;
+  if (!defaultOpenAI) {
+    const { default: OpenAI } = await import('openai');
+    defaultOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return defaultOpenAI;
+}
+
 export function buildGameMasterMessages({ session, definition, userMessage = '', extra = {} } = {}) {
   const context = buildGameMasterContext({ session, definition, userMessage, extra });
   return {
@@ -36,11 +47,12 @@ export async function runGameMasterTurn({
     extra,
   });
 
-  if (!openai?.chat?.completions?.create) {
+  const client = await resolveOpenAIClient(openai);
+  if (!client?.chat?.completions?.create) {
     throw new Error('OpenAI client is required to run the game master');
   }
 
-  const completion = await openai.chat.completions.create({
+  const completion = await client.chat.completions.create({
     model: model || process.env.OPENAI_MODEL || 'gpt-5.4-mini',
     messages: [
       { role: 'system', content: system },

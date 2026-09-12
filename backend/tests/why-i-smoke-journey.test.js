@@ -42,6 +42,20 @@ test('start uses earlier words as initialAnswer and failed entry stays mechanica
   assert.match(failed.boardStatus, /Выпало 2 — нужна 6/);
 });
 
+test('master failure after entry keeps the cell and asks to write, not roll', async () => {
+  const started = await handleWhyISmokePhase({ message: 'Начать игру' }, { runMaster: async () => ({}) });
+  const entered = await handleWhyISmokePhase({
+    message: '🎲 6',
+    anamnesis: { whyISmokeGame: started.session },
+  }, { runMaster: async () => { throw new Error('OpenAI client is required'); } });
+  assert.equal(entered.kind, 'error');
+  assert.equal(entered.diceReady, false);
+  assert.equal(entered.lilaState.gameEntered, true);
+  assert.equal(entered.lilaState.position, 1);
+  assert.match(entered.response, /Рождение/);
+  assert.doesNotMatch(entered.response, /брось кубик/i);
+});
+
 test('a landed cell asks the master; a second roll is blocked until an answer', async () => {
   const started = await handleWhyISmokePhase({ message: 'Начать игру' }, { runMaster: async () => ({}) });
   const entered = await handleWhyISmokePhase({
