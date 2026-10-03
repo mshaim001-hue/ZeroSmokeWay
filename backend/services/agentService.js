@@ -10,9 +10,10 @@ import {
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is not configured; AI requests are unavailable');
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export async function handleAgentRequest({
   message,
@@ -77,7 +78,7 @@ export async function handleAgentRequest({
 
   try {
     const model = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model,
       messages,
       response_format: { type: 'json_object' },

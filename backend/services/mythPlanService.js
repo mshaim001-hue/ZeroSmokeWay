@@ -3,7 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is not configured; AI requests are unavailable');
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const MYTH_PLAN_SYSTEM = `Ты — методолог Аллена Карра. Тебе передали полную переписку игры Лила и структурированные данные о курильщике.
 
@@ -38,7 +41,7 @@ export async function generateMythPlan({ conversationHistory = [], carrCoverage 
     .map((m) => (m.isUser ? 'Человек' : 'Зеркало') + ': ' + (m.text || ''))
     .join('\n');
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
     messages: [
       { role: 'system', content: MYTH_PLAN_SYSTEM },

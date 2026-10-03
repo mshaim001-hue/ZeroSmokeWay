@@ -1,10 +1,10 @@
 import { FormEvent, Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { ROOMS, ROOM_ORDER } from './content';
-import { QuestInteraction } from './QuestInteraction';
 import { LabyrinthAudio } from './audio';
 import { askGuide } from './api';
 import { doorDestinations, exportJourney, newJourney, parseJourney, SAVE_KEY, type JourneyState } from './state';
 import './labyrinth.css';
+import doorOpenings from './doorOpenings.json';
 
 const PhaserStage = lazy(() => import('./PhaserStage').then(module => ({ default: module.PhaserStage })));
 type Overlay = 'settings' | 'journal' | 'chat' | 'custom' | null;
@@ -28,7 +28,7 @@ export function LabyrinthApp() {
   const [transitioning, setTransitioning] = useState(false);
   const [draft, setDraft] = useState('');
   const [customAnswer, setCustomAnswer] = useState('');
-  const [noteDraft, setNoteDraft] = useState('');
+  const [noteDraft, setNoteDraft] = useState(() => state.notes[state.roomId] || '');
   const [customMode, setCustomMode] = useState<'reason' | 'answer'>('reason');
   const [busy, setBusy] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
@@ -38,12 +38,14 @@ export function LabyrinthApp() {
   const transitionTimer = useRef<ReturnType<typeof setTimeout>>();
   const controller = useRef<AbortController | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const uiRef = useRef<HTMLDivElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   const room = ROOMS.find(item => item.id === state.roomId) || ROOMS[0];
   const reducedMotion = state.reducedMotion || systemReduced;
   const profile = !playing || state.view === 'lobby' ? 'corridor' : state.view === 'ending' ? 'freedom' : room.profile;
-  const step = room.steps[state.stepIndex];
+  const roomChat = state.chats[room.id] || [];
+  const hasReply = roomChat.some(line => line.role === 'user');
   const roomNumber = ROOM_ORDER.indexOf(room.id) + 1;
   const destinations = doorDestinations(state.completed, state.view === 'room' ? room.id : undefined);
 
@@ -64,6 +66,25 @@ export function LabyrinthApp() {
     return () => media.removeEventListener('change', change);
   }, []);
   useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const resize = () => {
+      if (viewport.scale !== 1) return;
+      document.documentElement.style.setProperty('--lab-viewport-height', `${viewport.height}px`);
+      document.documentElement.style.setProperty('--lab-viewport-top', `${viewport.offsetTop}px`);
+    };
+    resize();
+    viewport.addEventListener('resize', resize);
+    viewport.addEventListener('scroll', resize);
+    return () => {
+      viewport.removeEventListener('resize', resize);
+      viewport.removeEventListener('scroll', resize);
+      document.documentElement.style.removeProperty('--lab-viewport-height');
+      document.documentElement.style.removeProperty('--lab-viewport-top');
+    };
+  }, []);
+  useEffect(() => {
+    if (uiRef.current) uiRef.current.inert = Boolean(overlay);
     if (!overlay) { lastFocus.current?.focus(); return; }
     lastFocus.current = document.activeElement as HTMLElement;
     const element = modalRef.current;
@@ -89,37 +110,38 @@ export function LabyrinthApp() {
     }
     setPlaying(true);
   }
-  function enterRoom(id: string) {
+  function enterRoom(id: string, chosenReason?: string) {
     if (transitioning) return;
     setOverlay(null);
+    controller.current?.abort(); controller.current = null; setBusy(false); setDraft('');
     setTransitioning(true);
     audio.current?.playDoor();
     transitionTimer.current = setTimeout(() => {
-      setState(previous => ({ ...previous, started: true, view: 'room', roomId: id, stage: 'intro', stepIndex: 0 }));
+      setState(previous => {
+        const destination = ROOMS.find(item => item.id === id)!;
+        const reason = chosenReason || destination.title;
+        const opening = `Ты выбрал дверь «${reason}». Давай разберём именно это.\n\n${doorOpenings[id as keyof typeof doorOpenings]}`;
+        return { ...previous, started: true, view: 'room', roomId: id, stage: 'intro', stepIndex: 0,
+          chats: { ...previous.chats, [id]: previous.chats[id]?.length ? previous.chats[id] : [{ role: 'assistant' as const, content: opening, mode: 'authored' as const }] } };
+      });
       setNoteDraft('');
       transitionTimer.current = setTimeout(() => setTransitioning(false), reducedMotion ? 80 : 600);
     }, reducedMotion ? 80 : 320);
   }
-  function inspect() {
-    if (overlay || transitioning || state.stage !== 'intro') return;
-    audio.current?.playDiscovery();
-    setState(previous => ({ ...previous, stage: 'task', inspected: [...new Set([...previous.inspected, room.id])] }));
-  }
+  function inspect() { /* The conversation begins as soon as the door opens. */ }
   function answer(value: string) {
-    setState(previous => {
-      const answers = [...(previous.answers[room.id] || [])];
-      answers[previous.stepIndex] = value.slice(0, 2000);
-      return { ...previous, stage: 'reflection', answers: { ...previous.answers, [room.id]: answers } };
-    });
+    setDraft(value);
     setOverlay(null);
   }
-  function nextStep() {
-    if (state.stepIndex < room.steps.length - 1) setState(previous => ({ ...previous, stepIndex: previous.stepIndex + 1, stage: 'steps' }));
-    else {
-      audio.current?.playDiscovery();
-      setNoteDraft(state.notes[room.id] || '');
-      setState(previous => ({ ...previous, stage: 'doors', completed: [...new Set([...previous.completed, room.id])] }));
-    }
+  function finishConversation() {
+    if (busy || !hasReply) return;
+    const ownWords = roomChat.filter(line => line.role === 'user').map(line => line.content);
+    setNoteDraft(state.notes[room.id] || ownWords.at(-1) || '');
+    setState(previous => ({ ...previous, stage: 'doors',
+      answers: { ...previous.answers, [room.id]: ownWords.slice(-6) },
+      notes: { ...previous.notes, [room.id]: previous.notes[room.id] || ownWords.at(-1) || '' },
+      completed: [...new Set([...previous.completed, room.id])] }));
+    audio.current?.playDiscovery();
   }
   function saveNote() {
     setState(previous => ({ ...previous, notes: { ...previous.notes, [room.id]: noteDraft.trim().slice(0, 2000) } }));
@@ -129,7 +151,7 @@ export function LabyrinthApp() {
     event.preventDefault();
     const value = customAnswer.trim();
     if (!value) return;
-    if (customMode === 'reason') { setState(previous => ({ ...previous, initialReason: value })); enterRoom('pleasure'); }
+    if (customMode === 'reason') { setState(previous => ({ ...previous, initialReason: value })); enterRoom('pleasure', value); }
     else answer(value);
   }
   async function sendChat(event: FormEvent) {
@@ -146,10 +168,10 @@ export function LabyrinthApp() {
     try {
       const reply = await askGuide(roomId, message, history, Object.values(state.notes), request.signal);
       if (controller.current !== request) return;
-      setState(previous => ({ ...previous, chats: { ...previous.chats, [roomId]: [...(previous.chats[roomId] || []), { role: 'assistant', content: reply.response, mode: reply.mode }].slice(-24) } }));
+      setState(previous => ({ ...previous, chats: { ...previous.chats, [roomId]: [...(previous.chats[roomId] || []), { role: 'assistant' as const, content: reply.response, mode: reply.mode }].slice(-24) } }));
     } catch {
       if (controller.current !== request) return;
-      setState(previous => ({ ...previous, chats: { ...previous.chats, [roomId]: [...(previous.chats[roomId] || []), { role: 'assistant', content: `Сейчас связь с ведущим недоступна. Твои слова сохранены в этом браузере. Можно продолжить авторскую сцену или вернуться к разговору позже.\n\n${room.steps[0].prompt}`, mode: 'offline' }].slice(-24) } }));
+      setState(previous => ({ ...previous, chats: { ...previous.chats, [roomId]: [...(previous.chats[roomId] || []), { role: 'assistant' as const, content: `Сейчас связь с ведущим недоступна. Твои слова сохранены в этом браузере. Можно продолжить авторскую сцену или вернуться к разговору позже.\n\n${room.steps[0].prompt}`, mode: 'offline' as const }].slice(-24) } }));
     } finally { clearTimeout(timeout); if (controller.current === request) { controller.current = null; setBusy(false); } }
   }
   function downloadNotes() {
@@ -165,10 +187,10 @@ export function LabyrinthApp() {
 
   return <main className={`lab-app theme-${profile} ${reducedMotion ? 'reduce-motion' : ''}`}>
     <div className="lab-backdrop" style={{ backgroundImage: `url(/game/${profile}.webp)` }} />
-    <Suspense fallback={null}><PhaserStage profile={profile} transitionKey={`${playing}-${state.view}-${room.id}`} reducedMotion={reducedMotion} onInspect={inspect} inspectEnabled={playing && state.view === 'room' && state.stage === 'intro' && !overlay && !transitioning} /></Suspense>
+    <Suspense fallback={null}><PhaserStage profile={profile} transitionKey={`${playing}-${state.view}-${room.id}`} reducedMotion={reducedMotion} onInspect={inspect} inspectEnabled={false} /></Suspense>
     <div className="lab-shade" />
     <div className={`lab-transition ${transitioning ? 'active' : ''}`} aria-hidden="true" />
-    <div className="lab-ui" inert={overlay ? '' : undefined}>
+    <div className="lab-ui" ref={uiRef}>
       <header className="lab-header">
         <button className="lab-brand" aria-label="На главный экран" onClick={() => setPlaying(false)}><Mark /><span>ZERO<span className="brand-light">SMOKE</span>WAY</span></button>
         <div className="header-actions">
@@ -191,8 +213,8 @@ export function LabyrinthApp() {
         {state.view === 'lobby' ? <section className="lab-lobby">
           <div className="room-heading"><div className="lab-eyebrow">ПЕРВАЯ РАЗВИЛКА</div><h1>Почему<br />я курю<span className="title-dot">?</span></h1><p>Выбери дверь, которая ближе тебе сейчас.</p></div>
           <div className="door-choices first-doors">
-            <button className="door-choice" disabled={transitioning} onClick={() => { setState(previous => ({ ...previous, initialReason: 'Мне нравится' })); enterRoom('pleasure'); }}><span className="door-glyph" aria-hidden="true">◯</span><span>Мне<br />нравится</span><span className="door-number">01</span></button>
-            <button className="door-choice" disabled={transitioning} onClick={() => { setState(previous => ({ ...previous, initialReason: 'Помогает справляться' })); enterRoom('stress'); }}><span className="door-glyph" aria-hidden="true">☼</span><span>Помогает<br />справляться</span><span className="door-number">02</span></button>
+            <button className="door-choice" disabled={transitioning} onClick={() => { setState(previous => ({ ...previous, initialReason: 'Мне нравится' })); enterRoom('pleasure', 'Мне нравится'); }}><span className="door-glyph" aria-hidden="true">◯</span><span>Мне<br />нравится</span><span className="door-number">01</span></button>
+            <button className="door-choice" disabled={transitioning} onClick={() => { setState(previous => ({ ...previous, initialReason: 'Помогает справляться' })); enterRoom('stress', 'Помогает справляться'); }}><span className="door-glyph" aria-hidden="true">☼</span><span>Помогает<br />справляться</span><span className="door-number">02</span></button>
             <button className="door-choice" disabled={transitioning} onClick={() => custom('reason')}><span className="door-glyph" aria-hidden="true">◇</span><span>Моя<br />причина</span><span className="door-number">03</span></button>
           </div>
           <div className="lobby-bottom"><span className="whisper-line" /><p>Здесь можно сомневаться.<br />И идти своим путём.</p><span className="lab-eyebrow">КОСНИСЬ ДВЕРИ</span></div>
@@ -201,17 +223,23 @@ export function LabyrinthApp() {
           <div className="ending-bottom"><p className="ending-thought">{state.notes.freedom || 'Можно взять с собой открытия. Можно оставить вопросы открытыми.'}</p><button className="lab-primary" onClick={downloadNotes}>Забрать свои записи <Icon name="arrow" /></button><button className="lab-secondary" onClick={() => setOverlay('chat')}>Поговорить с ведущим <Icon name="chat" /></button><button className="lab-text-button" onClick={() => setOverlay('journal')}>Вернуться к пройденным комнатам</button><p className="save-caption">{storageWarning ? 'Сохранение недоступно — скачай записи перед выходом.' : 'Твой путь сохранён в этом браузере.'}</p></div>
         </section> : <section className="lab-room" aria-label={room.title}>
           <div className="room-heading" key={room.id}><div className="lab-eyebrow"><span className="room-index">{String(roomNumber).padStart(2, '0')}</span> / КОМНАТА</div><h1>{room.title}</h1><p>{room.subtitle}</p></div>
-          {state.stage === 'intro' && <button className="inspect-button" onClick={inspect} disabled={transitioning}><span className="inspect-orbit"><Icon name="eye" /></span><span>Осмотреть: {room.object.name.toLowerCase()}</span></button>}
-          <div className={`room-panel stage-${state.stage}`} key={`${room.id}-${state.stage}-${state.stepIndex}`}>
-            {state.stage === 'intro' && <><div className="guide-label"><span /> ГОЛОС ЛАБИРИНТА</div><p className="scene-intro">{room.intro}</p><button className="lab-primary" disabled={transitioning} onClick={inspect}>Осмотреть предмет <Icon name="arrow" /></button></>}
-            {state.stage === 'task' && <><div className="guide-label"><Icon name="eye" /> {room.object.name.toUpperCase()}</div><p className="object-description">{room.object.description}</p><QuestInteraction key={room.id} roomId={room.id} onComplete={summary => { audio.current?.playDiscovery(); setState(previous => ({ ...previous, stage: 'steps', notes: { ...previous.notes, [room.id]: summary } })); }} /></>}
-            {state.stage === 'steps' && <><div className="step-heading"><span className="guide-label"><span /> ГОЛОС ЛАБИРИНТА</span><span className="step-count">{state.stepIndex + 1} / {room.steps.length}</span></div><h2 className="step-prompt">{step.prompt}</h2><div className="answer-choices">{step.choices.map((choice, index) => <button key={choice} onClick={() => answer(choice)}><span className="choice-index">0{index + 1}</span><span>{choice}</span><Icon name="arrow" /></button>)}</div><button className="lab-text-button" onClick={() => custom('answer')}>Ответить своими словами <span aria-hidden="true">↗</span></button></>}
-            {state.stage === 'reflection' && <><div className="guide-label"><span /> ТВОЯ ВЕРСИЯ</div><blockquote className="your-answer">{state.answers[room.id]?.[state.stepIndex]}</blockquote><p className="reflection-text">{step.reflection}</p><button className="lab-primary" onClick={nextStep}>{state.stepIndex < room.steps.length - 1 ? 'Исследовать дальше' : 'Открыть следующие двери'} <Icon name="arrow" /></button><button className="lab-text-button" onClick={() => { setDraft(''); setOverlay('chat'); }}>Хочу это обсудить <Icon name="chat" /></button></>}
-            {state.stage === 'doors' && <><div className="guide-label"><Icon name="check" /> ФРАГМЕНТ ПУТИ СОХРАНЁН</div><h2 className="step-prompt">Что оставишь в своих записях?</h2><textarea aria-label="Моя заметка о комнате" className="lab-note" value={noteDraft} maxLength={2000} rows={2} onChange={event => setNoteDraft(event.target.value)} onBlur={saveNote} placeholder="Можно оставить вопрос открытым…" />
+          <div className={`room-panel ${state.stage !== 'doors' ? 'conversation-panel' : ''}`}>
+            {state.stage !== 'doors' && <>
+              <div className="conversation-label"><span className="guide-label"><span /> РАЗГОВОР ЗА ДВЕРЬЮ</span><span>Обсуждаем эту дверь</span></div>
+              <div className="chat-scroll room-chat-scroll" aria-live="polite">
+                {!roomChat.length && <div className="chat-line assistant"><div className="chat-name">ВЕДУЩИЙ</div><p>{room.steps[0].prompt}</p></div>}
+                {roomChat.map((line, index) => <div className={`chat-line ${line.role}`} key={index}><div className="chat-name">{line.role === 'user' ? 'ТЫ' : line.mode === 'ai' ? 'AI-ВЕДУЩИЙ' : line.mode === 'offline' ? 'СВЯЗЬ НЕДОСТУПНА' : 'АВТОРСКИЙ ВЕДУЩИЙ'}</div><p>{line.content}</p></div>)}
+                {busy && <div className="chat-thinking" role="status">Ведущий слушает…</div>}<div ref={chatEnd} />
+              </div>
+              <form className="chat-composer room-chat-composer" onSubmit={sendChat}><textarea aria-label="Сообщение ведущему" placeholder="Расскажи, как это у тебя…" value={draft} maxLength={2000} rows={2} onChange={event => setDraft(event.target.value)} /><button className="lab-icon" type="submit" disabled={busy || !draft.trim() || transitioning} aria-label="Отправить сообщение"><Icon name="arrow" /></button></form>
+              <div className="conversation-exit"><button className="lab-text-button" disabled={busy || !hasReply} onClick={finishConversation}>Закончить разговор и открыть двери <Icon name="arrow" /></button></div>
+              <p className="chat-footnote">Сообщения отправляются ведущему на сервер. Разговор можно продолжать столько, сколько нужно.</p>
+            </>}
+            {state.stage === 'doors' && <><div className="guide-label"><Icon name="check" /> ФРАГМЕНТ ПУТИ СОХРАНЁН</div><h2 className="step-prompt">Что оставишь в своих записях?</h2><textarea aria-label="Моя заметка о комнате" className="lab-note" value={noteDraft} maxLength={2000} rows={2} onChange={event => { const value = event.target.value; setNoteDraft(value); setState(previous => ({ ...previous, notes: { ...previous.notes, [room.id]: value } })); }} onBlur={saveNote} placeholder="Можно оставить вопрос открытым…" />
               {destinations.length ? <><p className="next-door-caption">Куда пойдёшь дальше?</p><div className="next-doors">{destinations.map(id => { const next = ROOMS.find(r => r.id === id)!; return <button className="next-door" key={id} disabled={transitioning} onClick={() => { saveNote(); enterRoom(id); }}><span className="next-door-number">{String(ROOM_ORDER.indexOf(id) + 1).padStart(2, '0')}</span><span>{next.title}</span><Icon name="arrow" /></button>; })}</div></> : <button className="lab-primary" onClick={() => { saveNote(); audio.current?.playDiscovery(); setState(previous => ({ ...previous, view: 'ending' })); }}>Выйти из лабиринта <Icon name="arrow" /></button>}
             </>}
           </div>
-          <footer className="room-footer"><button onClick={() => setOverlay('journal')}><Icon name="book" /><span>Мои записи</span></button><span className="room-saved">{storageWarning ? 'БЕЗ СОХРАНЕНИЯ' : 'ПУТЬ СОХРАНЯЕТСЯ'}</span><button onClick={() => { setDraft(''); setOverlay('chat'); }}><Icon name="chat" /><span>Ведущий</span></button></footer>
+          <footer className="room-footer"><button onClick={() => setOverlay('journal')}><Icon name="book" /><span>Мои записи</span></button><span className="room-saved">{storageWarning ? 'БЕЗ СОХРАНЕНИЯ' : 'ПУТЬ СОХРАНЯЕТСЯ'}</span><span className="room-saved">{state.stage === 'doors' ? 'ВЫБЕРИ ДВЕРЬ' : 'ДИАЛОГ'}</span></footer>
         </section>}
       </>}
     </div>

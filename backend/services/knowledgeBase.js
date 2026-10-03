@@ -8,9 +8,10 @@ import { hasSupabaseAdmin } from '../lib/supabaseServer.js';
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is not configured; AI requests are unavailable');
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +23,7 @@ const EMBEDDINGS_FILE = path.join(KNOWLEDGE_BASE_DIR, 'embeddings.json');
  */
 export async function createEmbedding(text) {
   try {
-    const response = await openai.embeddings.create({
+    const response = await getOpenAI().embeddings.create({
       model: 'text-embedding-3-small',
       input: text,
     });
@@ -178,7 +179,7 @@ ${chunkText.substring(0, 500)}...
 {"agents": ["agent_type1", "agent_type2"]}`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты помощник для классификации текстов. Отвечай только валидным JSON объектом с полем "agents" содержащим массив строк.' },

@@ -4,10 +4,13 @@ import { getSupabaseAdmin, hasSupabaseAdmin } from '../lib/supabaseServer.js';
 
 dotenv.config();
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is not configured; AI requests are unavailable');
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 async function embedQuery(text) {
-  const res = await openai.embeddings.create({
+  const res = await getOpenAI().embeddings.create({
     model: 'text-embedding-3-small',
     input: text,
   });

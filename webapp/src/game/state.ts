@@ -1,4 +1,4 @@
-import { ROOMS, ROOM_ORDER } from './content';
+import { ROOMS, ROOM_ORDER } from './content.ts';
 
 export type ChatLine = { role: 'user' | 'assistant'; content: string; mode?: 'ai' | 'authored' | 'offline' };
 export type JourneyState = {
@@ -64,7 +64,10 @@ export function exportJourney(state: JourneyState): string {
   for (const room of ROOMS) {
     if (!state.completed.includes(room.id)) continue;
     lines.push('', room.title, state.notes[room.id] || 'Без личной заметки');
-    room.steps.forEach((step, i) => lines.push(`${step.prompt}\n${state.answers[room.id]?.[i] || 'Не записано'}`));
+    if (state.chats[room.id]?.length) {
+      lines.push('Разговор за дверью:');
+      state.chats[room.id].forEach(line => lines.push(`${line.role === 'user' ? 'Я' : 'Ведущий'}: ${line.content}`));
+    } else room.steps.forEach((step, i) => lines.push(`${step.prompt}\n${state.answers[room.id]?.[i] || 'Не записано'}`));
   }
   return lines.join('\n');
 }

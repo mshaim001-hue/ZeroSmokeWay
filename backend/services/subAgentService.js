@@ -3,9 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is not configured; AI requests are unavailable');
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 /**
  * Sub-агенты для анализа и валидации ответов основных агентов
@@ -38,7 +39,7 @@ export async function analyzeEmotionalTone(agentResponse, agentType, userMessage
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты анализируешь ответы AI-агентов. Отвечай только валидным JSON.' },
@@ -90,7 +91,7 @@ ${JSON.stringify(conversationHistory.slice(-3), null, 2)}
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты валидируешь данные анамнеза. Отвечай только валидным JSON.' },
@@ -139,7 +140,7 @@ export async function reviewSafety(agentResponse, agentType) {
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты проверяешь безопасность ответов. Отвечай только валидным JSON.' },
@@ -185,7 +186,7 @@ ${JSON.stringify(analysisResults, null, 2)}
 Верни только улучшенный ответ, без дополнительных комментариев.`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
       messages: [
         { role: 'system', content: 'Ты улучшаешь ответы AI-агентов. Верни только улучшенный текст ответа.' },

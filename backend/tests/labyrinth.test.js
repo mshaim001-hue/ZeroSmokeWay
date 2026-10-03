@@ -72,3 +72,14 @@ test('unbounded provider text is truncated and absent content is authored', asyn
   const empty = await handleLabyrinthRequest(request, { createCompletion: async () => ({ choices: [{ message: { content: '   ' } }] }) });
   assert.equal(empty.mode, 'authored');
 });
+
+test('guide explores the selected door with conversation history instead of an answer form', async () => {
+  let sent;
+  await handleLabyrinthRequest({...request, roomId:'pleasure', history:[{role:'assistant',content:'Ты выбрал дверь «Мне нравится».'},{role:'user',content:'Мне нравится сама пауза'}]}, {
+    createCompletion: async params => {sent=params; return {choices:[{message:{content:'Что в этой паузе особенно важно для тебя?'}}]};},
+  });
+  assert.match(sent.messages[0].content,/живой разговор/);
+  assert.match(sent.messages[0].content,/не проходи список механически/);
+  assert.match(sent.messages[0].content,/приятный перекур/);
+  assert.equal(sent.messages[2].content,'Мне нравится сама пауза');
+});
