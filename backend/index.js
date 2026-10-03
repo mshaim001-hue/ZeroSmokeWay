@@ -11,6 +11,7 @@ import dotenv from 'dotenv';
 import { agentRouter } from './routes/agent.js';
 import { orchestratorRouter } from './routes/orchestrator.js';
 import { knowledgeRouter } from './routes/knowledge.js';
+import { labyrinthRouter } from './routes/labyrinth.js';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use('/api/agent', agentRouter);
 app.use('/api/orchestrator', orchestratorRouter);
 app.use('/api/knowledge', knowledgeRouter);
+app.use('/api/labyrinth', labyrinthRouter);
 
 // Health check
 app.get('/health', (req, res) => {

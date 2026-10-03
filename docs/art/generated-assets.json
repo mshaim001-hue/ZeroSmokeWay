@@ -1,0 +1,49 @@
+{
+  "generator": "Built-in image_gen; imagegen skill",
+  "generatedOn": "2026-10-03",
+  "sourcePaths": [
+    {
+      "id": "corridor",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-4cfb62b8-18da-441b-a539-c7af2de1a05d.png"
+    },
+    {
+      "id": "pleasure",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-36cbd3cc-69b9-45d5-bfd9-2c39eda6414f.png"
+    },
+    {
+      "id": "stress",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-fdaeaa17-09cd-4ed8-b267-9560e56301b2.png"
+    },
+    {
+      "id": "origin",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-0d53652f-2b2d-451d-a2da-eec8d246a9c6.png"
+    },
+    {
+      "id": "company",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-f33737f0-1e0a-484e-99ad-16a27ba28fde.png"
+    },
+    {
+      "id": "tomorrow",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-abb7ad75-8b0b-412e-96cc-ed1d3953dd77.png"
+    },
+    {
+      "id": "mirror",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-c4f2a16d-4c09-4293-acab-b8f9a9ed3fd4.png"
+    },
+    {
+      "id": "freedom",
+      "path": "/Users/Guest/.codex/generated_images/01a10015-ce9a-7961-b0c5-aefda4b0101d/exec-231ee481-648d-44b5-be64-920d201b7e55.png"
+    }
+  ],
+  "commonPrompt": "Use case stylized-concept. Final mobile portrait psychological escape-room backgrounds, 2:3, cinematic photorealistic concept art, eye level, deep perspective, tactile materials, subtle film grain, volumetric light. No people/text/UI/logos/cigarettes/gore. Lower quarter calm and dark; important composition central 70%.",
+  "scenePrompts": {
+    "corridor": "Three closed wooden doors, charcoal stone, muted green patina, amber lamps and light under middle door.",
+    "pleasure": "Empty intimate night bar, walnut counter, chair, amber table lamp, burgundy accents, rainy tall window.",
+    "stress": "Midnight office, wooden desk, lamp, dark telephone, rainy window, cold blue reflections.",
+    "origin": "Old memory room, vintage chair, faded framed photos, dusty blue and ochre, afternoon shaft of light.",
+    "company": "Empty gathering room, round wooden table, three chairs, glasses, amber pendant, burgundy and forest green.",
+    "tomorrow": "Repeating hotel corridor with doors and numberless clock, grey stone and muted amber pools.",
+    "mirror": "Charcoal plaster room, tall antique mirror reflecting empty doorway, stone floor, soft amber light.",
+    "freedom": "Open stone doorway to dawn terrace, distant mountains, sage plants, limestone, quiet sunrise."
+  }
+}
