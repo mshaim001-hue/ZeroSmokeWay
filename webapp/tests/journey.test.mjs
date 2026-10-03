@@ -1,59 +1,66 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ROOMS, ROOM_ORDER } from '../src/game/content.ts';
-import { newJourney, parseJourney, doorDestinations, exportJourney } from '../src/game/state.ts';
-
-test('all 34 required topics occur on playable room steps', () => {
-  const covered = new Set(ROOMS.flatMap(room => room.steps.flatMap(step => step.topics)));
-  assert.deepEqual([...covered].sort((a,b) => a-b), Array.from({length:34}, (_,i) => i+1));
-  assert.equal(new Set(ROOM_ORDER).size, ROOM_ORDER.length);
-  for (const room of ROOMS) { assert.equal(room.steps.length, 3); assert.ok(room.steps.every(step => step.choices.length === 3)); }
+import { newJourney, newRoomProgress, parseJourney, doorDestinations, exportJourney, canCompleteRoom } from '../src/game/state.ts';
+test('all34 topics, dialogue schema, undirected graph',()=>{
+ assert.deepEqual([...new Set(ROOMS.flatMap(r=>r.topicIds))].sort((a,b)=>a-b),Array.from({length:34},(_,i)=>i+1));
+ assert.equal(ROOM_ORDER.length,11);assert.ok(!ROOM_ORDER.includes('personal'));
+ for(const r of ROOMS){assert.equal(r.steps,undefined);assert.ok(r.opening&&r.questions.length);for(const id of r.connections)assert.ok(ROOMS.find(x=>x.id===id).connections.includes(r.id));}
 });
-test('exit is reachable from any initial door without skipping rooms', () => {
-  for (const initial of ['pleasure','stress']) {
-    const completed = [initial];
-    let current = initial;
-    while (completed.length < ROOM_ORDER.length) {
-      const doors = doorDestinations(completed, current);
-      assert.ok(doors.length, `No route after ${current}`);
-      const next = doors[doors.length - 1];
-      if (next === 'freedom') assert.equal(completed.length, ROOM_ORDER.length - 1);
-      assert.ok(!completed.includes(next));
-      completed.push(next); current = next;
-    }
-    assert.deepEqual(doorDestinations(completed, current), []);
+test('every branch reaches exit with all required rooms',()=>{
+ for(const initial of ROOMS.map(r=>r.id).filter(id=>id!=='freedom')){
+  const done=initial==='personal'?[]:[initial];let current=initial;
+  while(done.length<11){const doors=doorDestinations(done,current);assert.ok(doors.length);const next=doors.at(-1);if(next==='freedom')assert.equal(done.length,10);assert.ok(!done.includes(next));done.push(next);current=next;}
+  assert.deepEqual(doorDestinations(done,current),[]);
+ }
+});
+test('all pending offered; neighbors and paths through visited rank first',()=>{
+ const doors=doorDestinations(['pleasure'],'pleasure');assert.equal(doors.length,9);assert.deepEqual(new Set(doors.slice(0,3)),new Set(['ritual','company','loop']));assert.ok(!doors.includes('freedom'));
+ const d=doorDestinations(['pleasure','ritual'],'ritual');assert.ok(d.indexOf('company')<d.indexOf('withdrawal'));
+});
+test('v1 migration preserves historical notes transcript answers and finished ending',()=>{
+ const chats=Array.from({length:30},(_,i)=>({role:i%2?'user':'assistant',content:`Line ${i}`}));
+ const s=parseJourney(JSON.stringify({version:1,started:true,view:'ending',roomId:'freedom',stage:'doors',completed:ROOM_ORDER,notes:{stress:'Note'},chats:{stress:chats},answers:{origin:['Old answer']}}));
+ assert.equal(s.version,2);assert.equal(s.view,'ending');assert.equal(s.chats.stress.length,30);assert.equal(s.notes.stress,'Note');assert.equal(s.chats.origin[0].content,'Old answer');assert.ok(s.progress.stress.legacy&&s.progress.stress.ready);assert.deepEqual(s.completed,ROOM_ORDER);
+});
+test('readiness evidence and optional personal room persist',()=>{
+ const p={...newRoomProgress(),phase:'reflect',evidence:{episode:'Yesterday',expectation:'Rest',observation:'Disagree',conclusion:''}};
+ const s=parseJourney(JSON.stringify({...newJourney(),started:true,roomId:'personal',progress:{personal:p}}));assert.deepEqual(s.progress.personal,p);assert.equal(s.roomId,'personal');
+ const ready=parseJourney(JSON.stringify({...s,stage:'doors',progress:{personal:{...p,ready:true,phase:'ready'}}}));assert.equal(ready.stage,'conversation');assert.equal(ready.progress.personal.ready,false);
+ const a=newRoomProgress(),b=newRoomProgress();a.evidence.episode='changed';assert.equal(b.evidence.episode,'');
+});
+test('invalid data strips safely and final cannot be bypassed',()=>{
+ for(const raw of ['null','{broken',JSON.stringify({...newJourney(),version:9})])assert.equal(parseJourney(raw),null);
+ const s=parseJourney(JSON.stringify({...newJourney(),roomId:'unknown',view:'ending',stage:'doors',completed:['stress','stress','constructor'],volume:4}));assert.deepEqual(s.completed,['stress']);assert.equal(s.roomId,'pleasure');assert.equal(s.view,'lobby');assert.equal(s.stage,'conversation');assert.equal(s.volume,1);
+});
+test('dialogue export actual lines and notes only',()=>{
+ const out=exportJourney({...newJourney(),initialReason:'My reason',notes:{personal:'Open question'},chats:{personal:[{role:'assistant',content:'What matters?'},{role:'user',content:'Time alone'}]}});assert.match(out,/Open question/);assert.match(out,/Я: Time alone/);assert.doesNotMatch(out,/Не записано|Архив цены/);
+});
+
+const userTurns=['Вчера после сложной работы мне хотелось выйти на улицу','Я ожидал спокойствия и короткой паузы для себя','Я заметил что разговор тоже помогает мне остановиться'];
+const genuine = () => ({...newJourney(),roomId:'stress',stage:'doors',progress:{stress:{phase:'ready',ready:true,evidence:{episode:'после сложной работы',expectation:'спокойствия и короткой паузы',observation:'разговор тоже помогает',conclusion:'мне остановиться'}}},chats:{stress:userTurns.map(content=>({role:'user',content}))}});
+test('completion needs three distinct meaningful user turns and all evidence grounded in user text',()=>{
+ const s=genuine();assert.ok(canCompleteRoom(s,'stress'));assert.equal(parseJourney(JSON.stringify(s)).stage,'doors');
+ assert.equal(canCompleteRoom({...s,chats:{stress:[s.chats.stress[0]]}},'stress'),false);
+ const invented={...s,progress:{stress:{...s.progress.stress,evidence:{...s.progress.stress.evidence,conclusion:'AI invented conclusion'}}},chats:{stress:[...s.chats.stress,{role:'assistant',content:'AI invented conclusion'}]}};
+ assert.equal(canCompleteRoom(invented,'stress'),false);assert.equal(parseJourney(JSON.stringify(invented)).progress.stress.ready,false);
+ assert.equal(canCompleteRoom({...s,completed:['stress']},'stress'),false);
+ assert.equal(canCompleteRoom({...s,progress:{stress:{...s.progress.stress,legacy:true}}},'stress'),false);
+});
+
+test('client dialogue topics and openings match server scenario files', async () => {
+  const {readFileSync}=await import('node:fs');
+  const serverTopics=JSON.parse(readFileSync(new URL('../../backend/services/labyrinthTopics.json',import.meta.url),'utf8'));
+  const openings=JSON.parse(readFileSync(new URL('../src/game/doorOpenings.json',import.meta.url),'utf8'));
+  for(const room of ROOMS) {
+    assert.deepEqual(serverTopics[room.id],room.questions);
+    assert.equal(openings[room.id],room.opening);
+    assert.ok(!('steps' in room) && !('object' in room) && !('choices' in room));
   }
 });
-test('save corruption and incompatible versions recover safely', () => {
-  assert.equal(parseJourney('{broken'), null);
-  assert.equal(parseJourney('null'), null);
-  assert.equal(parseJourney(JSON.stringify({...newJourney(),version:2})), null);
-});
-test('restored save strips unknown rooms and cannot bypass final completion', () => {
-  const restored = parseJourney(JSON.stringify({...newJourney(),started:true,view:'ending',roomId:'unknown',stage:'doors',completed:['stress','stress','constructor'],stepIndex:999,volume:4}));
-  assert.deepEqual(restored.completed,['stress']);
-  assert.equal(restored.roomId,'pleasure');
-  assert.equal(restored.view,'lobby');
-  assert.equal(restored.stage,'intro');
-  assert.equal(restored.volume,1);
-});
-test('a reload resumes exact answered step and private local notes', () => {
-  const state={...newJourney(),started:true,view:'room',roomId:'stress',stage:'reflection',stepIndex:1,answers:{stress:['И то и другое','Даёт паузу']},notes:{stress:'Мне важно выйти из комнаты'},chats:{stress:[{role:'user',content:'Мой вопрос'},{role:'assistant',content:'Ответ',mode:'authored'}]}};
-  const restored=parseJourney(JSON.stringify(state));
-  assert.equal(restored.stage,'reflection');
-  assert.equal(restored.stepIndex,1);
-  assert.equal(restored.notes.stress,state.notes.stress);
-  assert.equal(restored.chats.stress.length,2);
-});
-test('export contains personal answers and only explored rooms', () => {
-  const output=exportJourney({...newJourney(),initialReason:'Моя причина',completed:['stress'],notes:{stress:'Личная запись'},answers:{stress:['Проблема','Пауза','Постепенно']}});
-  assert.match(output,/Моя причина/); assert.match(output,/Личная запись/); assert.match(output,/Пауза/);
-  assert.doesNotMatch(output,/Архив цены/);
-});
-
-test('dialogue export preserves the conversation instead of inventing questionnaire answers', () => {
-  const output=exportJourney({...newJourney(),completed:['stress'],chats:{stress:[{role:'assistant',content:'Что даёт перекур?'},{role:'user',content:'Время побыть одному'}]}});
-  assert.match(output,/Ведущий: Что даёт перекур/);
-  assert.match(output,/Я: Время побыть одному/);
-  assert.doesNotMatch(output,/Не записано/);
+test('a migrated completed room cannot become a fresh finishable conversation', () => {
+  const restored=parseJourney(JSON.stringify({version:1,started:true,view:'room',roomId:'stress',stage:'intro',completed:['stress'],chats:{stress:[{role:'user',content:'Старая переписка'}]}}));
+  assert.equal(restored.stage,'doors');
+  assert.equal(restored.progress.stress.legacy,true);
+  assert.equal(canCompleteRoom(restored,'stress'),false);
 });

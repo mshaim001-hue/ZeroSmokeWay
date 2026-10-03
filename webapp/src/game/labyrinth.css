@@ -97,20 +97,6 @@
 .ending-thought { font-family:Georgia,serif; font-size:21px; line-height:1.5; margin-bottom:24px!important; }
 .save-caption { font-size:10px; line-height:1.5; color:#b3baaa; text-align:center; margin-top:14px!important; }
 
-/* Short room interactions: tactile cards, timelines, and instruments. */
-.qi-root p { font-size:12px; color:#c5c2b6; line-height:1.65; margin-bottom:14px!important; }
-.qi-cards { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
-.qi-cards > span { display:contents; }
-.qi-card { min-height:44px; padding:10px 13px; border:1px solid var(--line)!important; background:rgba(233,217,188,.04)!important; border-radius:3px; font-size:12px!important; text-align:left; line-height:1.4; flex:1 1 auto; }
-.qi-card[aria-pressed="true"] { background:rgba(217,187,143,.16)!important; border-color:var(--gold)!important; color:#f0d4af!important; }
-.qi-result { display:block; min-height:44px; padding:12px 13px; border-left:1px solid rgba(217,187,143,.45); color:var(--gold); font-family:Georgia,serif; font-size:16px; line-height:1.5; margin:12px 0 16px; background:rgba(214,191,153,.035); }
-ol.qi-result { padding-left:30px; font-size:12px; }
-.qi-label { font-size:12px; color:#d0cabb; display:block; margin-bottom:7px; }
-.qi-input { margin-top:9px; }
-.qi-scene { padding:17px; border:1px solid var(--line); background:rgba(233,215,187,.04); color:#e5dbca; font-family:Georgia,serif; font-size:18px; line-height:1.5; margin-bottom:16px; }
-.qi-range { width:100%; accent-color:var(--gold); margin-bottom:8px; }
-.qi-primary { font-size:12px!important; margin-top:12px; }
-
 /* Accessible React sheets retain room atmosphere underneath. */
 .lab-modal-backdrop { position:absolute; inset:0; background:rgba(4,8,6,.55); backdrop-filter:blur(5px); z-index:20; display:flex; align-items:flex-end; justify-content:center; padding-top:env(safe-area-inset-top); }
 .lab-modal { width:100%; max-width:560px; max-height:91%; min-height:0; display:flex; flex-direction:column; border:1px solid rgba(224,205,172,.2); border-bottom:0; border-radius:16px 16px 0 0; background:linear-gradient(150deg,#1b221d,#0d1510); box-shadow:0 -20px 90px rgba(0,0,0,.35); padding-bottom:env(safe-area-inset-bottom); animation:lab-sheet .25s ease-out; }
@@ -180,3 +166,14 @@ ol.qi-result { padding-left:30px; font-size:12px; }
 .conversation-panel .chat-footnote { margin:0; padding:0 20px 10px; font-size:9px; flex-shrink:0; }
 @media (max-height:750px) { .conversation-panel { max-height:66%; height:66%; padding-top:12px; } .conversation-label { padding-bottom:8px; } }
 @media (max-height:520px) and (min-width:600px) { .conversation-panel { height:auto; max-height:none; } }
+
+.dialogue-progress { padding:9px 20px 3px; display:flex; align-items:center; justify-content:space-between; gap:10px; color:#c4bcae; font-size:10px; flex-shrink:0; }
+.dialogue-progress > div { display:flex; gap:5px; }
+.dialogue-progress i { height:4px; width:15px; background:rgba(230,213,177,.18); border-radius:2px; }
+.dialogue-progress i.found { background:var(--gold); }
+.guide-retry { margin:0 16px; padding:8px 12px; border:1px solid rgba(224,194,141,.22); font-size:11px; color:#d2c5b0; flex-shrink:0; }
+.guide-retry .lab-secondary { min-height:36px; padding:7px 10px; margin-top:6px; font-size:11px; }
+.dialogue-pause { margin:0!important; padding:4px!important; font-size:10px!important; }
+.route-list { display:flex; flex-direction:column; gap:9px; }
+.route-list .next-door { padding:12px 15px; min-height:62px; }
+.route-list small { display:block; font-size:11px; margin-top:5px; color:#bfb6a5; }

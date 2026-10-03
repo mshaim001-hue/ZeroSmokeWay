@@ -1,24 +1,24 @@
-// Run against a disposable test browser with an active journey.
-// Sends synthetic test messages to the configured guide API.
+// Live UI smoke check on a disposable origin with stress/personal conversation open.
+// Sends synthetic input to the configured AI. Does not overwrite user saves.
 async (page) => {
-  for (let action = 0; action < 40; action++) {
-    await page.locator('main').ariaSnapshot();
-    const finish = page.getByRole('button', {name:'Закончить разговор и открыть двери',exact:true});
-    if (await finish.count()) {
-      await page.locator('.lab-transition.active').waitFor({state:'detached'});
-      await page.getByRole('textbox',{name:'Сообщение ведущему',exact:true}).fill('Тестовый пример: для меня важна возможность сделать паузу.');
-      await page.getByRole('button',{name:'Отправить сообщение',exact:true}).click();
-      await page.getByRole('status').waitFor({state:'detached',timeout:20000});
-      await finish.click();
-    } else if (await page.locator('.next-door').count()) {
-      await page.getByRole('textbox',{name:'Моя заметка о комнате',exact:true}).fill('Тестовая заметка о разговоре.');
-      await page.locator('.next-door').last().click();
-    } else if (await page.getByRole('button',{name:'Выйти из лабиринта',exact:true}).count()) {
-      await page.getByRole('button',{name:'Выйти из лабиринта',exact:true}).click();
-      await page.getByRole('heading',{name:/Выход/}).waitFor();
-      await page.screenshot({path:'output/playwright/dialogue-ending.png'});
-      return;
-    } else throw new Error('Start a disposable journey before running the walkthrough');
+  await page.locator('main').ariaSnapshot();
+  const finish=page.getByRole('button',{name:'Сохранить вывод и открыть двери',exact:true});
+  const messages=[
+    'Вчера после рабочего звонка я вышел во двор и закурил. Я ожидал, что сигарета уберёт тревогу из-за разговора.',
+    'Потом сравнил: тревога о работе осталась. Стало легче от того, что вышел и побыл один. Сигарета закончилась, а проблему пришлось решать.',
+    'Мой вывод: мне нужна пауза и тишина, а не обязательно сигарета. Ожидал исчезновения тревоги, но фактически получил передышку. Я хочу сохранять паузу другим способом.'
+  ];
+  for(const [index,message] of messages.entries()) {
+    await page.getByRole('textbox',{name:'Сообщение ведущему',exact:true}).fill(message);
+    await page.getByRole('button',{name:'Отправить сообщение',exact:true}).click();
+    await page.getByRole('status').waitFor({state:'detached',timeout:20000});
+    if(index<2 && await finish.isEnabled()) throw new Error('Premature room completion');
   }
-  throw new Error('Route did not reach ending');
+  if(!await finish.isEnabled()) throw new Error('AI did not confirm example/comparison/conclusion; inspect dialogue');
+  await finish.click();
+  await page.getByRole('button',{name:/Выбрать другую дверь/}).click();
+  await page.getByRole('dialog').getByRole('button',{name:/Город за стеной/}).click();
+  await page.locator('.lab-transition.active').waitFor({state:'detached'});
+  await page.getByRole('heading',{name:'Город за стеной',exact:true}).waitFor();
+  await page.screenshot({path:'output/playwright/nonlinear-route.png'});
 }
