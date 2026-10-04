@@ -10,7 +10,7 @@ const messages = [
 ];
 for (const message of messages) {
   const reply = await handleLabyrinthRequest({roomId:'stress',message,history},{env});
-  console.log(JSON.stringify({turn:history.filter(l=>l.role==='user').length+1,mode:reply.mode,issue:reply.issue,phase:reply.progress.phase,ready:reply.progress.ready,evidence:Object.keys(reply.progress.evidence).filter(k=>reply.progress.evidence[k]),response:reply.response}));
+  console.log(JSON.stringify({turn:history.filter(l=>l.role==='user').length+1,mode:reply.mode,issue:reply.issue,response:reply.response}));
   if(reply.mode!=='ai') {process.exitCode=1;break;}
   history.push({role:'user',content:message},{role:'assistant',content:reply.response});
 }

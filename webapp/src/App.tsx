@@ -1,5 +1,2 @@
-import { PrototypeApp } from './game/PrototypeApp';
-
-export default function App() {
-  return <PrototypeApp />;
-}
+import { LabyrinthApp } from './game/LabyrinthApp';
+export default function App(){return <LabyrinthApp/>;}
