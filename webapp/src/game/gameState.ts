@@ -59,13 +59,22 @@ export function enterRoom(s:GameState,id:RoomId,reason?:string):GameState {
   const content=r.completed ? `Раньше ты написал: «${r.note}». Что сейчас изменилось?` : id==='entry' ? entryOpening(initialReason) : ROOMS[id].opening;
   return {...s,initialReason,room:id,view:'room',rooms:{...s.rooms,[id]:{...r,chat:r.chat.length && !r.completed ? r.chat : [...r.chat,{role:'assistant',content,mode:'authored'}]}}};
 }
+const INSPECT_ONLY = new Set(['entry','pleasure','stress','loop','world']);
 export function inspectObject(s:GameState,id:string):GameState {
   const room=ROOMS[s.room]; if(s.view!=='room' || !room.objects.some(o=>o.id===id) || !canEnter(s,s.room)) return s;
   const r=s.rooms[s.room];
-  // Pleasure uses drag/arrange for selection; tap only looks closer.
-  if(s.room==='pleasure') return {...s,rooms:{...s.rooms,pleasure:{...r,inspected:[...new Set([...r.inspected,id])]}}};
+  const inspected=[...new Set([...r.inspected,id])];
+  if(INSPECT_ONLY.has(s.room)) {
+    const next={...r,inspected};
+    if(s.room==='stress') return {...s,rooms:{...s.rooms,stress:stressQuietState(next)}};
+    return {...s,rooms:{...s.rooms,[s.room]:next}};
+  }
   const selected=r.selected.includes(id) ? r.selected.filter(x=>x!==id) : [...r.selected,id];
-  return {...s,rooms:{...s.rooms,[s.room]:{...r,selected,inspected:[...new Set([...r.inspected,id])]}}};
+  return {...s,rooms:{...s.rooms,[s.room]:{...r,selected,inspected}}};
+}
+function stressQuietState(r:RoomState):RoomState {
+  const ready=r.value>=100 && r.inspected.includes('pause') && r.inspected.includes('cigarette');
+  return ready ? {...r,action:1,changed:true} : r;
 }
 /** Items currently on the pleasure table. Before the first arrange, all three sit there. */
 export function pleasureKept(s:GameState):string[] {
@@ -81,6 +90,34 @@ export function arrangePleasureTable(s:GameState,keptIds:string[]):GameState {
   const complete=kept.length>=1 && kept.length<=2;
   const r=s.rooms.pleasure;
   return {...s,rooms:{...s.rooms,pleasure:{...r,selected:kept,inspected:[...new Set([...r.inspected,...all])],action:complete?1:0,changed:r.changed||complete}}};
+}
+/** Entry: drag what matters out of the linked cluster into the keep zone. */
+export function arrangeEntrySplit(s:GameState,keptIds:string[]):GameState {
+  if(s.view!=='room' || s.room!=='entry' || !canEnter(s,'entry')) return s;
+  const all=ROOMS.entry.objects.map(o=>o.id);
+  const kept=[...new Set(keptIds.filter(id=>all.includes(id)))];
+  const r=s.rooms.entry;
+  const inspected=[...new Set([...r.inspected,...kept,...r.selected.filter(id=>!kept.includes(id))])];
+  const complete=kept.length>0 && inspected.length>=2;
+  return {...s,rooms:{...s.rooms,entry:{...r,selected:kept,inspected,action:complete?1:0,changed:r.changed||complete}}};
+}
+/** Stress: hold progress 0–100; silence lands when hold is full and pause+cigarette were seen. */
+export function holdStressSilence(s:GameState,value:number):GameState {
+  if(s.view!=='room' || s.room!=='stress' || !canEnter(s,'stress')) return s;
+  const r=s.rooms.stress;
+  const next=stressQuietState({...r,value:Math.max(0,Math.min(100,value)),adjusted:true});
+  return {...s,rooms:{...s.rooms,stress:next}};
+}
+/** Loop: tear the ring after all three links were traced. */
+export function tearLoop(s:GameState):GameState {
+  if(s.view!=='room' || s.room!=='loop' || !canEnter(s,'loop')) return s;
+  const r=s.rooms.loop; if(r.inspected.length<3) return s;
+  return {...s,rooms:{...s.rooms,loop:{...r,action:1,changed:true}}};
+}
+/** World: swipe away one packaging layer. */
+export function swipeWorldLayer(s:GameState):GameState {
+  if(s.view!=='room' || s.room!=='world' || !canEnter(s,'world')) return s;
+  return actInRoom(s);
 }
 export function actInRoom(s:GameState):GameState {
   if(s.view!=='room' || !canEnter(s,s.room))return s;
@@ -108,17 +145,17 @@ export function sceneReady(s:GameState,id:RoomId=s.room):boolean {
 export function objectiveHint(s:GameState):string {
   if(sceneReady(s))return 'Сцена изменилась. Сохрани свою мысль, когда будешь готов.';
   switch(s.room){
-    case 'entry':return 'Посмотри хотя бы две вещи. Выбери, что важно тебе, и нажми «Разделить».';
+    case 'entry':return 'Посмотри хотя бы две вещи. Перетащи вниз то, что держит тебя рядом с сигаретой.';
     case 'pleasure':return 'Перетащи со стола то, без чего пауза ещё возможна. Оставь одну или две вещи — стол изменится сам.';
     case 'ritual':return 'Выбери одну или две вещи, которые хочешь оставить. Остальные можно убрать. Затем измени сцену.';
-    case 'stress':return 'Посмотри на передышку и сигарету, затем останови шум.';
+    case 'stress':return 'Посмотри на передышку и сигарету, затем удерживай центр, пока шум не затихнет.';
     case 'origin':return 'Открой первую сигарету и сегодняшний взгляд, затем отмотай время.';
     case 'company':return 'Посмотри на людей, выбери своё место и погаси сигареты.';
-    case 'loop':return 'Проследи все три звена, затем разомкни круг.';
+    case 'loop':return 'Проследи все три звена, затем потяни круг в сторону, чтобы разомкнуть.';
     case 'price':return 'Посмотри на деньги, настрой расход и переключи расчёт на год.';
     case 'tomorrow':return 'Передвинь ползунок «потом», открой «Сейчас» и останови часы.';
     case 'withdrawal':return 'Открой «Помощь», затем окно. Силу бури можно менять.';
-    case 'world':return 'Посмотри на образ, чужие слова и предупреждения. Сними все три слоя.';
+    case 'world':return 'Посмотри на три предмета, затем смахни слои с пачки.';
     case 'freedom':return 'Коснись трёх огней и открой выход.';
   }
 }

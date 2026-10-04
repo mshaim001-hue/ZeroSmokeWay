@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'rea
 import { LabyrinthAudio } from './audio';
 import { askDialogue } from './api';
 import { ROOMS, ROOM_IDS, THEME_IDS, type RoomId } from './rooms';
-import { SAVE_KEY, LEGACY_KEY, newGame, parseGame, enterRoom, inspectObject, actInRoom, arrangePleasureTable, pleasureKept, sceneReady, objectiveHint, canComplete, completeRoom, canEnter, availableDoors, completedThemes, noteCandidate, dialogueContext, exportGame, type GameState, type RoomState } from './gameState';
+import { SAVE_KEY, LEGACY_KEY, newGame, parseGame, enterRoom, inspectObject, actInRoom, arrangePleasureTable, arrangeEntrySplit, holdStressSilence, tearLoop, swipeWorldLayer, pleasureKept, sceneReady, objectiveHint, canComplete, completeRoom, canEnter, availableDoors, completedThemes, noteCandidate, dialogueContext, exportGame, type GameState, type RoomState } from './gameState';
 import './labyrinth.css';
 import './quest.css';
 const PhaserStage=lazy(()=>import('./PhaserStage').then(m=>({default:m.PhaserStage})));
@@ -36,6 +36,38 @@ export function LabyrinthApp(){
       return next;
     });
   }
+  function arrangeEntry(keptIds:string[]){
+    set(old=>{
+      const next=arrangeEntrySplit(old,keptIds);
+      const became=next.rooms.entry.changed && !old.rooms.entry.changed;
+      queueMicrotask(()=>{void audio.current?.unlock();if(became)audio.current?.playChange();else audio.current?.playObject();});
+      return next;
+    });
+  }
+  function stressHold(value:number){
+    set(old=>{
+      const next=holdStressSilence(old,value);
+      const became=next.rooms.stress.changed && !old.rooms.stress.changed;
+      if(became)queueMicrotask(()=>{void audio.current?.unlock();audio.current?.playChange();});
+      return next;
+    });
+  }
+  function loopTear(){
+    set(old=>{
+      const next=tearLoop(old);
+      if(next.rooms.loop.changed && !old.rooms.loop.changed)queueMicrotask(()=>{void audio.current?.unlock();audio.current?.playChange();});
+      return next;
+    });
+  }
+  function worldSwipe(){
+    set(old=>{
+      const before=old.rooms.world.action;
+      const next=swipeWorldLayer(old);
+      if(next.rooms.world.action>before)queueMicrotask(()=>{void audio.current?.unlock();audio.current?.playChange();});
+      return next;
+    });
+  }
+  const gestureRooms=new Set(['entry','pleasure','stress','loop','world']);
   function doors(){cancel();setJournal(false);patch({view:'doors'});}
   function finish(){if(!canComplete(s))return;cancel();set(old=>completeRoom(old));audio.current?.playDiscovery();}
   async function send(e?:FormEvent,messageOverride?:string,retry=false){
@@ -52,7 +84,7 @@ export function LabyrinthApp(){
     finally{clearTimeout(timeout);if(request.current===control){request.current=undefined;setBusy(false);}}
   }
   function download(){const url=URL.createObjectURL(new Blob([exportGame(s)],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='labyrinth-my-path.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  const commonStage={state:s,reducedMotion:reduced,onObject:inspect,onDoor:enter,onPleasureArrange:arrangePleasure};
+  const commonStage={state:s,reducedMotion:reduced,onObject:inspect,onDoor:enter,onPleasureArrange:arrangePleasure,onEntryArrange:arrangeEntry,onStressHold:stressHold,onLoopTear:loopTear,onWorldSwipe:worldSwipe};
   const currentNumber=s.room==='entry'?'ПОРОГ':s.room==='freedom'?'ВЫХОД':`ДВЕРЬ ${THEME_IDS.indexOf(s.room)+1}`;
   return <main onPointerUp={()=>{if(!s.muted)void audio.current?.unlock();}} onKeyDown={e=>{if(!s.muted && (e.key==='Enter' || e.key===' '))void audio.current?.unlock();}} className={`lab-app quest-app ${reduced?'reduce-motion':''}`}>
     <div className="lab-backdrop" style={{backgroundImage:`url(/game/${profile}.webp)`}}/><div className="lab-shade"/>
@@ -75,13 +107,18 @@ export function LabyrinthApp(){
       : <>
         <div className="quest-room-heading"><div><p className="lab-eyebrow">{currentNumber} · {r.completed?'ДВЕРЬ ОТКРЫТА':d.subtitle}</p><h1>{d.title}</h1></div><button aria-label="К карте" onClick={doors}>⌂</button></div>
         <nav className="quest-tabs" aria-label="В комнате"><button aria-pressed={tab==='scene'} onClick={()=>setTab('scene')}>Комната {sceneReady(s)?'✧':r.changed?'↔':''}</button><button aria-pressed={tab==='chat'} onClick={()=>setTab('chat')}>Разговор</button></nav>
-        {tab==='scene' ? <section className="quest-scroll quest-scene" ref={scroll}><p className="quest-instruction">{d.instruction}</p><div className={`quest-room-canvas ${s.room==='pleasure'?'quest-room-canvas-focus':''}`}><Suspense fallback={<CanvasFallback/>}><PhaserStage {...commonStage} mode="room"/></Suspense></div>
+        {tab==='scene' ? <section className="quest-scroll quest-scene" ref={scroll}><p className="quest-instruction">{d.instruction}</p><div className={`quest-room-canvas ${gestureRooms.has(s.room)?'quest-room-canvas-focus':''}`}><Suspense fallback={<CanvasFallback/>}><PhaserStage {...commonStage} mode="room"/></Suspense></div>
           {s.room==='pleasure' ? <div className="quest-object-buttons" aria-label="Стол: оставить или убрать">{d.objects.map(o=>{const onTable=pleasureKept(s).includes(o.id);return <button key={o.id} aria-pressed={onTable} onClick={()=>{const next=new Set(pleasureKept(s));if(onTable)next.delete(o.id);else next.add(o.id);arrangePleasure([...next]);setInspected(o.id);}}><span>{onTable?'◎':'↓'}</span>{o.label}<small>{onTable?'на столе':'убрать'}</small></button>;})}</div>
-          : <div className="quest-object-buttons" aria-label="Предметы комнаты">{d.objects.map(o=><button key={o.id} aria-pressed={r.selected.includes(o.id)} onClick={()=>inspect(o.id)}><span>{r.inspected.includes(o.id)?'✓':'+'}</span>{o.label}</button>)}</div>}
+          : s.room==='entry' ? <div className="quest-object-buttons" aria-label="Что держит: оставить важным">{d.objects.map(o=>{const kept=r.selected.includes(o.id);return <button key={o.id} aria-pressed={kept} onClick={()=>{const next=new Set(r.selected);if(kept)next.delete(o.id);else next.add(o.id);arrangeEntry([...next]);setInspected(o.id);}}><span>{kept?'●':'○'}</span>{o.label}<small>{kept?'держит меня':'в связке'}</small></button>;})}</div>
+          : <div className="quest-object-buttons" aria-label="Предметы комнаты">{d.objects.map(o=><button key={o.id} aria-pressed={r.selected.includes(o.id) || r.inspected.includes(o.id)} onClick={()=>inspect(o.id)}><span>{r.inspected.includes(o.id)?'✓':'+'}</span>{o.label}</button>)}</div>}
           {object && <div className="quest-inspector" role="status"><h2>{object.label}</h2><p>{object.detail}</p><button className="lab-text-button" onClick={()=>{setDraft(`Хочу обсудить: ${object.detail}`);setTab('chat');}}>Поговорить об этом →</button></div>}
           <SceneControls room={s.room} state={r} patch={roomPatch}/>
-          {s.room!=='pleasure' && <div className="quest-action"><button className="lab-primary" onClick={action} disabled={d.mechanic==='unpack' && r.action===3}>{r.action && d.mechanic!=='unpack'?'Вернуть, как было':d.mechanic==='unpack'?r.action===3?'Упаковка снята':`${d.action} · ${r.action+1}/3`:d.action} →</button><p role="status">{r.action?d.after:d.before}</p></div>}
-          {s.room==='pleasure' && <p className="quest-muted" role="status">{r.changed?d.after:d.before}</p>}
+          {s.room==='stress' && !r.changed && <div className="quest-action"><button className="lab-primary" disabled={!(r.inspected.includes('pause') && r.inspected.includes('cigarette'))} onClick={()=>stressHold(100)}>{d.action} →</button><p role="status">Удерживай центр на сцене или нажми здесь, когда посмотрел передышку и сигарету.</p></div>}
+          {s.room==='loop' && !r.changed && <div className="quest-action"><button className="lab-primary" disabled={r.inspected.length<3} onClick={loopTear}>{d.action} →</button><p role="status">{d.before}</p></div>}
+          {s.room==='world' && r.action<3 && <div className="quest-action"><button className="lab-primary" onClick={worldSwipe}>{d.action} · {r.action+1}/3 →</button><p role="status">{d.before}</p></div>}
+          {s.room==='world' && r.action>=3 && <p className="quest-muted" role="status">{d.after}</p>}
+          {!gestureRooms.has(s.room) && <div className="quest-action"><button className="lab-primary" onClick={action} disabled={d.mechanic==='unpack' && r.action===3}>{r.action && d.mechanic!=='unpack'?'Вернуть, как было':d.mechanic==='unpack'?r.action===3?'Упаковка снята':`${d.action} · ${r.action+1}/3`:d.action} →</button><p role="status">{r.action?d.after:d.before}</p></div>}
+          {(s.room==='pleasure' || s.room==='entry' || (s.room==='stress' && r.changed) || (s.room==='loop' && r.changed)) && <p className="quest-muted" role="status">{r.changed?d.after:d.before}</p>}
           <div className="quest-note"><h2>{s.room==='freedom'?'Что ты выбираешь дальше?':'Что взять с собой из этой комнаты?'}</h2><p className="quest-muted">{r.chat.some(m=>m.role==='user')?'Твой последний ответ уже здесь. Сохрани его или напиши иначе.':'Можно сначала сохранить мысль здесь — или заглянуть в разговор.'}</p>{candidate && <blockquote>«{candidate}»</blockquote>}<button className="lab-text-button" onClick={()=>setChooseNote(!chooseNote)}>Выбрать свою реплику</button>{chooseNote && <div className="quest-quote-options">{r.chat.filter(m=>m.role==='user').slice(-10).map((m,i)=><button key={i} onClick={()=>{roomPatch({note:m.content});setChooseNote(false);}}>{m.content}</button>)}</div>}<button className="lab-text-button" onClick={()=>setEditNote(!editNote)}>{candidate?'Написать иначе':'Написать свою мысль'}</button>{editNote && <label className="quest-field">Моя запись<textarea maxLength={2000} value={r.note} onChange={e=>roomPatch({note:e.target.value})} placeholder="То, что понял, с чем споришь или чего пока не понимаешь"/></label>}{!candidate && <button className="lab-secondary" onClick={()=>roomPatch({note:`Пока не знаю, что думаю о теме «${d.title}». Хочу к этому вернуться.`})}>Пока не знаю. Вернусь к этому.</button>}
             {!sceneReady(s) && <p className="quest-muted">{objectiveHint(s)}</p>}
             <button className="lab-primary" disabled={!canComplete(s)} onClick={finish}>{s.room==='freedom'?'Выйти из лабиринта':'Сохранить и открыть проход'} →</button>

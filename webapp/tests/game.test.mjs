@@ -1,11 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ROOMS,ROOM_IDS,THEME_IDS} from '../src/game/rooms.ts';
-import {newGame,parseGame,canEnter,enterRoom,inspectObject,actInRoom,arrangePleasureTable,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
+import {newGame,parseGame,canEnter,enterRoom,inspectObject,actInRoom,arrangePleasureTable,arrangeEntrySplit,holdStressSilence,tearLoop,swipeWorldLayer,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
 function finish(s,id,note='Я пока не согласен и хочу проверить это сам'){
   s=enterRoom(s,id);
   if(id==='pleasure'){
     s=arrangePleasureTable(s,[ROOMS.pleasure.objects[0].id,ROOMS.pleasure.objects[2].id]);
+  }else if(id==='entry'){
+    for(const o of ROOMS.entry.objects)s=inspectObject(s,o.id);
+    s=arrangeEntrySplit(s,[ROOMS.entry.objects[0].id]);
+  }else if(id==='stress'){
+    for(const o of ROOMS.stress.objects)s=inspectObject(s,o.id);
+    s=holdStressSilence(s,100);
+  }else if(id==='loop'){
+    for(const o of ROOMS.loop.objects)s=inspectObject(s,o.id);
+    s=tearLoop(s);
+  }else if(id==='world'){
+    for(const o of ROOMS.world.objects)s=inspectObject(s,o.id);
+    s=swipeWorldLayer(s);s=swipeWorldLayer(s);s=swipeWorldLayer(s);
   }else{
     for(const o of ROOMS[id].objects)s=inspectObject(s,o.id);
     if(id==='ritual')s=inspectObject(s,ROOMS[id].objects[1].id);
@@ -22,7 +34,7 @@ test('opening and chat alone cannot unlock space; no message-count gate',()=>{
   assert.equal(canComplete(s),false);
   for(const o of ROOMS.entry.objects)s=inspectObject(s,o.id);
   assert.equal(canComplete(s),false);
-  s=actInRoom(s);s.rooms.entry.chat=s.rooms.entry.chat.slice(0,2);
+  s=arrangeEntrySplit(s,['habit']);s.rooms.entry.chat=s.rooms.entry.chat.slice(0,2);
   assert.equal(canComplete(s),true);
   assert.equal(noteCandidate(s),'Я ответил');
 });
@@ -53,10 +65,10 @@ test('custom reason stays its own entrance and feeds discussion',()=>{
 test('every scene must be explored; unpack requires all three layers',()=>{
   let s=finish(newGame(),'entry');s=enterRoom(s,'world');
   for(const o of ROOMS.world.objects)s=inspectObject(s,o.id);s.rooms.world.note='Этот образ мне знаком';
-  s=actInRoom(s);assert.equal(canComplete(s),false);s=actInRoom(s);assert.equal(canComplete(s),false);s=actInRoom(s);assert.equal(canComplete(s),true);
+  s=swipeWorldLayer(s);assert.equal(canComplete(s),false);s=swipeWorldLayer(s);assert.equal(canComplete(s),false);s=swipeWorldLayer(s);assert.equal(canComplete(s),true);
 });
 test('no API is needed: own uncertainty is saved without forced agreement',()=>{
-  let s=enterRoom(newGame(),'entry');for(const o of ROOMS.entry.objects)s=inspectObject(s,o.id);s=actInRoom(s);
+  let s=enterRoom(newGame(),'entry');for(const o of ROOMS.entry.objects)s=inspectObject(s,o.id);s=arrangeEntrySplit(s,['support']);
   assert.equal(sceneReady(s),true);assert.equal(canComplete(s),false);s.rooms.entry.note='Пока не понимаю';s=completeRoom(s);assert.equal(s.rooms.entry.note,'Пока не понимаю');
 });
 test('chat words move automatically into note, can be edited explicitly',()=>{
@@ -87,8 +99,9 @@ test('context carries scene actions and previous personal words; export includes
   assert.match(dialogueContext(s).join('\n'),/109500/);assert.match(dialogueContext(s).join('\n'),/утренний кофе/);
   s.rooms.price.chat.push({role:'user',content:'Это много денег'});assert.match(exportGame(s),/Это много денег/);
 });
-test('inspecting twice toggles choice without inflating progress',()=>{
+test('inspecting twice does not inflate progress; ritual still toggles choice',()=>{
   let s=enterRoom(newGame(),'entry');s=inspectObject(s,'habit');s=inspectObject(s,'habit');assert.deepEqual(s.rooms.entry.inspected,['habit']);assert.deepEqual(s.rooms.entry.selected,[]);assert.equal(inspectObject(s,'bad'),s);
+  s=finish(newGame(),'entry');s=enterRoom(s,'ritual');s=inspectObject(s,'hands');assert.deepEqual(s.rooms.ritual.selected,['hands']);s=inspectObject(s,'hands');assert.deepEqual(s.rooms.ritual.selected,[]);
 });
 test('each scene has a specific objective rather than three generic clicks',()=>{
   let s=finish(newGame(),'entry');s=enterRoom(s,'pleasure');
@@ -98,6 +111,20 @@ test('each scene has a specific objective rather than three generic clicks',()=>
   s=arrangePleasureTable(s,['coffee','pause']);assert.equal(sceneReady(s),true);assert.deepEqual(pleasureKept(s),['coffee','pause']);
   s=enterRoom(s,'withdrawal');s=inspectObject(s,'help');s=actInRoom(s);assert.equal(sceneReady(s),true);
   s=enterRoom(s,'tomorrow');s=inspectObject(s,'now');s=actInRoom(s);assert.equal(sceneReady(s),false);s.rooms.tomorrow.adjusted=true;assert.equal(sceneReady(s),true);
+});
+test('stage two gestures: entry split, stress hold, loop tear, world swipe',()=>{
+  let s=enterRoom(newGame(),'entry');
+  s=inspectObject(s,'pleasure');s=inspectObject(s,'support');
+  s=arrangeEntrySplit(s,['support']);assert.equal(sceneReady(s),true);
+  s=finish(s,'entry');s=enterRoom(s,'stress');
+  s=holdStressSilence(s,100);assert.equal(sceneReady(s),false);
+  s=inspectObject(s,'pause');s=inspectObject(s,'cigarette');assert.equal(sceneReady(s),true);
+  s=enterRoom(s,'loop');
+  for(const o of ROOMS.loop.objects)s=inspectObject(s,o.id);
+  assert.equal(tearLoop(s).rooms.loop.changed,true);
+  s=enterRoom(s,'world');
+  for(const o of ROOMS.world.objects)s=inspectObject(s,o.id);
+  s=swipeWorldLayer(s);s=swipeWorldLayer(s);assert.equal(sceneReady(s),false);s=swipeWorldLayer(s);assert.equal(sceneReady(s),true);
 });
 test('first recommendations follow selected reason while leaving the full map free',()=>{
   let s=finish(newGame(),'entry');s.initialReason='Возможность успокоиться';assert.deepEqual(availableDoors(s).slice(0,3),['stress','withdrawal','loop']);s.initialReason='Не знаю. Я просто курю';assert.deepEqual(availableDoors(s).slice(0,3),['ritual','loop','origin']);assert.equal(availableDoors(s).length,10);
