@@ -1,4 +1,4 @@
-import { ROOM_IDS, ROOMS, THEME_IDS, entryOpening, type RoomId } from './rooms.ts';
+import { ROOM_IDS, ROOMS, THEME_IDS, CORE_THEME_IDS, SIDE_THEME_IDS, entryOpening, isCoreTheme, type RoomId } from './rooms.ts';
 export type Message = { role:'user'|'assistant'; content:string; mode?:'ai'|'authored'|'offline' };
 export type RoomState = { inspected:string[]; selected:string[]; action:number; value:number; price:number; changed:boolean; adjusted:boolean; note:string; notes:string[]; chat:Message[]; completed:boolean };
 export type GameState = { version:2; view:'home'|'doors'|'room'|'ending'; room:RoomId; initialReason:string; rooms:Record<RoomId,RoomState>; order:RoomId[]; muted:boolean; volume:number; events:string[]; legacyNotes:string[] };
@@ -45,13 +45,18 @@ export function parseGame(raw:string|null,legacyRaw:string|null=null):GameState 
   } catch {return s;}
 }
 export function completedThemes(s:GameState):number {return THEME_IDS.filter(id=>s.rooms[id].completed).length;}
-export function canEnter(s:GameState,id:RoomId):boolean {return id==='entry' || (s.rooms.entry.completed && (id!=='freedom' || completedThemes(s)===THEME_IDS.length));}
+export function completedCore(s:GameState):number {return CORE_THEME_IDS.filter(id=>s.rooms[id].completed).length;}
+export function coreReady(s:GameState):boolean {return s.rooms.entry.completed && CORE_THEME_IDS.every(id=>s.rooms[id].completed);}
+export function canEnter(s:GameState,id:RoomId):boolean {return id==='entry' || (s.rooms.entry.completed && (id!=='freedom' || coreReady(s)));}
 export function availableDoors(s:GameState):RoomId[] {
   if(!s.rooms.entry.completed) return ['entry'];
   const last=s.order.at(-1) || 'entry';
-  const entryRoute=s.initialReason.includes('успоко') || s.initialReason.includes('расслаб') ? ['stress','withdrawal','loop'] : s.initialReason.includes('просто курю') ? ['ritual','loop','origin'] : s.initialReason.includes('кофе') || s.initialReason==='Мне нравится' ? ['pleasure','ritual','company'] : ROOMS.entry.neighbours;
-  const recommended=(last==='entry'?entryRoute as RoomId[]:ROOMS[last].neighbours).filter(id=>canEnter(s,id) && !s.rooms[id].completed);
-  return [...new Set([...recommended,...THEME_IDS.filter(id=>!s.rooms[id].completed),...(canEnter(s,'freedom')?['freedom' as RoomId]:[])])];
+  const entryRoute=s.initialReason.includes('успоко') || s.initialReason.includes('расслаб') ? ['stress','loop','world'] : s.initialReason.includes('просто курю') ? ['loop','world','pleasure'] : s.initialReason.includes('кофе') || s.initialReason==='Мне нравится' ? ['pleasure','loop','stress'] : ROOMS.entry.neighbours;
+  const incompleteCore=CORE_THEME_IDS.filter(id=>!s.rooms[id].completed) as RoomId[];
+  const incompleteSide=SIDE_THEME_IDS.filter(id=>!s.rooms[id].completed) as RoomId[];
+  const recommended=(last==='entry'?entryRoute as RoomId[]:ROOMS[last].neighbours).filter(id=>canEnter(s,id) && !s.rooms[id].completed && id!=='freedom');
+  const coreFirst=[...recommended.filter(isCoreTheme),...incompleteCore,...recommended.filter(id=>!isCoreTheme(id)),...incompleteSide];
+  return [...new Set([...coreFirst,...(canEnter(s,'freedom')?['freedom' as RoomId]:[])])];
 }
 const clip = (value:string,max:number):string => value.length<=max ? value : `${value.slice(0,max-1).trimEnd()}…`;
 /** Opening line for the scene banner / first Talk seed. Not auto-pushed into chat on enter. */

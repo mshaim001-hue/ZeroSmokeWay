@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ROOMS,ROOM_IDS,THEME_IDS} from '../src/game/rooms.ts';
-import {newGame,parseGame,canEnter,enterRoom,startDialogue,openingLine,returnEcho,corridorMemory,doorMemory,inspectObject,actInRoom,arrangePleasureTable,arrangeEntrySplit,holdStressSilence,tearLoop,swipeWorldLayer,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
+import {ROOMS,ROOM_IDS,THEME_IDS,CORE_THEME_IDS,SIDE_THEME_IDS} from '../src/game/rooms.ts';
+import {newGame,parseGame,canEnter,enterRoom,startDialogue,openingLine,returnEcho,corridorMemory,doorMemory,inspectObject,actInRoom,arrangePleasureTable,arrangeEntrySplit,holdStressSilence,tearLoop,swipeWorldLayer,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,completedCore,coreReady,dialogueContext,exportGame} from '../src/game/gameState.ts';
 function finish(s,id,note='Я пока не согласен и хочу проверить это сам'){
   s=enterRoom(s,id);
   if(id==='pleasure'){
@@ -38,16 +38,18 @@ test('opening and chat alone cannot unlock space; no message-count gate',()=>{
   assert.equal(canComplete(s),true);
   assert.equal(noteCandidate(s),'Я ответил');
 });
-test('all ten doors are available after entry, any order leads to real ending',()=>{
+test('core four themes unlock freedom; side rooms stay optional',()=>{
   let s=finish(newGame(),'entry');
   assert.equal(availableDoors(s).filter(id=>THEME_IDS.includes(id)).length,10);
   assert.equal(canEnter(s,'freedom'),false);
-  const order=['world','withdrawal','origin','price','loop','company','tomorrow','ritual','stress','pleasure'];
-  for(const id of order){s=finish(s,id);assert.equal(s.view,'doors');}
-  assert.equal(completedThemes(s),10);assert.equal(canEnter(s,'freedom'),true);
+  assert.equal(CORE_THEME_IDS.length,4);assert.equal(SIDE_THEME_IDS.length,6);
+  for(const id of CORE_THEME_IDS){s=finish(s,id);assert.equal(s.view,'doors');}
+  assert.equal(completedCore(s),4);assert.equal(coreReady(s),true);assert.equal(canEnter(s,'freedom'),true);
+  assert.ok(availableDoors(s).includes('ritual'));
+  s=finish(s,'ritual','Боковая комната тоже важна');assert.equal(canEnter(s,'freedom'),true);
   s=finish(s,'freedom','Хочу попробовать жить без сигарет');
   assert.equal(s.view,'ending');assert.equal(s.rooms.freedom.completed,true);
-  assert.deepEqual(s.order,['entry',...order,'freedom']);
+  assert.ok(s.order.includes('entry'));assert.ok(CORE_THEME_IDS.every(id=>s.order.includes(id)));assert.ok(s.order.includes('freedom'));
 });
 test('locked doors cannot be opened or completed through state helpers',()=>{
   const s=newGame();assert.equal(enterRoom(s,'price'),s);assert.equal(canEnter(s,'freedom'),false);
@@ -129,7 +131,7 @@ test('stage two gestures: entry split, stress hold, loop tear, world swipe',()=>
   s=swipeWorldLayer(s);s=swipeWorldLayer(s);assert.equal(sceneReady(s),false);s=swipeWorldLayer(s);assert.equal(sceneReady(s),true);
 });
 test('first recommendations follow selected reason while leaving the full map free',()=>{
-  let s=finish(newGame(),'entry');s.initialReason='Возможность успокоиться';assert.deepEqual(availableDoors(s).slice(0,3),['stress','withdrawal','loop']);s.initialReason='Не знаю. Я просто курю';assert.deepEqual(availableDoors(s).slice(0,3),['ritual','loop','origin']);assert.equal(availableDoors(s).length,10);
+  let s=finish(newGame(),'entry');s.initialReason='Возможность успокоиться';assert.deepEqual(availableDoors(s).slice(0,3),['stress','loop','world']);s.initialReason='Не знаю. Я просто курю';assert.deepEqual(availableDoors(s).slice(0,3),['loop','world','pleasure']);assert.equal(availableDoors(s).filter(id=>THEME_IDS.includes(id)).length,10);
 });
 test('stage three: no chat on enter, talk seeds echo, corridor remembers notes',()=>{
   let s=finish(newGame(),'entry','Мне важна утренняя пауза');

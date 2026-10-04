@@ -1,6 +1,12 @@
 export const THEME_IDS = ['pleasure','stress','origin','company','ritual','loop','price','tomorrow','withdrawal','world'] as const;
 export type ThemeId = typeof THEME_IDS[number];
+/** Gesture-led rooms required before the exit. Other themes stay optional side doors. */
+export const CORE_THEME_IDS = ['pleasure','stress','loop','world'] as const;
+export type CoreThemeId = typeof CORE_THEME_IDS[number];
+export const SIDE_THEME_IDS = THEME_IDS.filter((id):id is Exclude<ThemeId, CoreThemeId>=>!(CORE_THEME_IDS as readonly string[]).includes(id));
 export type RoomId = 'entry' | ThemeId | 'freedom';
+export function isCoreTheme(id:RoomId):boolean {return (CORE_THEME_IDS as readonly string[]).includes(id);}
+export function isSideTheme(id:RoomId):boolean {return (THEME_IDS as readonly string[]).includes(id) && !isCoreTheme(id);}
 export type Mechanic = 'keep' | 'pause' | 'rewind' | 'company' | 'cycle' | 'price' | 'clock' | 'weather' | 'unpack' | 'exit';
 export type SceneObject = { id: string; label: string; detail: string; symbol: string };
 export type RoomDefinition = {
@@ -14,7 +20,7 @@ export const ROOMS: Record<RoomId, RoomDefinition> = {
     title:'Что держит',door:'Моя причина',subtitle:'С чего начинается твой путь',profile:'corridor',color:0xd8bc8e,mechanic:'keep',
     opening:'Если перестать курить, по чему ты будешь скучать?',instruction:'Три вещи связаны вместе. Коснись их, затем перетащи вниз то, что держит тебя рядом с сигаретой.',
     before:'Всё связано с сигаретой',after:'Ты сам выбираешь, что оставить',action:'Разделить',reward:'В стене появились три прохода. На каждом — другой вопрос о твоей причине.',
-    objects:[object('pleasure','Удовольствие','cup','Какие сигареты ты ждёшь с удовольствием?'),object('support','Поддержка','lamp','В чём сигарета, по твоему ощущению, помогает?'),object('habit','Привычка','ring','Бывает, что закуриваешь, даже не задумавшись?')],neighbours:['pleasure','stress','ritual'],
+    objects:[object('pleasure','Удовольствие','cup','Какие сигареты ты ждёшь с удовольствием?'),object('support','Поддержка','lamp','В чём сигарета, по твоему ощущению, помогает?'),object('habit','Привычка','ring','Бывает, что закуриваешь, даже не задумавшись?')],neighbours:['pleasure','stress','loop'],
   },
   pleasure:{
     title:'Кофе остывает',door:'Без сигареты уже не то?',subtitle:'Удовольствие и ожидание',profile:'pleasure',color:0xe7ba78,mechanic:'keep',
@@ -78,8 +84,8 @@ export const ROOMS: Record<RoomId, RoomDefinition> = {
   },
   freedom:{
     title:'Выход',door:'Свобода',subtitle:'Что ты берёшь с собой',profile:'freedom',color:0xe5d6ab,mechanic:'exit',
-    opening:'Ты прошёл разные стороны своей привычки. Что теперь думаешь о жизни без сигареты?',instruction:'Зажги три огня своего пути. Когда будешь готов, открой выход.',
-    before:'Выход собран из твоего пути',after:'Дверь открыта',action:'Открыть выход',reward:'Лабиринт пройден. Решение о курении остаётся твоим.',
+    opening:'Ты прошёл главные двери привычки. Что теперь думаешь о жизни без сигареты?',instruction:'Зажги три огня своего пути. Когда будешь готов, открой выход. Боковые комнаты можно пройти и после.',
+    before:'Выход собран из твоего пути',after:'Дверь открыта',action:'Открыть выход',reward:'Главный путь пройден. Решение о курении остаётся твоим.',
     objects:[object('keep','Что оставить','cup','Что ценное из своей жизни ты хочешь сохранить?'),object('leave','Что отпустить','ring','Что больше не хочешь отдавать сигаретам?'),object('next','Следующий шаг','door','Что ты выбираешь сделать после игры?')],neighbours:[],
   },
 };
