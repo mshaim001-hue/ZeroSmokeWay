@@ -71,7 +71,7 @@ export function PhaserStage(props:StageProps) {
           this.icon(x,y-2,o.symbol,color,dim?.28:1);
           this.label(x,y+44,o.label,w*.27,dim?'#aaa9a3':'#f1e9dc',w<370?14:16);
           const zone=this.add.zone(x,y+9,w*.28,108).setDepth(6).setInteractive({useHandCursor:true});this.controls.push(zone);
-          this.tap(zone,()=>{latest.current.onObject(o.id);if(!latest.current.reducedMotion)this.cameras.main.flash(120,Math.round(color>>16&255),Math.round(color>>8&255),Math.round(color&255),false);});
+          this.tap(zone,()=>{if(latest.current.state.view!=='room')return;latest.current.onObject(o.id);if(!latest.current.reducedMotion)this.cameras.main.flash(120,Math.round(color>>16&255),Math.round(color>>8&255),Math.round(color&255),false);});
           if(seen)this.label(x,y-54,selected?'●':'✓',40,'#dec19a',14);
         });
         this.label(w/2,h*.94,r.completed?'ПРОХОД ОТКРЫТ':r.changed?'Сцена изменилась':'Коснись предметов',w*.9,'#ddc9a9',13);
@@ -87,7 +87,7 @@ export function PhaserStage(props:StageProps) {
           case 'company': {g.fillStyle(c,.14);g.fillEllipse(cx,cy+25,w*.55,h*.19);g.strokeEllipse(cx,cy+25,w*.55,h*.19);for(let i=0;i<3;i++)this.icon(w*(.25+i*.25),cy-13,'people',c);if(!r.action)this.icon(cx,cy+32,'cigarette',c);break;}
           case 'unpack': {g.fillStyle(c,.14);g.fillRoundedRect(cx-46,cy-45,92,100,6);g.strokeRoundedRect(cx-46,cy-45,92,100,6);const layers=['Свобода','Так принято','Страшно'];this.label(cx,cy-12,r.action===3?'Что думаю я?':layers[r.action],w*.8,'#f1e9dc',19);for(let i=r.action;i<3;i++){g.lineStyle(1,c,.4);g.strokeRoundedRect(cx-50-i*5,cy-50-i*5,100+i*10,110+i*10,5);}break;}
           case 'weather': {g.strokeRoundedRect(cx-48,cy-45,96,100,3);g.lineBetween(cx,cy-45,cx,cy+55);g.lineBetween(cx-48,cy+5,cx+48,cy+5);if(r.action){g.fillStyle(0xe7d3a0,.18);g.fillTriangle(cx,cy+5,w*.1,h*.53,w*.9,h*.53);}this.label(cx,cy+80,r.action?'Окно открыто':'Твой страх, не прогноз',w*.9,'#ded7cb',14);break;}
-          case 'exit': {g.lineStyle(3,c,.8);g.strokeRoundedRect(cx-45,cy-50,90,120,40);g.fillStyle(c,r.action?.55:.06);g.fillRoundedRect(cx-40,cy-45,80,112,36);if(r.action)this.label(cx,cy+13,'→',80,'#fff2ce',35);break;}
+          case 'exit': {g.lineStyle(3,c,.8);g.strokeRoundedRect(cx-45,cy-50,90,120,40);g.fillStyle(c,r.action?.55:.06);g.fillRoundedRect(cx-40,cy-45,80,112,36);if(r.action)this.label(cx,cy+13,'→',80,'#fff2ce',35);d.objects.forEach((o,i)=>{g.fillStyle(c,r.inspected.includes(o.id)?1:.15);g.fillCircle(w*(.28+i*.22),cy+h*.26,6);if(r.inspected.includes(o.id)){g.lineStyle(1,c,.35);g.strokeCircle(w*(.28+i*.22),cy+h*.26,13);}});break;}
           case 'pause': {g.strokeCircle(cx,cy,30);if(r.action){g.lineBetween(cx-9,cy-15,cx-9,cy+15);g.lineBetween(cx+9,cy-15,cx+9,cy+15);}else{g.fillStyle(c,.55);g.fillTriangle(cx-9,cy-16,cx-9,cy+16,cx+15,cy);}this.label(cx,cy+53,r.action?'Пауза':'Шум',w*.7,'#f1e9dc',18);break;}
           default: {g.lineStyle(1,c,.4);g.strokeEllipse(cx,cy,w*.6,h*.2);const visible=r.action?d.objects.filter(o=>r.selected.includes(o.id)):d.objects;visible.forEach((o,i)=>this.icon(cx+(i-(visible.length-1)/2)*w*.19,cy,o.symbol,c));this.label(cx,cy+h*.14,r.action?'Что осталось?':'Привычный состав',w*.8,'#f1e9dc',16);}
         }

@@ -49,7 +49,8 @@ export function canEnter(s:GameState,id:RoomId):boolean {return id==='entry' || 
 export function availableDoors(s:GameState):RoomId[] {
   if(!s.rooms.entry.completed) return ['entry'];
   const last=s.order.at(-1) || 'entry';
-  const recommended=ROOMS[last].neighbours.filter(id=>canEnter(s,id) && !s.rooms[id].completed);
+  const entryRoute=s.initialReason.includes('успоко') || s.initialReason.includes('расслаб') ? ['stress','withdrawal','loop'] : s.initialReason.includes('просто курю') ? ['ritual','loop','origin'] : s.initialReason.includes('кофе') || s.initialReason==='Мне нравится' ? ['pleasure','ritual','company'] : ROOMS.entry.neighbours;
+  const recommended=(last==='entry'?entryRoute as RoomId[]:ROOMS[last].neighbours).filter(id=>canEnter(s,id) && !s.rooms[id].completed);
   return [...new Set([...recommended,...THEME_IDS.filter(id=>!s.rooms[id].completed),...(canEnter(s,'freedom')?['freedom' as RoomId]:[])])];
 }
 export function enterRoom(s:GameState,id:RoomId,reason?:string):GameState {
@@ -59,12 +60,12 @@ export function enterRoom(s:GameState,id:RoomId,reason?:string):GameState {
   return {...s,initialReason,room:id,view:'room',rooms:{...s.rooms,[id]:{...r,chat:r.chat.length && !r.completed ? r.chat : [...r.chat,{role:'assistant',content,mode:'authored'}]}}};
 }
 export function inspectObject(s:GameState,id:string):GameState {
-  const room=ROOMS[s.room]; if(!room.objects.some(o=>o.id===id) || !canEnter(s,s.room)) return s;
+  const room=ROOMS[s.room]; if(s.view!=='room' || !room.objects.some(o=>o.id===id) || !canEnter(s,s.room)) return s;
   const r=s.rooms[s.room]; const selected=r.selected.includes(id) ? r.selected.filter(x=>x!==id) : [...r.selected,id];
   return {...s,rooms:{...s.rooms,[s.room]:{...r,selected,inspected:[...new Set([...r.inspected,id])]}}};
 }
 export function actInRoom(s:GameState):GameState {
-  if(!canEnter(s,s.room))return s;
+  if(s.view!=='room' || !canEnter(s,s.room))return s;
   const r=s.rooms[s.room]; const mechanic=ROOMS[s.room].mechanic;
   const action=mechanic==='unpack' ? Math.min(3,r.action+1) : r.action===0 ? 1 : 0;
   return {...s,rooms:{...s.rooms,[s.room]:{...r,action,changed:r.changed || action>0}}};

@@ -86,3 +86,12 @@ test('context carries scene actions and previous personal words; export includes
 test('inspecting twice toggles choice without inflating progress',()=>{
   let s=enterRoom(newGame(),'entry');s=inspectObject(s,'habit');s=inspectObject(s,'habit');assert.deepEqual(s.rooms.entry.inspected,['habit']);assert.deepEqual(s.rooms.entry.selected,[]);assert.equal(inspectObject(s,'bad'),s);
 });
+test('each scene has a specific objective rather than three generic clicks',()=>{
+  let s=finish(newGame(),'entry');s=enterRoom(s,'pleasure');for(const o of ROOMS.pleasure.objects)s=inspectObject(s,o.id);s=actInRoom(s);s.rooms.pleasure.note='Люблю кофе';
+  assert.equal(sceneReady(s),false);s=inspectObject(s,'cigarette');assert.equal(sceneReady(s),true);
+  s=enterRoom(s,'withdrawal');s=inspectObject(s,'help');s=actInRoom(s);assert.equal(sceneReady(s),true);
+  s=enterRoom(s,'tomorrow');s=inspectObject(s,'now');s=actInRoom(s);assert.equal(sceneReady(s),false);s.rooms.tomorrow.adjusted=true;assert.equal(sceneReady(s),true);
+});
+test('first recommendations follow selected reason while leaving the full map free',()=>{
+  let s=finish(newGame(),'entry');s.initialReason='Возможность успокоиться';assert.deepEqual(availableDoors(s).slice(0,3),['stress','withdrawal','loop']);s.initialReason='Не знаю. Я просто курю';assert.deepEqual(availableDoors(s).slice(0,3),['ritual','loop','origin']);assert.equal(availableDoors(s).length,10);
+});

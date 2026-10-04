@@ -46,7 +46,7 @@ export function LabyrinthApp(){
   function download(){const url=URL.createObjectURL(new Blob([exportGame(s)],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='labyrinth-my-path.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   const commonStage={state:s,reducedMotion:reduced,onObject:inspect,onDoor:enter};
   const currentNumber=s.room==='entry'?'ПОРОГ':s.room==='freedom'?'ВЫХОД':`ДВЕРЬ ${THEME_IDS.indexOf(s.room)+1}`;
-  return <main className={`lab-app quest-app ${reduced?'reduce-motion':''}`}>
+  return <main onPointerUp={()=>{if(!s.muted)void audio.current?.unlock();}} onKeyDown={e=>{if(!s.muted && (e.key==='Enter' || e.key===' '))void audio.current?.unlock();}} className={`lab-app quest-app ${reduced?'reduce-motion':''}`}>
     <div className="lab-backdrop" style={{backgroundImage:`url(/game/${profile}.webp)`}}/><div className="lab-shade"/>
     <div className="quest-shell">
       <header className="quest-header"><button className="quest-logo" onClick={()=>{cancel();setJournal(false);patch({view:'home'});}}>ZERO<span>SMOKE</span>WAY</button><div><button aria-label={s.muted?'Включить музыку':'Выключить музыку'} onClick={()=>{void audio.current?.unlock();patch({muted:!s.muted});}}>{s.muted?'◌':'♫'}</button><button aria-label="Настройки музыки" aria-expanded={settings} onClick={()=>setSettings(!settings)}>☷</button><button aria-pressed={journal} onClick={()=>setJournal(!journal)}>Записи</button></div></header>

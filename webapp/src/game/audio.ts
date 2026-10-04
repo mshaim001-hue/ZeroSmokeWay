@@ -89,7 +89,7 @@ export class LabyrinthAudio {
         await this.context.resume();
         if (this.destroyed || document.hidden) return;
         if (this.appliedProfile !== this.profile) this.makeLayer();
-        this.schedule();
+        if(this.beat===undefined)this.schedule();
       }
     } catch { /* Unsupported or gesture-restricted browser: game remains playable. */ }
   }
