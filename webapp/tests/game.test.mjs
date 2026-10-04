@@ -1,13 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ROOMS,ROOM_IDS,THEME_IDS} from '../src/game/rooms.ts';
-import {newGame,parseGame,canEnter,enterRoom,inspectObject,actInRoom,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
+import {newGame,parseGame,canEnter,enterRoom,inspectObject,actInRoom,arrangePleasureTable,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
 function finish(s,id,note='Я пока не согласен и хочу проверить это сам'){
   s=enterRoom(s,id);
-  for(const o of ROOMS[id].objects)s=inspectObject(s,o.id);
-  if(['pleasure','ritual'].includes(id))s=inspectObject(s,ROOMS[id].objects[1].id);
-  if(id==='tomorrow')s.rooms[id].adjusted=true;
-  s=actInRoom(s);if(ROOMS[id].mechanic==='unpack'){s=actInRoom(s);s=actInRoom(s);}
+  if(id==='pleasure'){
+    s=arrangePleasureTable(s,[ROOMS.pleasure.objects[0].id,ROOMS.pleasure.objects[2].id]);
+  }else{
+    for(const o of ROOMS[id].objects)s=inspectObject(s,o.id);
+    if(id==='ritual')s=inspectObject(s,ROOMS[id].objects[1].id);
+    if(id==='tomorrow')s.rooms[id].adjusted=true;
+    s=actInRoom(s);if(ROOMS[id].mechanic==='unpack'){s=actInRoom(s);s=actInRoom(s);}
+  }
   s.rooms[id].chat.push({role:'user',content:note});
   assert.equal(canComplete(s),true,id);
   return completeRoom(s);
@@ -87,8 +91,11 @@ test('inspecting twice toggles choice without inflating progress',()=>{
   let s=enterRoom(newGame(),'entry');s=inspectObject(s,'habit');s=inspectObject(s,'habit');assert.deepEqual(s.rooms.entry.inspected,['habit']);assert.deepEqual(s.rooms.entry.selected,[]);assert.equal(inspectObject(s,'bad'),s);
 });
 test('each scene has a specific objective rather than three generic clicks',()=>{
-  let s=finish(newGame(),'entry');s=enterRoom(s,'pleasure');for(const o of ROOMS.pleasure.objects)s=inspectObject(s,o.id);s=actInRoom(s);s.rooms.pleasure.note='Люблю кофе';
-  assert.equal(sceneReady(s),false);s=inspectObject(s,'cigarette');assert.equal(sceneReady(s),true);
+  let s=finish(newGame(),'entry');s=enterRoom(s,'pleasure');
+  assert.deepEqual(pleasureKept(s),['coffee','cigarette','pause']);
+  s=inspectObject(s,'cigarette');assert.deepEqual(s.rooms.pleasure.selected,[]);
+  s=arrangePleasureTable(s,['coffee','cigarette','pause']);assert.equal(sceneReady(s),false);
+  s=arrangePleasureTable(s,['coffee','pause']);assert.equal(sceneReady(s),true);assert.deepEqual(pleasureKept(s),['coffee','pause']);
   s=enterRoom(s,'withdrawal');s=inspectObject(s,'help');s=actInRoom(s);assert.equal(sceneReady(s),true);
   s=enterRoom(s,'tomorrow');s=inspectObject(s,'now');s=actInRoom(s);assert.equal(sceneReady(s),false);s.rooms.tomorrow.adjusted=true;assert.equal(sceneReady(s),true);
 });

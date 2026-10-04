@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { ROOM_IDS, ROOMS, type RoomId } from './rooms';
-import { canEnter, completedThemes, type GameState } from './gameState';
-type StageProps = { state:GameState; mode:'room'|'map'|'ambient'; reducedMotion:boolean; onObject:(id:string)=>void; onDoor:(id:RoomId)=>void };
+import { canEnter, completedThemes, pleasureKept, type GameState } from './gameState';
+type StageProps = {
+  state:GameState; mode:'room'|'map'|'ambient'; reducedMotion:boolean;
+  onObject:(id:string)=>void; onDoor:(id:RoomId)=>void;
+  onPleasureArrange?:(keptIds:string[])=>void;
+};
 export function PhaserStage(props:StageProps) {
   const host=useRef<HTMLDivElement>(null);const latest=useRef(props);const redraw=useRef<(()=>void)|null>(null);latest.current=props;
   useEffect(()=>{
@@ -13,6 +17,7 @@ export function PhaserStage(props:StageProps) {
       private motion!:Phaser.GameObjects.Graphics;
       private controls:Phaser.GameObjects.GameObject[]=[];
       private profile='';private generation=0;
+      private drag?:{id:string;x:number;y:number;pointerId:number;moved:boolean};
       create(){this.art=this.add.graphics().setDepth(2);this.motion=this.add.graphics().setDepth(3);this.scale.on('resize',this.draw,this);redraw.current=()=>this.draw();this.draw();}
       private background(profile:string) {
         if(this.profile===profile)return;this.profile=profile;const generation=++this.generation,key=`room-${profile}`;
@@ -52,7 +57,7 @@ export function PhaserStage(props:StageProps) {
         }
       }
       draw(){
-        if(disposed || !this.art)return;
+        if(disposed || !this.art || this.drag)return;
         const {state:s,mode}=latest.current;const d=ROOMS[s.room],r=s.rooms[s.room],w=this.scale.width,h=this.scale.height;
         const profile=mode==='room'?d.profile:s.view==='ending'?'freedom':'corridor';this.background(profile);
         if(this.image){const factor=Math.max(w/this.image.width,h/this.image.height);this.image.setPosition(w/2,h/2).setScale(factor);}
@@ -63,6 +68,7 @@ export function PhaserStage(props:StageProps) {
         const bright=r.completed || r.changed;const color=d.color;
         g.fillGradientStyle(color,color,0x0b1920,0x0b1920,bright?.17:.05);g.fillRect(0,0,w,h);
         g.lineStyle(1,color,.25);g.lineBetween(w*.05,h*.82,w*.95,h*.82);g.lineBetween(w*.1,h,w*.4,h*.39);g.lineBetween(w*.9,h,w*.6,h*.39);
+        if(mode==='room' && s.room==='pleasure'){this.pleasureTable(s,w,h);return;}
         this.world(s,w,h);
         d.objects.forEach((o,i)=>{
           const x=w*(.19+i*.31),y=h*.66,seen=r.inspected.includes(o.id),selected=r.selected.includes(o.id);
@@ -75,6 +81,60 @@ export function PhaserStage(props:StageProps) {
           if(seen)this.label(x,y-54,selected?'●':'✓',40,'#dec19a',14);
         });
         this.label(w/2,h*.94,r.completed?'ПРОХОД ОТКРЫТ':r.changed?'Сцена изменилась':'Коснись предметов',w*.9,'#ddc9a9',13);
+      }
+      private pleasureTable(s:GameState,w:number,h:number){
+        const d=ROOMS.pleasure,r=s.rooms.pleasure,g=this.art,c=d.color,kept=pleasureKept(s),all=d.objects;
+        const tableY=h*.38, asideY=h*.78, slotW=w*.28;
+        g.fillStyle(c,.12);g.fillEllipse(w/2,tableY+18,w*.78,h*.22);g.lineStyle(2,c,.55);g.strokeEllipse(w/2,tableY+18,w*.78,h*.22);
+        this.label(w/2,tableY-h*.14,r.changed?'Что осталось на столе':'Перетащи вниз, что можно убрать',w*.9,'#f1e9dc',w<370?15:17);
+        g.lineStyle(1,c,.35);g.strokeRoundedRect(w*.08,asideY-52,w*.84,96,8);
+        this.label(w/2,asideY-68,'В сторону',w*.8,'#ddc9a9',13);
+        const place=(id:string,onTable:boolean,index:number,total:number)=>{
+          const x=w/2+(index-(total-1)/2)*Math.min(slotW,w*.3);
+          const y=onTable?tableY:asideY;
+          return {id,x,y,onTable};
+        };
+        const onTable=all.filter(o=>kept.includes(o.id));
+        const aside=all.filter(o=>!kept.includes(o.id));
+        const slots=[...onTable.map((o,i)=>place(o.id,true,i,onTable.length)),...aside.map((o,i)=>place(o.id,false,i,Math.max(1,aside.length)))];
+        slots.forEach(slot=>{
+          const o=all.find(item=>item.id===slot.id)!;
+          const seen=r.inspected.includes(o.id);
+          g.fillStyle(0x06121a,.88);g.fillRoundedRect(slot.x-slotW/2,slot.y-36,slotW,88,8);
+          g.lineStyle(seen?2:1,slot.onTable?c:0x768c96,slot.onTable?.9:.5);g.strokeRoundedRect(slot.x-slotW/2,slot.y-36,slotW,88,8);
+          this.icon(slot.x,slot.y-6,o.symbol,c,slot.onTable?1:.45);
+          this.label(slot.x,slot.y+34,o.label,slotW-8,slot.onTable?'#f1e9dc':'#aaa9a3',w<370?13:15);
+          const zone=this.add.zone(slot.x,slot.y+8,slotW,92).setDepth(6).setInteractive({useHandCursor:true,draggable:true});
+          this.controls.push(zone);
+          zone.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(p.event?.target!==this.game.canvas)return;this.drag={id:o.id,x:slot.x,y:slot.y,pointerId:p.id,moved:false};});
+          zone.on('pointermove',(p:Phaser.Input.Pointer)=>{
+            if(!this.drag || this.drag.id!==o.id || this.drag.pointerId!==p.id)return;
+            if(Math.hypot(p.x-this.drag.x,p.y-this.drag.y)>10)this.drag.moved=true;
+            if(!this.drag.moved || !this.motion)return;
+            this.motion.clear();
+            this.motion.fillStyle(0x06121a,.92);this.motion.fillRoundedRect(p.x-slotW/2,p.y-36,slotW,88,8);
+            this.motion.lineStyle(2,c,.95);this.motion.strokeRoundedRect(p.x-slotW/2,p.y-36,slotW,88,8);
+            const saved=this.art;this.art=this.motion;this.icon(p.x,p.y-6,o.symbol,c,1);this.art=saved;
+          });
+          zone.on('pointerup',(p:Phaser.Input.Pointer)=>{
+            const drag=this.drag;this.drag=undefined;this.motion?.clear();
+            if(!drag || drag.id!==o.id || drag.pointerId!==p.id)return;
+            if(!drag.moved){
+              latest.current.onObject(o.id);
+              if(!latest.current.reducedMotion)this.cameras.main.flash(120,Math.round(c>>16&255),Math.round(c>>8&255),Math.round(c&255),false);
+              this.draw();return;
+            }
+            const dropOnTable=p.y<h*.58;
+            const next=new Set(pleasureKept(latest.current.state));
+            if(dropOnTable)next.add(o.id);else next.delete(o.id);
+            latest.current.onPleasureArrange?.([...next]);
+            if(!latest.current.reducedMotion && dropOnTable!==slot.onTable)this.cameras.main.flash(140,Math.round(c>>16&255),Math.round(c>>8&255),Math.round(c&255),false);
+          });
+          zone.on('pointerout',(p:Phaser.Input.Pointer)=>{
+            if(this.drag && this.drag.id===o.id && this.drag.pointerId===p.id && !this.drag.moved){this.drag=undefined;this.motion?.clear();}
+          });
+        });
+        this.label(w/2,h*.94,r.completed?'ПРОХОД ОТКРЫТ':r.changed?'Стол изменился — можно сохранить мысль':kept.length===3?'Убери хотя бы одну вещь':'Оставь одну или две на столе',w*.92,'#ddc9a9',13);
       }
       private world(s:GameState,w:number,h:number){
         const d=ROOMS[s.room],r=s.rooms[s.room],g=this.art,c=d.color,cx=w/2,cy=h*.3;
@@ -106,7 +166,7 @@ export function PhaserStage(props:StageProps) {
         this.label(w/2,h-13,`${completedThemes(s)} / 10 · ${canEnter(s,'freedom')?'выход открыт':'выход впереди'}`,w*.9,'#ddc9a9',14);
       }
       update(time:number){
-        if(disposed || !this.motion)return;this.motion.clear();const {state:s,mode,reducedMotion}=latest.current;if(reducedMotion)return;
+        if(disposed || !this.motion || this.drag)return;this.motion.clear();const {state:s,mode,reducedMotion}=latest.current;if(reducedMotion)return;
         const w=this.scale.width,h=this.scale.height,r=s.rooms[s.room],d=ROOMS[s.room];const g=this.motion;
         if(mode==='room' && (d.mechanic==='weather' || d.mechanic==='pause') && !r.action){g.lineStyle(1,d.color,d.mechanic==='weather'?.12+r.value/100*.22:.15);for(let i=0;i<16;i++){const x=(i*27+time/60)%w,y=(i*17+time/20)%Math.max(1,h*.45);g.lineBetween(x,y,x-5,y+17);}}
         else {g.fillStyle(d.color,.2);for(let i=0;i<9;i++)g.fillCircle((i*w*.137+Math.sin(time/4000+i)*6)%w,(i*h*.173-time/190+i*h)%h,1.2);}

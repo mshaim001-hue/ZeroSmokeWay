@@ -61,8 +61,26 @@ export function enterRoom(s:GameState,id:RoomId,reason?:string):GameState {
 }
 export function inspectObject(s:GameState,id:string):GameState {
   const room=ROOMS[s.room]; if(s.view!=='room' || !room.objects.some(o=>o.id===id) || !canEnter(s,s.room)) return s;
-  const r=s.rooms[s.room]; const selected=r.selected.includes(id) ? r.selected.filter(x=>x!==id) : [...r.selected,id];
+  const r=s.rooms[s.room];
+  // Pleasure uses drag/arrange for selection; tap only looks closer.
+  if(s.room==='pleasure') return {...s,rooms:{...s.rooms,pleasure:{...r,inspected:[...new Set([...r.inspected,id])]}}};
+  const selected=r.selected.includes(id) ? r.selected.filter(x=>x!==id) : [...r.selected,id];
   return {...s,rooms:{...s.rooms,[s.room]:{...r,selected,inspected:[...new Set([...r.inspected,id])]}}};
+}
+/** Items currently on the pleasure table. Before the first arrange, all three sit there. */
+export function pleasureKept(s:GameState):string[] {
+  const all=ROOMS.pleasure.objects.map(o=>o.id); const r=s.rooms.pleasure;
+  if(r.action===0 && r.selected.length===0) return all;
+  return r.selected.filter(id=>all.includes(id));
+}
+/** Florence-style table: keep 1–2 items on the table, drag the rest aside. */
+export function arrangePleasureTable(s:GameState,keptIds:string[]):GameState {
+  if(s.view!=='room' || s.room!=='pleasure' || !canEnter(s,'pleasure')) return s;
+  const all=ROOMS.pleasure.objects.map(o=>o.id);
+  const kept=[...new Set(keptIds.filter(id=>all.includes(id)))];
+  const complete=kept.length>=1 && kept.length<=2;
+  const r=s.rooms.pleasure;
+  return {...s,rooms:{...s.rooms,pleasure:{...r,selected:kept,inspected:[...new Set([...r.inspected,...all])],action:complete?1:0,changed:r.changed||complete}}};
 }
 export function actInRoom(s:GameState):GameState {
   if(s.view!=='room' || !canEnter(s,s.room))return s;
@@ -91,7 +109,8 @@ export function objectiveHint(s:GameState):string {
   if(sceneReady(s))return 'Сцена изменилась. Сохрани свою мысль, когда будешь готов.';
   switch(s.room){
     case 'entry':return 'Посмотри хотя бы две вещи. Выбери, что важно тебе, и нажми «Разделить».';
-    case 'pleasure':case 'ritual':return 'Выбери одну или две вещи, которые хочешь оставить. Остальные можно убрать. Затем измени сцену.';
+    case 'pleasure':return 'Перетащи со стола то, без чего пауза ещё возможна. Оставь одну или две вещи — стол изменится сам.';
+    case 'ritual':return 'Выбери одну или две вещи, которые хочешь оставить. Остальные можно убрать. Затем измени сцену.';
     case 'stress':return 'Посмотри на передышку и сигарету, затем останови шум.';
     case 'origin':return 'Открой первую сигарету и сегодняшний взгляд, затем отмотай время.';
     case 'company':return 'Посмотри на людей, выбери своё место и погаси сигареты.';
