@@ -41,7 +41,7 @@ test('provider failure and empty response fall back; disagreement is respected',
   for (const createCompletion of [async () => { throw new Error('secret provider error'); }, async () => ({ choices: [] })]) {
     const result = await handleLabyrinthRequest({ ...request, message: 'Не согласен' }, { createCompletion });
     assert.equal(result.mode, 'authored');
-    assert.match(result.response, /Можно не соглашаться/);
+    assert.match(result.response, /Не удалось получить ответ AI/);
     assert.ok(!result.response.includes('secret'));
   }
 });

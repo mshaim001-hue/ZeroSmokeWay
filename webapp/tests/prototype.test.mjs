@@ -52,15 +52,36 @@ test('save restores model and chat, corrupt saves safely reset', () => {
 test('new room opening and AI context carry confirmed personal data', () => {
   const s = newPrototype(); s.episode = episode();
   assert.match(opening(s,'ritual'),/Не знаю где/);
-  assert.match(context(s)[0],/Звонок → Вышел → Перекур/);
+  assert.match(context(s)[1],/Звонок → Вышел → Перекур/);
   s.hypothesis = 'Можно ли сохранить паузу?';
-  assert.match(context(s)[1],/Предположение, не факт/);
+  assert.match(context(s)[2],/Предположение, не факт/);
 });
 test('first door follows selected reason and older saves retain default compatibility', () => {
   const s = newPrototype(); s.initialReason = 'Мне нравится';
-  assert.match(opening(s,'stress'),/приятный перекур/);
-  s.initialReason = 'Помогает расслабиться'; assert.match(opening(s,'stress'),/расслабиться/);
+  assert.match(opening(s,'stress'),/Что тебе нравится/);
+  s.initialReason = 'Помогает расслабиться'; assert.match(opening(s,'stress'),/успокоиться/);
   s.initialReason = 'Просто скучно'; assert.match(opening(s,'stress'),/Просто скучно/);
   const old = {...s}; delete old.initialReason;
   assert.equal(parsePrototype(JSON.stringify(old)).initialReason,'');
+});
+
+test('new first room needs conversation and own note, not a forced timeline', () => {
+  const s = newPrototype(); s.firstThought = 'Мне важна сама пауза, но пока не знаю насчёт сигареты';
+  s.chats.stress = [{role:'user',content:'Мне нравится посидеть спокойно'}];
+  assert.equal(canDiscover(s,'stress'),false);
+  s.chats.stress.push({role:'user',content:'Без сигареты как будто чего-то не хватает'}, {role:'user',content:'Наверное, я привык связывать паузу с курением'});
+  assert.equal(canDiscover(s,'stress'),true);
+  assert.equal(s.episode.events.length,0);
+  const saved = parsePrototype(JSON.stringify(s));
+  assert.equal(saved.firstThought,s.firstThought);
+  assert.match(opening(discover(saved,'stress'),'ritual'),/Мне важна сама пауза/);
+});
+test('offline note remains possible and untouched old opening migrates without losing conversations', () => {
+  const s = newPrototype(); s.firstThought = 'Пока не понимаю, чего боюсь';
+  s.chats.stress = [{role:'assistant',mode:'offline',content:'Нет связи'}];
+  assert.equal(canDiscover(s,'stress'),true);
+  s.chats.stress = [{role:'assistant',mode:'authored',content:'Вспомни последний напряжённый момент'}];
+  assert.doesNotMatch(parsePrototype(JSON.stringify(s)).chats.stress[0].content,/напряжённый/);
+  s.chats.stress.push({role:'user',content:'Не хочу вспоминать'});
+  assert.deepEqual(JSON.parse(JSON.stringify(parsePrototype(JSON.stringify(s)).chats.stress)),JSON.parse(JSON.stringify(s.chats.stress)));
 });
