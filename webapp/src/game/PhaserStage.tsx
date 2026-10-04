@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { ROOM_IDS, ROOMS, type RoomId } from './rooms';
-import { canEnter, completedThemes, pleasureKept, type GameState } from './gameState';
+import { canEnter, completedThemes, doorMemory, pleasureKept, type GameState } from './gameState';
 type StageProps = {
   state:GameState; mode:'room'|'map'|'ambient'; reducedMotion:boolean;
   onObject:(id:string)=>void; onDoor:(id:RoomId)=>void;
@@ -240,16 +240,19 @@ export function PhaserStage(props:StageProps) {
       }
       private map(s:GameState,w:number,h:number){
         const g=this.art;g.fillStyle(0xe6c88b,.025+completedThemes(s)*.013);g.fillRect(0,0,w,h);const ids=s.rooms.entry.completed?[...ROOM_IDS.filter(id=>id!=='entry')]:ROOM_IDS;
-        const rows=Math.ceil(ids.length/3),top=36,cellH=(h-70)/rows;
+        const rows=Math.ceil(ids.length/3),top=28,cellH=(h-62)/rows;
         const positions=ids.map((id,i)=>({id,x:w*(.17+(i%3)*.33),y:top+Math.floor(i/3)*cellH}));
         g.lineStyle(1,0xd8bc8e,.27);
         positions.forEach(p=>ROOMS[p.id].neighbours.forEach(id=>{const q=positions.find(p=>p.id===id);if(q)g.lineBetween(p.x,p.y,q.x,q.y);}));
-        positions.forEach(p=>{const d=ROOMS[p.id],r=s.rooms[p.id],open=canEnter(s,p.id);g.fillStyle(0x08141b,.95);g.fillRoundedRect(p.x-29,p.y-21,58,48,5);g.lineStyle(r.completed?2:1,r.completed?0xf0d298:open?d.color:0x56606b,open?1:.45);g.strokeRoundedRect(p.x-29,p.y-21,58,48,5);g.fillStyle(d.color,r.completed?.55:open?.14:.03);g.fillRoundedRect(p.x-23,p.y-16,46,37,3);g.fillStyle(0xf2d39f,.8);g.fillCircle(p.x+15,p.y+3,2);
-          this.label(p.x,p.y+42,d.title,w*.3,open?'#eee4d3':'#afb0b1',w<370?15:16);
+        const memory=s.order.filter(id=>s.rooms[id].note).at(-1);
+        if(memory)this.label(w/2,14,`«${doorMemory(s,memory)}»`,w*.92,'#d9c7a4',12);
+        positions.forEach(p=>{const d=ROOMS[p.id],r=s.rooms[p.id],open=canEnter(s,p.id),phrase=doorMemory(s,p.id);g.fillStyle(0x08141b,.95);g.fillRoundedRect(p.x-29,p.y-21,58,48,5);g.lineStyle(r.completed?2:1,r.completed?0xf0d298:open?d.color:0x56606b,open?1:.45);g.strokeRoundedRect(p.x-29,p.y-21,58,48,5);g.fillStyle(d.color,r.completed?.55:open?.14:.03);g.fillRoundedRect(p.x-23,p.y-16,46,37,3);g.fillStyle(0xf2d39f,.8);g.fillCircle(p.x+15,p.y+3,2);
+          this.label(p.x,p.y+40,d.title,w*.3,open?'#eee4d3':'#afb0b1',w<370?14:15);
+          if(phrase)this.label(p.x,p.y+56,phrase,w*.3,'#b7a890',11);
           if(r.completed)this.label(p.x,p.y,'✓',40,'#ffdea1',22);
           if(open){const z=this.add.zone(p.x,p.y+10,w*.29,cellH-5).setDepth(7).setInteractive({useHandCursor:true});this.controls.push(z);this.tap(z,()=>latest.current.onDoor(p.id));}
         });
-        this.label(w/2,h-13,`${completedThemes(s)} / 10 · ${canEnter(s,'freedom')?'выход открыт':'выход впереди'}`,w*.9,'#ddc9a9',14);
+        this.label(w/2,h-12,`${completedThemes(s)} / 10 · ${canEnter(s,'freedom')?'выход открыт':'выход впереди'}`,w*.9,'#ddc9a9',14);
       }
       update(_time:number,delta:number){
         if(disposed || !this.motion)return;

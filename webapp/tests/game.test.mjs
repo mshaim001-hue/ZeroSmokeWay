@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ROOMS,ROOM_IDS,THEME_IDS} from '../src/game/rooms.ts';
-import {newGame,parseGame,canEnter,enterRoom,inspectObject,actInRoom,arrangePleasureTable,arrangeEntrySplit,holdStressSilence,tearLoop,swipeWorldLayer,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
+import {newGame,parseGame,canEnter,enterRoom,startDialogue,openingLine,returnEcho,corridorMemory,doorMemory,inspectObject,actInRoom,arrangePleasureTable,arrangeEntrySplit,holdStressSilence,tearLoop,swipeWorldLayer,pleasureKept,canComplete,completeRoom,sceneReady,noteCandidate,availableDoors,completedThemes,dialogueContext,exportGame} from '../src/game/gameState.ts';
 function finish(s,id,note='Я пока не согласен и хочу проверить это сам'){
   s=enterRoom(s,id);
   if(id==='pleasure'){
@@ -60,7 +60,8 @@ test('every room has distinct scene data and backend topic-compatible id',()=>{
   assert.ok(new Set(THEME_IDS.map(id=>ROOMS[id].mechanic)).size>=8);
 });
 test('custom reason stays its own entrance and feeds discussion',()=>{
-  const s=enterRoom(newGame(),'entry','Чтобы не есть от скуки');assert.equal(s.room,'entry');assert.match(s.rooms.entry.chat[0].content,/не есть от скуки/);
+  const s=enterRoom(newGame(),'entry','Чтобы не есть от скуки');assert.equal(s.room,'entry');assert.equal(s.rooms.entry.chat.length,0);assert.match(openingLine(s),/не есть от скуки/);
+  const talked=startDialogue(s);assert.match(talked.rooms.entry.chat[0].content,/не есть от скуки/);
 });
 test('every scene must be explored; unpack requires all three layers',()=>{
   let s=finish(newGame(),'entry');s=enterRoom(s,'world');
@@ -77,7 +78,8 @@ test('chat words move automatically into note, can be edited explicitly',()=>{
 });
 test('returning preserves conversations, notes and completed ending state',()=>{
   let s=finish(newGame(),'entry');s=finish(s,'pleasure','Первое мнение');
-  s=enterRoom(s,'pleasure');assert.equal(s.rooms.pleasure.completed,true);assert.match(s.rooms.pleasure.chat.at(-1).content,/Первое мнение/);
+  s=enterRoom(s,'pleasure');assert.equal(s.rooms.pleasure.completed,true);
+  s=startDialogue(s);assert.match(s.rooms.pleasure.chat.at(-1).content,/Первое мнение/);
   s.rooms.pleasure.note='Думаю иначе';s=completeRoom(s);assert.deepEqual(s.rooms.pleasure.notes,['Первое мнение','Думаю иначе']);assert.equal(s.order.filter(id=>id==='pleasure').length,1);
 });
 test('migration keeps old conversations and notes without deleting original save',()=>{
@@ -128,4 +130,17 @@ test('stage two gestures: entry split, stress hold, loop tear, world swipe',()=>
 });
 test('first recommendations follow selected reason while leaving the full map free',()=>{
   let s=finish(newGame(),'entry');s.initialReason='Возможность успокоиться';assert.deepEqual(availableDoors(s).slice(0,3),['stress','withdrawal','loop']);s.initialReason='Не знаю. Я просто курю';assert.deepEqual(availableDoors(s).slice(0,3),['ritual','loop','origin']);assert.equal(availableDoors(s).length,10);
+});
+test('stage three: no chat on enter, talk seeds echo, corridor remembers notes',()=>{
+  let s=finish(newGame(),'entry','Мне важна утренняя пауза');
+  assert.match(doorMemory(s,'entry'),/утренняя пауза/);
+  assert.equal(corridorMemory(s)[0].title,'Что держит');
+  s=enterRoom(s,'pleasure');
+  assert.equal(s.rooms.pleasure.chat.length,0);
+  assert.match(returnEcho(s),/утренняя пауза/);
+  s=startDialogue(s);
+  assert.equal(s.rooms.pleasure.chat.length,2);
+  assert.match(s.rooms.pleasure.chat[0].content,/После «Что держит»/);
+  assert.match(s.rooms.pleasure.chat[1].content,/приятная/);
+  const again=startDialogue(s);assert.equal(again.rooms.pleasure.chat.length,2);
 });

@@ -53,11 +53,41 @@ export function availableDoors(s:GameState):RoomId[] {
   const recommended=(last==='entry'?entryRoute as RoomId[]:ROOMS[last].neighbours).filter(id=>canEnter(s,id) && !s.rooms[id].completed);
   return [...new Set([...recommended,...THEME_IDS.filter(id=>!s.rooms[id].completed),...(canEnter(s,'freedom')?['freedom' as RoomId]:[])])];
 }
+const clip = (value:string,max:number):string => value.length<=max ? value : `${value.slice(0,max-1).trimEnd()}…`;
+/** Opening line for the scene banner / first Talk seed. Not auto-pushed into chat on enter. */
+export function openingLine(s:GameState,id:RoomId=s.room):string {
+  const r=s.rooms[id], reason=s.initialReason;
+  if(r.completed && r.note) return `Раньше ты написал: «${clip(r.note,160)}». Что сейчас изменилось?`;
+  if(id==='entry') return entryOpening(reason);
+  return ROOMS[id].opening;
+}
+/** Short echo of the previous completed room — used when Talk starts in a new room. */
+export function returnEcho(s:GameState,enteringId:RoomId=s.room):string {
+  const prev=s.order.filter(id=>id!==enteringId).at(-1);
+  if(!prev || !s.rooms[prev].note) return '';
+  return `После «${ROOMS[prev].title}» ты оставил: «${clip(s.rooms[prev].note,120)}». Здесь другой вопрос.`;
+}
+/** Player phrases the corridor/map can show. */
+export function corridorMemory(s:GameState):{id:RoomId;title:string;note:string}[] {
+  return s.order.filter(id=>s.rooms[id].note).slice(-5).map(id=>({id,title:ROOMS[id].title,note:clip(s.rooms[id].note,80)}));
+}
+export function doorMemory(s:GameState,id:RoomId):string {
+  const note=s.rooms[id].note; return note ? clip(note,36) : '';
+}
+/** Seed chat only when the player chooses Talk — after a gesture or on demand. */
+export function startDialogue(s:GameState):GameState {
+  if(s.view!=='room' || !canEnter(s,s.room)) return s;
+  const id=s.room, r=s.rooms[id];
+  if(r.chat.length) return s;
+  const lines:Message[]=[];
+  if(!r.completed){const echo=returnEcho(s,id); if(echo) lines.push({role:'assistant',content:echo,mode:'authored'});}
+  lines.push({role:'assistant',content:openingLine(s,id),mode:'authored'});
+  return {...s,rooms:{...s.rooms,[id]:{...r,chat:lines}}};
+}
 export function enterRoom(s:GameState,id:RoomId,reason?:string):GameState {
   if(!canEnter(s,id)) return s;
-  const initialReason=reason?.trim() || s.initialReason; const r=s.rooms[id];
-  const content=r.completed ? `Раньше ты написал: «${r.note}». Что сейчас изменилось?` : id==='entry' ? entryOpening(initialReason) : ROOMS[id].opening;
-  return {...s,initialReason,room:id,view:'room',rooms:{...s.rooms,[id]:{...r,chat:r.chat.length && !r.completed ? r.chat : [...r.chat,{role:'assistant',content,mode:'authored'}]}}};
+  const initialReason=reason?.trim() || s.initialReason;
+  return {...s,initialReason,room:id,view:'room'};
 }
 const INSPECT_ONLY = new Set(['entry','pleasure','stress','loop','world']);
 export function inspectObject(s:GameState,id:string):GameState {
