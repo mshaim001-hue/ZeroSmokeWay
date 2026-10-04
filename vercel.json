@@ -2,14 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd backend && npm ci && cd ../webapp && npm ci",
   "buildCommand": "cd webapp && npm run build",
-  "outputDirectory": "webapp/dist",
-  "env": {
-    "OPENAI_MODEL": "gpt-5.4-mini"
-  },
-  "crons": [
-    {
-      "path": "/api/email-flush",
-      "schedule": "0 9 * * *"
-    }
-  ]
+  "outputDirectory": "webapp/dist"
 }

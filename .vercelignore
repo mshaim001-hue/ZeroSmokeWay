@@ -1,9 +1,6 @@
-# Игнорируем для Vercel деплоя
 backend/index.js
 backend/routes/
 backend/.env
 node_modules/
-frontend/.dart_tool/
-frontend/.flutter-plugins
-frontend/.packages
-
+output/
+.playwright-cli/

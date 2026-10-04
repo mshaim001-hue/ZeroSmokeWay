@@ -1,4 +1,4 @@
-import { newRoomProgress, type ChatLine, type RoomProgress } from './state';
+import { newRoomProgress, type ChatLine, type RoomProgress } from './dialogueTypes';
 
 export type GuideReply = { response: string; mode: 'ai' | 'authored'; progress: RoomProgress; issue?: string };
 export const GUIDE_ISSUES: Record<string, string> = {

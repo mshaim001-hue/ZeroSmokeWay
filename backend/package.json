@@ -1,15 +1,13 @@
 {
   "name": "zerosmokeway-backend",
   "version": "1.0.0",
-  "description": "Backend API for ZeroSmokeWay app",
+  "description": "Dialogue API for the browser labyrinth",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "node --watch index.js",
     "start": "node index.js",
-    "index-knowledge": "node --max-old-space-size=8192 scripts/index-knowledge.js",
-    "sync-knowledge": "node scripts/sync-knowledge-to-supabase.js",
-    "test": "node --experimental-test-module-mocks --test tests/*.test.js"
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "smoking",
@@ -20,14 +18,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1",
     "express": "^4.18.2",
-    "@openai/agents": "^0.1.0",
     "openai": "^4.20.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "pdf-parse": "^1.1.1",
-    "fs-extra": "^11.2.0"
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0"
