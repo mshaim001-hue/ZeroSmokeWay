@@ -23,7 +23,34 @@ export function PhaserStage(props:StageProps) {
       private profile='';private generation=0;
       private drag?:{id:string;x:number;y:number;pointerId:number;moved:boolean;kind?:string};
       private hold?:{pointerId:number;progress:number;sent:boolean};
-      create(){this.art=this.add.graphics().setDepth(2);this.motion=this.add.graphics().setDepth(3);this.scale.on('resize',this.draw,this);redraw.current=()=>this.draw();this.draw();}
+      private gesture?:{move?:(p:Phaser.Input.Pointer)=>void;up:(p:Phaser.Input.Pointer)=>void};
+      create(){
+        this.art=this.add.graphics().setDepth(2);this.motion=this.add.graphics().setDepth(3);
+        this.input.on('pointermove',(p:Phaser.Input.Pointer)=>this.gesture?.move?.(p));
+        this.input.on('pointerup',(p:Phaser.Input.Pointer)=>this.gesture?.up(p));
+        this.input.on('pointerupoutside',(p:Phaser.Input.Pointer)=>this.gesture?.up(p));
+        const cancel=()=>{this.gesture=undefined;this.drag=undefined;this.hold=undefined;this.motion.clear();this.draw();};
+        const hidden=()=>{if(document.hidden)cancel();};
+        this.game.canvas.addEventListener('pointercancel',cancel);
+        this.game.canvas.addEventListener('touchcancel',cancel);
+        window.addEventListener('blur',cancel);document.addEventListener('visibilitychange',hidden);
+        this.events.once('shutdown',()=>{
+          this.game.canvas.removeEventListener('pointercancel',cancel);this.game.canvas.removeEventListener('touchcancel',cancel);
+          window.removeEventListener('blur',cancel);document.removeEventListener('visibilitychange',hidden);
+        });
+        this.scale.on('resize',this.draw,this);redraw.current=()=>this.draw();this.draw();
+      }
+      private gestureZone(zone:Phaser.GameObjects.Zone,down:(p:Phaser.Input.Pointer)=>void,up:(p:Phaser.Input.Pointer)=>void,move?:(p:Phaser.Input.Pointer)=>void){
+        zone.on('pointerdown',(p:Phaser.Input.Pointer)=>{
+          if(p.event?.target!==this.game.canvas || this.drag || this.hold)return;
+          down(p);
+          if(this.drag || this.hold)this.gesture={move,up:(released)=>{
+            const id=this.drag?.pointerId ?? this.hold?.pointerId;
+            if(released.id!==id)return;
+            this.gesture=undefined;up(released);this.draw();
+          }};
+        });
+      }
       private background(profile:string) {
         if(this.profile===profile)return;this.profile=profile;const generation=++this.generation,key=`room-${profile}`;
         const apply=()=>{if(disposed || generation!==this.generation)return;this.image?.destroy();this.image=this.textures.exists(key)?this.add.image(0,0,key).setDepth(0):undefined;this.draw();this.cameras.main.fadeIn(latest.current.reducedMotion?0:500,5,8,12);};
@@ -111,8 +138,12 @@ export function PhaserStage(props:StageProps) {
         this.icon(slot.x,slot.y-6,o.symbol,c,slot.onKeep?1:.45);
         this.label(slot.x,slot.y+34,o.label,slotW-8,slot.onKeep?'#f1e9dc':'#aaa9a3',slotW<90?12:15);
         const zone=this.add.zone(slot.x,slot.y+8,slotW,92).setDepth(6).setInteractive({useHandCursor:true});this.controls.push(zone);
-        zone.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(p.event?.target!==this.game.canvas)return;this.drag={id:o.id,x:slot.x,y:slot.y,pointerId:p.id,moved:false};});
-        zone.on('pointermove',(p:Phaser.Input.Pointer)=>{
+        this.gestureZone(zone,p=>{this.drag={id:o.id,x:p.x,y:p.y,pointerId:p.id,moved:false};},p=>{
+          const drag=this.drag;this.drag=undefined;this.motion?.clear();
+          if(!drag || drag.id!==o.id || drag.pointerId!==p.id)return;
+          if(!drag.moved){latest.current.onObject(o.id);this.flash(c);this.draw();return;}
+          const below=p.y>=dropY;onDrop(below);
+        },p=>{
           if(!this.drag || this.drag.id!==o.id || this.drag.pointerId!==p.id)return;
           if(Math.hypot(p.x-this.drag.x,p.y-this.drag.y)>10)this.drag.moved=true;
           if(!this.drag.moved || !this.motion)return;
@@ -121,13 +152,6 @@ export function PhaserStage(props:StageProps) {
           this.motion.lineStyle(2,c,.95);this.motion.strokeRoundedRect(p.x-slotW/2,p.y-36,slotW,88,8);
           const saved=this.art;this.art=this.motion;this.icon(p.x,p.y-6,o.symbol,c,1);this.art=saved;
         });
-        zone.on('pointerup',(p:Phaser.Input.Pointer)=>{
-          const drag=this.drag;this.drag=undefined;this.motion?.clear();
-          if(!drag || drag.id!==o.id || drag.pointerId!==p.id)return;
-          if(!drag.moved){latest.current.onObject(o.id);this.flash(c);this.draw();return;}
-          const below=p.y>=dropY;onDrop(below);
-        });
-        zone.on('pointerout',(p:Phaser.Input.Pointer)=>{if(this.drag && this.drag.id===o.id && this.drag.pointerId===p.id && !this.drag.moved){this.drag=undefined;this.motion?.clear();}});
       }
       private pleasureTable(s:GameState,w:number,h:number){
         const d=ROOMS.pleasure,r=s.rooms.pleasure,g=this.art,c=d.color,kept=pleasureKept(s),all=d.objects;
@@ -159,16 +183,10 @@ export function PhaserStage(props:StageProps) {
         if(r.action){g.lineBetween(cx-10,cy-16,cx-10,cy+16);g.lineBetween(cx+10,cy-16,cx+10,cy+16);this.label(cx,cy+radius+28,'Пауза',w*.7,'#f1e9dc',18);}
         else {g.fillStyle(c,.55);g.fillTriangle(cx-10,cy-16,cx-10,cy+16,cx+16,cy);this.label(cx,cy+radius+28,r.value>0?`Шум · ${Math.round(r.value)}%`:'Удерживай',w*.8,'#f1e9dc',17);}
         const hold=this.add.zone(cx,cy,radius*2.4,radius*2.4).setDepth(6).setInteractive({useHandCursor:true});this.controls.push(hold);
-        hold.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(p.event?.target!==this.game.canvas || r.action)return;this.hold={pointerId:p.id,progress:r.value,sent:false};});
-        hold.on('pointerup',(p:Phaser.Input.Pointer)=>{
+        this.gestureZone(hold,p=>{if(!r.action)this.hold={pointerId:p.id,progress:r.value,sent:false};},p=>{
           if(this.hold?.pointerId!==p.id)return;
-          const value=this.hold.progress;this.hold=undefined;this.motion?.clear();
-          latest.current.onStressHold?.(value);this.draw();
-        });
-        hold.on('pointerout',(p:Phaser.Input.Pointer)=>{
-          if(this.hold?.pointerId!==p.id)return;
-          const value=this.hold.progress;this.hold=undefined;this.motion?.clear();
-          latest.current.onStressHold?.(value);this.draw();
+          const value=this.hold.progress;this.hold=undefined;this.motion.clear();
+          latest.current.onStressHold?.(value);
         });
         this.objectRow(s,w,h,h*.72);
         const seen=r.inspected.includes('pause') && r.inspected.includes('cigarette');
@@ -188,17 +206,15 @@ export function PhaserStage(props:StageProps) {
         });
         if(!r.action && r.inspected.length>=3){
           const zone=this.add.zone(cx,cy,radius*2.2,radius*2.2).setDepth(5).setInteractive({useHandCursor:true});this.controls.push(zone);
-          zone.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(p.event?.target!==this.game.canvas)return;this.drag={id:'loop',x:p.x,y:p.y,pointerId:p.id,moved:false,kind:'loop'};});
-          zone.on('pointermove',(p:Phaser.Input.Pointer)=>{
-            if(!this.drag || this.drag.kind!=='loop' || this.drag.pointerId!==p.id)return;
-            const dx=p.x-this.drag.x;if(Math.abs(dx)>12)this.drag.moved=true;
-            if(!this.motion)return;this.motion.clear();this.motion.lineStyle(3,c,.7);this.motion.beginPath();this.motion.arc(cx+dx*.15,cy,radius,-.2,Math.PI*1.8,false);this.motion.strokePath();
-          });
-          zone.on('pointerup',(p:Phaser.Input.Pointer)=>{
+          this.gestureZone(zone,p=>{this.drag={id:'loop',x:p.x,y:p.y,pointerId:p.id,moved:false,kind:'loop'};},p=>{
             const drag=this.drag;this.drag=undefined;this.motion?.clear();
             if(!drag || drag.kind!=='loop' || drag.pointerId!==p.id)return;
             if(Math.abs(p.x-drag.x)>70){latest.current.onLoopTear?.();this.flash(c);}
             else this.draw();
+          },p=>{
+            if(!this.drag || this.drag.kind!=='loop' || this.drag.pointerId!==p.id)return;
+            const dx=p.x-this.drag.x;if(Math.abs(dx)>12)this.drag.moved=true;
+            if(!this.motion)return;this.motion.clear();this.motion.lineStyle(3,c,.7);this.motion.beginPath();this.motion.arc(cx+dx*.15,cy,radius,-.2,Math.PI*1.8,false);this.motion.strokePath();
           });
         }
         this.label(w/2,h*.9,r.completed?'ПРОХОД ОТКРЫТ':r.changed?'Круг стал проходом':r.inspected.length<3?'Коснись всех трёх звеньев':'Потяни круг в сторону',w*.92,'#ddc9a9',13);
@@ -212,8 +228,7 @@ export function PhaserStage(props:StageProps) {
         this.label(cx,cy+40,r.action===3?'Слои сняты':`Смахни · ${r.action}/3`,w*.7,'#ded7cb',14);
         if(r.action<3){
           const zone=this.add.zone(cx,cy,160,150).setDepth(6).setInteractive({useHandCursor:true});this.controls.push(zone);
-          zone.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(p.event?.target!==this.game.canvas)return;this.drag={id:'world',x:p.x,y:p.y,pointerId:p.id,moved:false,kind:'world'};});
-          zone.on('pointerup',(p:Phaser.Input.Pointer)=>{
+          this.gestureZone(zone,p=>{this.drag={id:'world',x:p.x,y:p.y,pointerId:p.id,moved:false,kind:'world'};},p=>{
             const drag=this.drag;this.drag=undefined;
             if(!drag || drag.kind!=='world' || drag.pointerId!==p.id)return;
             if(Math.abs(p.x-drag.x)>55 || Math.abs(p.y-drag.y)>55){latest.current.onWorldSwipe?.();this.flash(c);}
@@ -253,10 +268,10 @@ export function PhaserStage(props:StageProps) {
           g.lineStyle(r.completed||main?2:1,r.completed?0xf0d298:open?d.color:0x56606b,open?1:.45);
           g.strokeRoundedRect(p.x-29,p.y-21,58,48,5);g.fillStyle(d.color,r.completed?.55:open?(main?0.2:0.1):.03);g.fillRoundedRect(p.x-23,p.y-16,46,37,3);g.fillStyle(0xf2d39f,.8);g.fillCircle(p.x+15,p.y+3,2);
           this.label(p.x,p.y+40,d.title,w*.3,open?'#eee4d3':'#afb0b1',w<370?13:15);
-          if(side && !r.completed)this.label(p.x,p.y-32,'ещё',40,'#9aa0a4',11);
-          else if(main && !r.completed && p.id!=='freedom' && s.rooms.entry.completed)this.label(p.x,p.y-32,'главная',60,'#dec19a',11);
-          if(phrase)this.label(p.x,p.y+56,phrase,w*.3,'#b7a890',11);
-          if(r.completed)this.label(p.x,p.y,'✓',40,'#ffdea1',22);
+          if(side && !r.completed)this.label(p.x,p.y-28,'ещё',40,'#9aa0a4',10);
+          else if(isCoreTheme(p.id) && !r.completed && s.rooms.entry.completed)this.label(p.x,p.y-28,'главная',60,'#dec19a',10);
+          if(phrase)this.label(p.x,p.y+54,phrase,w*.28,'#b7a890',10);
+          if(r.completed)this.label(p.x,p.y,'✓',40,'#ffdea1',20);
           if(open){const z=this.add.zone(p.x,p.y+10,w*.29,cellH-5).setDepth(7).setInteractive({useHandCursor:true});this.controls.push(z);this.tap(z,()=>latest.current.onDoor(p.id));}
         });
         this.label(w/2,h-12,`${core} / 4 главных · ${coreReady(s)?'выход открыт':`ещё ${4-core}`}`,w*.9,'#ddc9a9',14);
@@ -288,7 +303,7 @@ export function PhaserStage(props:StageProps) {
         if(mode==='room' && r.completed){g.lineStyle(2,d.color,.3+Math.sin(_time/1400)*.1);g.strokeRoundedRect(w*.08,h*.06,w*.84,h*.85,12);}
       }
     }
-    const game=new Phaser.Game({type:Phaser.AUTO,parent,width:Math.max(1,parent.clientWidth),height:Math.max(1,parent.clientHeight),backgroundColor:'#091117',audio:{noAudio:true},input:{windowEvents:false},scale:{mode:Phaser.Scale.RESIZE},scene:LabyrinthScene,fps:{target:30},render:{powerPreference:'low-power'},antialias:true});
+    const game=new Phaser.Game({type:Phaser.AUTO,parent,width:Math.max(1,parent.clientWidth),height:Math.max(1,parent.clientHeight),backgroundColor:'#091117',audio:{noAudio:true},input:{windowEvents:true},scale:{mode:Phaser.Scale.RESIZE},scene:LabyrinthScene,fps:{target:30},render:{powerPreference:'low-power'},antialias:true});
     const observer=new ResizeObserver(()=>{if(!disposed)game.scale.resize(Math.max(1,parent.clientWidth),Math.max(1,parent.clientHeight));});observer.observe(parent);
     const visibility=()=>{if(document.hidden)game.loop.sleep();else game.loop.wake();};document.addEventListener('visibilitychange',visibility);
     return()=>{disposed=true;redraw.current=null;observer.disconnect();document.removeEventListener('visibilitychange',visibility);game.destroy(true);};

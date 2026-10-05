@@ -56,3 +56,9 @@ Thumbs.db
 # Local browser verification artifacts
 .playwright-cli/
 output/playwright/
+
+# Dependencies at any project level
+node_modules/
+
+# Generated local QA captures
+docs/qa/playthrough-run/
