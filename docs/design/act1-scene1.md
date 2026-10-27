@@ -1,24 +1,22 @@
-# Акт 1 · Сцена 1 — Сад Хищного Растения
+# Act 1 · Scene 1 — Garden of the Pitcher Plant
 
-Дата: 26 октября 2026. Это не сцена с управлением. Это короткое кино, затем разговор.
+Date: 26 October 2026. Not a control scene. A short film, then a talk.
 
-## Зачем
+## Why
 
-Пчела — не аватар игрока. Это аналогия: хотел просто попробовать, был уверен, что улетит в любой момент. Сигарета затягивает так же.
+The bee is not the player’s avatar. It is an analogy: they only wanted to try, sure they could leave whenever they wanted. A cigarette pulls the same way.
 
-## Как смотреть
+## How to watch
 
-1. Нажать на экран или Enter.
-2. Ролик со сменой планов: сад → нектар → скольжение по волоскам → дно ловушки.
-3. Чат открывается на весь экран. Первую реплику говорит Meta Muse Spark.
+1. Tap the screen or press Enter.
+2. Shots: garden → nectar → slipping on the hairs → the bottom of the trap.
+3. Chat fills the screen. Meta Muse Spark speaks first.
 
-## Файлы
+## Files
 
-- `webapp/public/game/act1-scene1/scene.mp4` — кино
-- `shot-wide.webp`, `shot-nectar.webp`, `shot-slip.webp`, `shot-bottom.webp` — планы, если видео не сыграет
+- `webapp/public/game/act1-scene1/scene.mp4`
+- `shot-wide.webp`, `shot-nectar.webp`, `shot-slip.webp`, `shot-bottom.webp` if the video fails
 
-Дальше путь открывает Muse (`next: advance`), не кнопка «следующая сцена» с самого начала.
+## Not in this scene
 
-## Чего здесь нет
-
-Управление пчелой, регистрация.
+Dragging a bee, sign-in.

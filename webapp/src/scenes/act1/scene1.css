@@ -57,6 +57,13 @@
   display:block;width:calc(100% - 36px);margin:4px 18px 10px;min-height:48px;
   background:var(--gold);color:#1a2114;border-radius:6px;font-size:16px;
 }
+.scene1-skip{
+  position:absolute;z-index:4;top:50%;transform:translateY(-50%);
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(12,18,10,.72);color:var(--gold);font-size:26px;line-height:1;
+}
+.scene1-skip-next{right:10px}
+.scene1-skip-prev{left:10px}
 .scene1-app.reduce-motion .scene1-chat,.scene1-app.reduce-motion .scene1-stage .scene1-cinema,.scene1-app.reduce-motion .scene1-frame{transition:none;filter:none;transform:none;animation:none}
 @media(min-width:720px){
   .scene1-app{max-width:430px;left:50%;right:auto;transform:translateX(-50%)}

@@ -20,10 +20,8 @@ Voice: “When the film ends, the chat is the whole screen. There is no question
 
 On screen: live conversation. Type something like the first cigarette / “I’ll stop when I want.” Wait for the real reply. If the advance button appears, point to it: “The model just decided the person connected the image to their life. The client did not unlock the next scene by itself.”
 
-## 2:30–3:00 — Next scene, new hero
+## 2:30–3:00 — Scene 2
 
-Voice: “Scene 2 is a different creature: a hare at a salt well. The drink that ‘helps’ is salt. Same trap, new picture. That is the product: Muse chooses how to walk someone through their own reasons, scene by scene.”
+Voice: “Scene 2 is a different picture: the first cigarette in a crowd. He coughs, they laugh, he keeps smoking so he will not look like the fool.”
 
-On screen: tap Дальше, play a few seconds of the well film, freeze.
-
-End card: public repo + deployed URL.
+On screen: tap Next scene, play a few seconds of the flashback, freeze. End card: public repo + deployed URL.

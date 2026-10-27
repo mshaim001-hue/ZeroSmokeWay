@@ -10,7 +10,7 @@ export const SHOTS = [
 export const FILM = '/game/act1-scene1/scene.mp4';
 export const POSTER = SHOTS[0];
 export const SHOT_MS = 2800;
-export const OPENING_KICKOFF = 'Фильм закончился. Игрок это только что увидел. Скажи первую реплику.';
+export const OPENING_KICKOFF = 'The film ended. The player just watched it. Speak the first line.';
 
 export function nextShotIndex(index: number): number {
   return Math.min(SHOTS.length - 1, index + 1);

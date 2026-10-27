@@ -4,5 +4,5 @@ import {OPENING_KICKOFF} from '../src/scenes/act1/sceneFlow.ts';
 
 test('opening kickoff is a hidden cue, not a prepared question shown to the player',()=>{
   assert.ok(OPENING_KICKOFF.endsWith('.'));
-  assert.doesNotMatch(OPENING_KICKOFF,/когда захочешь/i);
+  assert.doesNotMatch(OPENING_KICKOFF,/when you want/i);
 });

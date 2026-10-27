@@ -1,32 +1,20 @@
-# Диалог после сцены
+# Talk after a scene
 
-После кино игрок не проходит анкету. Meta Muse Spark ведёт живой разговор и **решает, как вести**. Подготовленных вопросов и запасных реплик нет: не ответила модель — на экране «повторить».
+After the film the player does not get a questionnaire. Meta Muse Spark talks live. No prepared questions and no fake replies: if the model fails, the screen says retry.
 
-## Что даёт разговор
+## What the talk is for
 
-Кино показывает ловушку. Чат нужен, чтобы человек сам положил на неё свою жизнь.
+The film shows a trap. The chat is so the person can put their own life on it.
 
-- Сцена 1, пчела: «я просто попробовал / я когда захочу — брошу».
-- Сцена 2, заяц: «сигарета успокаивает» = глоток из соляного колодца.
+- Scene 1, the bee: “I only wanted to try / I can stop whenever I want.”
+- Scene 2, the first puff: he coughs, they laugh, he keeps smoking so he will not look like the fool.
 
-Агент не читает лекцию и не ведёт по списку. Он держится слов игрока.
+No lecture. No list. Stay with their words. Deeper per-scene dialogue graphs come after the films.
 
-## Решение модели
+## How it works
 
-Ответ Muse — JSON `{ reply, stance, next }`. Игрок видит только `reply`.
-
-- `hold` — остаться в его словах.
-- `probe` — одна живая мысль, идти дальше рано.
-- `release` — он спорит или ушёл в сторону, не давить.
-- `advance` — он сам связал картинку с жизнью; сервер может открыть следующую сцену.
-
-На первой реплике после фильма `next` всегда `stay`. Клиент не выбирает следующую сцену сам.
-
-## Как это работает
-
-1. Фильм кончился → чат на весь экран.
-2. Сервер зовёт Meta Model API (`muse-spark-1.3`, `https://api.meta.ai/v1`) с зашитым speech profile, задачей сцены и правилами routing.
-3. Первая реплика тоже от модели. Служебный пинок в ленте не показывается.
-4. Дальше переписка. История — только то, что видит человек.
-5. Если `next=advance` и у сцены есть продолжение — кнопка «Дальше».
-6. Ключ `MODEL_API_KEY` только на сервере.
+1. The film ends → chat fills the screen.
+2. The server calls Meta Model API (`muse-spark-1.3`, `https://api.meta.ai/v1`) with the hardcoded speech profile and this scene’s job.
+3. The first spoken line is from the model. The hidden kickoff is not shown.
+4. Then a normal thread. History is only what the person sees.
+5. `MODEL_API_KEY` stays on the server.

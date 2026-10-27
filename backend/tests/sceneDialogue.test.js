@@ -4,7 +4,7 @@ import {handleSceneRequest,validateSceneInput,META_MODEL,SCENE_JOBS} from '../se
 import {ASSISTANT_SPEECH_PROFILE,speechSystemPrompt} from '../services/speechProfile.js';
 import handler from '../api/scene.js';
 
-const request = { sceneId: 'pitcher', message: 'Мне тоже казалось, что брошу когда захочу', history: [] };
+const request = { sceneId: 'pitcher', message: 'I also thought I could quit whenever I wanted', history: [] };
 const completion = (value) => async () => ({ choices: [{ message: { content: value } }] });
 
 function response() {
@@ -19,12 +19,12 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   let sent;
   const result = await handleSceneRequest({
     ...request,
-    history: [{ role: 'assistant', content: 'Ты как эта пчелка.' }, { role: 'user', content: 'Ну да.' }],
+    history: [{ role: 'assistant', content: 'You are that bee.' }, { role: 'user', content: 'Yeah.' }],
   }, {
     env: { META_MODEL: 'muse-spark-1.3' },
     createCompletion: async params => {
       sent = params;
-      return { choices: [{ message: { content: 'Смотри. «Когда захочу» — это как «сейчас улечу».' } }] };
+      return { choices: [{ message: { content: 'Look. “Whenever I want” is the same as “I’ll fly out now”.' } }] };
     },
   });
   assert.equal(result.mode, 'ai');
@@ -35,35 +35,29 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.equal(sent.max_completion_tokens, 2000);
   assert.equal(sent.response_format, undefined);
   assert.equal(sent.messages[0].role, 'developer');
-  assert.match(sent.messages[0].content, /пчелка/);
-  assert.match(sent.messages[0].content, /нектар/);
-  assert.match(sent.messages[0].content, /равному/);
+  assert.match(sent.messages[0].content, /bee/);
+  assert.match(sent.messages[0].content, /nectar/);
+  assert.match(sent.messages[0].content, /peer/);
   assert.match(sent.messages[0].content, /stance/);
-  assert.doesNotMatch(sent.messages[0].content, /Great question/);
+  assert.match(sent.messages[0].content, /Do not start with/);
   assert.equal(sent.messages.at(-1).content, request.message);
 });
 
 test('Muse JSON decides whether the next scene may open', async () => {
   const advanced = await handleSceneRequest({
     ...request,
-    history: [{ role: 'user', content: 'Первая была просто попробовать.' }],
+    history: [{ role: 'user', content: 'The first one was just to try.' }],
   }, {
-    createCompletion: completion('{"reply":"Смотри. Это уже не «улечу когда захочу».","stance":"advance","next":"advance"}'),
+    createCompletion: completion('{"reply":"Look. That is no longer “I’ll fly out whenever I want”.","stance":"advance","next":"advance"}'),
   });
-  assert.equal(advanced.response, 'Смотри. Это уже не «улечу когда захочу».');
+  assert.equal(advanced.response, 'Look. That is no longer “I’ll fly out whenever I want”.');
   assert.equal(advanced.stance, 'advance');
   assert.equal(advanced.next, 'advance');
   const first = await handleSceneRequest({ ...request, history: [] }, {
-    createCompletion: completion('{"reply":"Залетела на секунду.","stance":"advance","next":"advance"}'),
+    createCompletion: completion('{"reply":"It flew in for a second.","stance":"advance","next":"advance"}'),
   });
   assert.equal(first.next, 'stay');
   assert.equal(first.stance, 'hold');
-  const well = await handleSceneRequest({ sceneId: 'well', message: 'Мне казалось, что сигарета успокаивает', history: [] }, {
-    createCompletion: completion('{"reply":"Глоток был сладкий. Потом соль.","stance":"probe","next":"stay"}'),
-  });
-  assert.match(well.response, /соль/);
-  assert.equal(well.stance, 'probe');
-  assert.ok(SCENE_JOBS.well.length > 40);
 });
 
 test('provider failure does not invent a prepared question or leak secrets', async () => {
@@ -89,9 +83,9 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   }
   assert.equal(calls, 0);
   assert.ok(SCENE_JOBS.pitcher.length > 40);
-  assert.ok(Object.hasOwn(SCENE_JOBS, 'well'));
+  assert.ok(SCENE_JOBS.firstPuff.length > 40);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
-  assert.match(speechSystemPrompt(), /сюсюканья/);
+  assert.match(speechSystemPrompt(), /peer/);
 });
 
 test('HTTP layer returns 503 without a fake reply body', async () => {

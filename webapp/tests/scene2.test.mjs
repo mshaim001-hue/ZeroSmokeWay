@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '../public/game/act1-scene2');
 
 test('scene 2 film and four shots are in public assets', () => {
-  for (const name of ['scene.mp4', 'shot-wide.webp', 'shot-drink.webp', 'shot-sting.webp', 'shot-loop.webp']) {
+  for (const name of ['scene.mp4', 'shot-wide.webp', 'shot-pressure.webp', 'shot-burn.webp', 'shot-spin.webp']) {
     assert.equal(existsSync(join(root, name)), true, name);
   }
 });

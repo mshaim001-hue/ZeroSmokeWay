@@ -1,19 +1,19 @@
-# Акт 1 · Сцена 2 — Соляной колодец
+# Act 1 · Scene 2 — The First Disgusting Cigarette
 
-Дата: 27 октября 2026. Тот же цикл, что у сцены 1: короткое кино, затем разговор. Новый герой.
+Date: 27 October 2026. Same loop as scene 1: a short film, then a talk. New picture, not the bee.
 
-## Зачем
+## Why
 
-Заяц — не продолжение пчелы. Другая картинка того же акта: «сигарета помогает». Глоток сверкает как облегчение. Вода — соль. Жажда после неё сильнее. На дне те же зайцы пьют по кругу. Это маленькое чудовище Карра без его имени: облегчение есть конец жажды, которую держит сам колодец.
+A flashback. He stands in the crowd. Someone gives him a cigarette. He takes a drag, starts to cough, the others laugh. To not be the fool he keeps smoking and holds the cough in. The trap is pride in the group, not the taste.
 
-## Как смотреть
+## How to watch
 
-1. После сцены 1 модель может открыть путь. Кнопка «Дальше · Соляной колодец» появляется только если Muse вернул `next: advance`.
-2. Нажать экран или Enter.
-3. Ролик: пустыня и колодец → глоток → соль → петля на дне.
-4. Полный чат. Первую реплику говорит Muse.
+1. From scene 1 chat, **Next scene**.
+2. Tap or Enter.
+3. Shots: the crowd offers it → he inhales → he coughs and they laugh → he keeps smoking.
+4. Full-screen chat. Muse speaks first. Dialogue graphs come later; this job only holds the paradox.
 
-## Файлы
+## Files
 
 - `webapp/public/game/act1-scene2/scene.mp4`
-- `shot-wide.webp`, `shot-drink.webp`, `shot-sting.webp`, `shot-loop.webp`
+- `shot-wide.webp`, `shot-pressure.webp`, `shot-burn.webp`, `shot-spin.webp`

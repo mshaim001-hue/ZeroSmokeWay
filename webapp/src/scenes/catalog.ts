@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'well';
+export type SceneId = 'pitcher' | 'firstPuff';
 
 export type SceneDef = {
   id: SceneId;
@@ -15,14 +15,14 @@ export type SceneDef = {
   kickoff: string;
 };
 
-const KICKOFF = 'Фильм закончился. Игрок это только что увидел. Скажи первую реплику.';
+const KICKOFF = 'The film ended. The player just watched it. Speak the first line.';
 
 export const SCENES: Record<SceneId, SceneDef> = {
   pitcher: {
     id: 'pitcher',
     act: 1,
     number: 1,
-    title: 'Сад Хищного Растения',
+    title: 'Garden of the Pitcher Plant',
     film: '/game/act1-scene1/scene.mp4',
     poster: '/game/act1-scene1/shot-wide.webp',
     shots: [
@@ -31,21 +31,21 @@ export const SCENES: Record<SceneId, SceneDef> = {
       '/game/act1-scene1/shot-slip.webp',
       '/game/act1-scene1/shot-bottom.webp',
     ],
-    next: 'well',
+    next: 'firstPuff',
     kickoff: KICKOFF,
   },
-  well: {
-    id: 'well',
+  firstPuff: {
+    id: 'firstPuff',
     act: 1,
     number: 2,
-    title: 'Соляной колодец',
-    film: '/game/act1-scene2/scene.mp4',
-    poster: '/game/act1-scene2/shot-wide.webp',
+    title: 'The First Disgusting Cigarette',
+    film: '/game/act1-scene2/scene.mp4?v=10',
+    poster: '/game/act1-scene2/shot-wide.webp?v=10',
     shots: [
-      '/game/act1-scene2/shot-wide.webp',
-      '/game/act1-scene2/shot-drink.webp',
-      '/game/act1-scene2/shot-sting.webp',
-      '/game/act1-scene2/shot-loop.webp',
+      '/game/act1-scene2/shot-wide.webp?v=10',
+      '/game/act1-scene2/shot-pressure.webp?v=10',
+      '/game/act1-scene2/shot-burn.webp?v=10',
+      '/game/act1-scene2/shot-spin.webp?v=10',
     ],
     next: null,
     kickoff: KICKOFF,
@@ -53,7 +53,13 @@ export const SCENES: Record<SceneId, SceneDef> = {
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];
+}
+
+export function neighbor(id: SceneId, step: 1 | -1): SceneId | null {
+  const index = SCENE_ORDER.indexOf(id) + step;
+  return SCENE_ORDER[index] ?? null;
 }

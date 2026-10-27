@@ -13,6 +13,6 @@ test('scene 1 is a film of four shots, then talk',()=>{
 });
 
 test('first spoken line is requested from the model, not from a question bank',()=>{
-  assert.match(OPENING_KICKOFF,/фильм/i);
+  assert.match(OPENING_KICKOFF,/film/i);
   assert.doesNotMatch(OPENING_KICKOFF,/\?/);
 });

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
-import { FIRST_SCENE, sceneOf, type SceneId, type Phase } from '../catalog';
+import { FIRST_SCENE, neighbor, sceneOf, type SceneId, type Phase } from '../catalog';
 import { askScene, type ChatLine } from './api';
 import './scene1.css';
 
@@ -14,7 +14,6 @@ export function Scene1App() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
-  const [canAdvance, setCanAdvance] = useState(false);
   const [reduced, setReduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const request = useRef<AbortController>();
   const end = useRef<HTMLDivElement>(null);
@@ -83,20 +82,24 @@ export function Scene1App() {
     setDraft('');
     setBusy(false);
     setChat([]);
-    setCanAdvance(false);
   }
   function replay() {
     resetTalk();
     setPlay(n => n + 1);
     setPhase('idle');
   }
-  function goNext() {
-    if (!scene.next || !canAdvance) return;
-    const nextId = scene.next;
+  function goTo(id: SceneId | null) {
+    if (!id) return;
     resetTalk();
-    setSceneId(nextId);
+    setSceneId(id);
     setPlay(n => n + 1);
     setPhase('idle');
+  }
+  function goNext() {
+    goTo(neighbor(sceneId, 1));
+  }
+  function goPrev() {
+    goTo(neighbor(sceneId, -1));
   }
   async function speak(message: string, history: ChatLine[], retry = false) {
     if (busy && !retry) return;
@@ -109,9 +112,8 @@ export function Scene1App() {
       const reply = await askScene(sceneId, message, history, control.signal);
       if (request.current !== control) return;
       setChat(old => [...old, { role: 'assistant', content: reply.response }]);
-      setCanAdvance(reply.next === 'advance' && Boolean(sceneOf(sceneId).next));
     } catch {
-      if (request.current === control) setIssue('Модель сейчас не ответила. Можно повторить.');
+      if (request.current === control) setIssue('The model did not answer. You can retry.');
     } finally {
       window.clearTimeout(timeout);
       if (request.current === control) {
@@ -141,7 +143,7 @@ export function Scene1App() {
   }
 
   const chatting = phase === 'chat';
-  const kicker = `Акт ${scene.act} · Сцена ${scene.number}`;
+  const kicker = `Act ${scene.act} · Scene ${scene.number}`;
 
   return (
     <main className={`scene1-app ${reduced ? 'reduce-motion' : ''}`}>
@@ -162,19 +164,25 @@ export function Scene1App() {
         <button type="button" className="scene1-play" onClick={startFilm}>
           <p className="scene1-kicker">{kicker}</p>
           <h1 className="scene1-title">{scene.title}</h1>
-          <p className="scene1-hint">Нажми, чтобы смотреть · Enter</p>
+          <p className="scene1-hint">Tap to watch · Enter</p>
         </button>
       )}
       {phase === 'playing' && <p className="scene1-kicker scene1-kicker-live">{kicker}</p>}
+      {!chatting && neighbor(sceneId, -1) && (
+        <button type="button" className="scene1-skip scene1-skip-prev" aria-label="Previous scene" onClick={goPrev}>←</button>
+      )}
+      {!chatting && neighbor(sceneId, 1) && (
+        <button type="button" className="scene1-skip scene1-skip-next" aria-label="Next scene" onClick={goNext}>→</button>
+      )}
       <section className={`scene1-chat ${chatting ? 'is-open' : ''}`} aria-hidden={!chatting} {...(!chatting ? { inert: '' } : {})}>
         <div className="scene1-chat-head">
-          <p>После сцены</p>
-          <button type="button" onClick={replay}>Смотреть ещё раз</button>
+          <p>After the scene</p>
+          <button type="button" onClick={replay}>Watch again</button>
         </div>
-        <div className="scene1-messages" role="log" aria-label="Разговор">
+        <div className="scene1-messages" role="log" aria-label="Conversation">
           {chat.map((m, i) => (
             <article key={i} className={`scene1-message ${m.role}`}>
-              <span>{m.role === 'user' ? 'ТЫ' : ''}</span>
+              <span>{m.role === 'user' ? 'YOU' : ''}</span>
               <p>{m.content}</p>
             </article>
           ))}
@@ -184,26 +192,26 @@ export function Scene1App() {
         {issue && (
           <div className="scene1-status" role="status">
             <p>{issue}</p>
-            <button type="button" onClick={retryLast} disabled={busy}>Повторить</button>
+            <button type="button" onClick={retryLast} disabled={busy}>Retry</button>
           </div>
         )}
-        {canAdvance && scene.next && (
+        {scene.next && (
           <div className="scene1-status">
             <button type="button" className="scene1-next" onClick={goNext}>
-              Дальше · {sceneOf(scene.next).title}
+              Next scene · {sceneOf(scene.next).title}
             </button>
           </div>
         )}
         <form className="scene1-compose" onSubmit={e => void send(e)}>
           <textarea
-            aria-label="Твой ответ"
-            placeholder="Что это напомнило?"
+            aria-label="Your reply"
+            placeholder="What did that remind you of?"
             rows={2}
             maxLength={2000}
             value={draft}
             onChange={e => setDraft(e.target.value)}
           />
-          <button aria-label="Отправить" disabled={busy || !draft.trim()}>↑</button>
+          <button aria-label="Send" disabled={busy || !draft.trim()}>↑</button>
         </form>
       </section>
     </main>

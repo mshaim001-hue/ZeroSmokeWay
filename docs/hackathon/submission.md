@@ -22,7 +22,7 @@ The public form fields were not fully listed on the event page as of 27 October.
 
 Paste:
 
-> Existing project concept and a Phaser labyrinth existed before 26 October 2026 (last pre-hackathon commit `2e1c89a`). During the hackathon I built the cinematic scene path, Meta Muse Spark dialogue after each film, a hardcoded speech profile, hypothesis-free live routing (`hold` / `probe` / `release` / `advance`), and Act 1 scenes 1–2. The model decides when the next scene may open. This is not a chatbot wrapper and not a medical advice app.
+> Existing project concept and a Phaser labyrinth existed before 26 October 2026 (last pre-hackathon commit `2e1c89a`). During the hackathon I built the cinematic scene path, Meta Muse Spark dialogue after each film, a hardcoded speech profile, and live routing (`hold` / `probe` / `release` / `advance`). Act 1 Scene 1 (pitcher plant) and Scene 2 (first disgusting cigarette) are in English. This is not a chatbot wrapper and not a medical advice app.
 
 ## Impact (first 20 seconds of the demo)
 
