@@ -20,6 +20,20 @@ export const SCENE_JOBS = Object.freeze({
     'One thought and at most one living question per reply. Under 700 characters.',
     'stance=advance and next=advance only when they themselves named that pride-in-the-group trap (kept smoking so as not to be the fool). Otherwise next=stay.',
   ].join(' '),
+  labyrinth: [
+    'The player just watched a walk through a night city of giant billboards and cinema screens: a cowboy’s last-request cigarette, smoke sold as if it fuels sport, smoke sold as romance.',
+    'The talk is so they can name those manipulations themselves and put a fact against the myth — the hunt is in what they saw, not a quiz.',
+    'No lecture. No questionnaire. Stay with their words. Do not dump a list of facts unless they reach for one.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named an ad or film trick (last request, sport, love) as not the cigarette’s truth. Otherwise next=stay.',
+  ].join(' '),
+  shoes: [
+    'The player just watched a man in a room in impossibly tight shoes: constant pain, then a short pleasure when he takes them off, then the pain returns when he puts them back.',
+    'The talk is so they can see it themselves: the “pleasure” of a cigarette is only a short stop of the pain and itch the cigarette itself created.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that the relief is the end of a thirst the smoke made. Otherwise next=stay.',
+  ].join(' '),
 });
 
 const ROUTING_RULES = [

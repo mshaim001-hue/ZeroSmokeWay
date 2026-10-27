@@ -56,6 +56,8 @@ Concept, research, and the Labyrinth prototype already existed: Phaser gesture r
 - Scene-by-scene mobile path (4 acts / 15 scenes planned). One scene finished before the next starts.
 - Act 1 Scene 1 — *Garden of the Pitcher Plant*: cinema, then full-screen Meta chat. Bee = “I only wanted to try / I can stop whenever I want.”
 - Act 1 Scene 2 — *The First Disgusting Cigarette*: flashback in a crowd — first drag, cough, they laugh, he keeps smoking so he will not look like the fool.
+- Act 1 Scene 3 — *The Brainwashing Labyrinth*: a city of giant ads; last-request, sport, and romance myths; the talk names the manipulation.
+- Act 1 Scene 4 — *The Tight Shoes Paradox*: the only pleasure is taking off shoes that hurt; that relief is the cigarette.
 - Meta Model API (`muse-spark-1.3` at `https://api.meta.ai/v1`) as the dialogue core. No prepared questions, no fake replies when the model fails.
 - Hardcoded assistant speech profile (peer, short, match user language).
 - Muse returns a **decision**, not only a line: `hold` / `probe` / `release` / `advance`. The server, not the client, decides whether the next scene may open.

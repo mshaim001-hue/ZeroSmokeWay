@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'firstPuff';
+export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes';
 
 export type SceneDef = {
   id: SceneId;
@@ -47,13 +47,45 @@ export const SCENES: Record<SceneId, SceneDef> = {
       '/game/act1-scene2/shot-burn.webp?v=10',
       '/game/act1-scene2/shot-spin.webp?v=10',
     ],
+    next: 'labyrinth',
+    kickoff: KICKOFF,
+  },
+  labyrinth: {
+    id: 'labyrinth',
+    act: 1,
+    number: 3,
+    title: 'The Brainwashing Labyrinth',
+    film: '/game/act1-scene3/scene.mp4',
+    poster: '/game/act1-scene3/shot-wide.webp',
+    shots: [
+      '/game/act1-scene3/shot-wide.webp',
+      '/game/act1-scene3/shot-last.webp',
+      '/game/act1-scene3/shot-myth.webp',
+      '/game/act1-scene3/shot-peel.webp',
+    ],
+    next: 'shoes',
+    kickoff: KICKOFF,
+  },
+  shoes: {
+    id: 'shoes',
+    act: 1,
+    number: 4,
+    title: 'The Tight Shoes Paradox',
+    film: '/game/act1-scene4/scene.mp4',
+    poster: '/game/act1-scene4/shot-wide.webp',
+    shots: [
+      '/game/act1-scene4/shot-wide.webp',
+      '/game/act1-scene4/shot-pinch.webp',
+      '/game/act1-scene4/shot-off.webp',
+      '/game/act1-scene4/shot-back.webp',
+    ],
     next: null,
     kickoff: KICKOFF,
   },
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
-export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff'];
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];

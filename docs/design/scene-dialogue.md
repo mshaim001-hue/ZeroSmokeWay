@@ -8,6 +8,8 @@ The film shows a trap. The chat is so the person can put their own life on it.
 
 - Scene 1, the bee: “I only wanted to try / I can stop whenever I want.”
 - Scene 2, the first puff: he coughs, they laugh, he keeps smoking so he will not look like the fool.
+- Scene 3, the labyrinth: last-request, sport, and romance ads; they name the trick and put a fact against it.
+- Scene 4, tight shoes: the “pleasure” is only stopping a pain the shoes (the cigarette) created.
 
 No lecture. No list. Stay with their words. Deeper per-scene dialogue graphs come after the films.
 

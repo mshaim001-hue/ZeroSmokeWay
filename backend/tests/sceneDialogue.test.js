@@ -84,6 +84,8 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.equal(calls, 0);
   assert.ok(SCENE_JOBS.pitcher.length > 40);
   assert.ok(SCENE_JOBS.firstPuff.length > 40);
+  assert.ok(SCENE_JOBS.labyrinth.length > 40);
+  assert.ok(SCENE_JOBS.shoes.length > 40);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
   assert.match(speechSystemPrompt(), /peer/);
 });
