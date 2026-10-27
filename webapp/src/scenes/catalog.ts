@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes';
+export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress';
 
 export type SceneDef = {
   id: SceneId;
@@ -71,13 +71,29 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 1,
     number: 4,
     title: 'The Tight Shoes Paradox',
-    film: '/game/act1-scene4/scene.mp4',
-    poster: '/game/act1-scene4/shot-wide.webp',
+    film: '/game/act1-scene4/scene.mp4?v=2',
+    poster: '/game/act1-scene4/shot-wide.webp?v=2',
     shots: [
-      '/game/act1-scene4/shot-wide.webp',
-      '/game/act1-scene4/shot-pinch.webp',
-      '/game/act1-scene4/shot-off.webp',
-      '/game/act1-scene4/shot-back.webp',
+      '/game/act1-scene4/shot-wide.webp?v=2',
+      '/game/act1-scene4/shot-pinch.webp?v=2',
+      '/game/act1-scene4/shot-off.webp?v=2',
+      '/game/act1-scene4/shot-back.webp?v=2',
+    ],
+    next: 'stress',
+    kickoff: KICKOFF,
+  },
+  stress: {
+    id: 'stress',
+    act: 2,
+    number: 5,
+    title: 'Boss: Stress',
+    film: '/game/act2-scene5/scene.mp4',
+    poster: '/game/act2-scene5/shot-wide.webp',
+    shots: [
+      '/game/act2-scene5/shot-wide.webp',
+      '/game/act2-scene5/shot-storm.webp',
+      '/game/act2-scene5/shot-drag.webp',
+      '/game/act2-scene5/shot-graph.webp',
     ],
     next: null,
     kickoff: KICKOFF,
@@ -85,7 +101,7 @@ export const SCENES: Record<SceneId, SceneDef> = {
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
-export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes'];
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];

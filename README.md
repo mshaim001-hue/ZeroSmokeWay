@@ -58,6 +58,7 @@ Concept, research, and the Labyrinth prototype already existed: Phaser gesture r
 - Act 1 Scene 2 — *The First Disgusting Cigarette*: flashback in a crowd — first drag, cough, they laugh, he keeps smoking so he will not look like the fool.
 - Act 1 Scene 3 — *The Brainwashing Labyrinth*: a city of giant ads; last-request, sport, and romance myths; the talk names the manipulation.
 - Act 1 Scene 4 — *The Tight Shoes Paradox*: the only pleasure is taking off shoes that hurt; that relief is the cigarette.
+- Act 2 Scene 5 — *Boss: Stress*: office crunch; a cigarette for calm; the anxiety graph climbs instead.
 - Meta Model API (`muse-spark-1.3` at `https://api.meta.ai/v1`) as the dialogue core. No prepared questions, no fake replies when the model fails.
 - Hardcoded assistant speech profile (peer, short, match user language).
 - Muse returns a **decision**, not only a line: `hold` / `probe` / `release` / `advance`. The server, not the client, decides whether the next scene may open.

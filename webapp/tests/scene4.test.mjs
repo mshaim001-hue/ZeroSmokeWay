@@ -16,5 +16,5 @@ test('scene 4 film and four shots are in public assets', () => {
 test('scene 4 follows the labyrinth in the catalog', () => {
   assert.equal(neighbor('labyrinth', 1), 'shoes');
   assert.equal(sceneOf('shoes').title, 'The Tight Shoes Paradox');
-  assert.equal(sceneOf('shoes').next, null);
+  assert.equal(sceneOf('shoes').next, 'stress');
 });

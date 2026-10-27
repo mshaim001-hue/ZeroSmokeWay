@@ -34,6 +34,13 @@ export const SCENE_JOBS = Object.freeze({
     'One thought and at most one living question per reply. Under 700 characters.',
     'stance=advance and next=advance only when they themselves named that the relief is the end of a thirst the smoke made. Otherwise next=stay.',
   ].join(' '),
+  stress: [
+    'The player just watched an office in crunch: phones, shouting bosses, nerves at the limit. He smokes to calm down. A red graph of anxiety climbs instead — nicotine hunger feeding the storm.',
+    'The talk is a duel with the myth called Stress: smoking does not soothe the nerves, it slowly wrecks them.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that the cigarette raises the anxiety, it does not calm it. Otherwise next=stay.',
+  ].join(' '),
 });
 
 const ROUTING_RULES = [
