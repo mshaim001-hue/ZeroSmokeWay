@@ -12,9 +12,11 @@ The public form fields were not fully listed on the event page as of 27 October.
 - Theme: Build for Your World
 - Bonus categories: Best Agent Use Case, Best Creative Build
 - Team size: solo unless other approved members are listed
-- GitHub (must be public): https://github.com/mshaim001-hue/ZeroSmokeWay
+- GitHub (must be public): https://github.com/mshaim001-hue/ZeroSmokeWay — set to **public** 27 Oct 2026
 - Branch with hackathon work: `hackathon-2026`
-- Deployed URL: add after Vercel deploy (see README). Set `MODEL_API_KEY` only in host env.
+- Deployed URL: Vercel CLI is not logged in on this machine. From the repo root:
+  `npx vercel login && npx vercel --prod`
+  Then in the Vercel project: Settings → Environment Variables → `MODEL_API_KEY` (Production + Preview). Do not paste the key into git.
 
 ## Prior work vs new work
 
