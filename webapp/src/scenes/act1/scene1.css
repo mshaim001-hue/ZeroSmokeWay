@@ -1,0 +1,63 @@
+.scene1-app{
+  --ink:#f3eee4;--muted:#c9c2b4;--gold:#e4c48a;--moss:#12180f;
+  position:fixed;inset:var(--scene-top,0px) 0 auto;width:100%;
+  height:var(--scene-height,100dvh);min-height:0;overflow:hidden;
+  color:var(--ink);background:var(--moss);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;isolation:isolate;
+}
+.scene1-app *,.scene1-app *:before,.scene1-app *:after{box-sizing:border-box}
+.scene1-app button,.scene1-app textarea{font:inherit;color:inherit}
+.scene1-app button{cursor:pointer;-webkit-tap-highlight-color:transparent;border:0;background:transparent;touch-action:manipulation}
+.scene1-app button:disabled{opacity:.4;cursor:default}
+.scene1-app button:focus-visible,.scene1-app textarea:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.scene1-stage{position:absolute;inset:0}
+.scene1-stage.is-blurred .scene1-cinema{filter:blur(14px);transform:scale(1.06)}
+.scene1-cinema{position:absolute;inset:0;background:var(--moss)}
+.scene1-frame,.scene1-film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.scene1-film{opacity:0}
+.scene1-film.is-live{opacity:1}
+.scene1-frame.is-live{animation:scene1-ken 2.8s ease-out forwards}
+@keyframes scene1-ken{from{transform:scale(1)}to{transform:scale(1.08)}}
+.scene1-play{
+  position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;
+  justify-content:flex-end;align-items:flex-start;text-align:left;
+  padding:0 22px calc(28px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,transparent 42%,rgba(8,12,6,.78));
+}
+.scene1-kicker{margin:0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);text-shadow:0 1px 8px #000}
+.scene1-kicker-live{position:absolute;top:calc(10px + env(safe-area-inset-top));left:18px;z-index:2;pointer-events:none}
+.scene1-title{margin:10px 0 0;font:normal clamp(28px,8vw,42px)/1.15 Georgia,serif;text-shadow:0 2px 16px #000}
+.scene1-hint{margin:14px 0 0;font-size:16px;line-height:1.45;color:#f6ead6;text-shadow:0 1px 10px #000}
+.scene1-chat{
+  position:absolute;inset:0;z-index:3;height:100%;display:flex;flex-direction:column;
+  background:rgba(10,16,10,.94);padding-bottom:env(safe-area-inset-bottom);
+  transform:translateY(110%);transition:transform .45s ease;pointer-events:none;visibility:hidden;
+}
+.scene1-chat.is-open{transform:translateY(0);pointer-events:auto;visibility:visible}
+.scene1-chat-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;flex-shrink:0}
+.scene1-chat-head p{margin:0;font-size:12px;letter-spacing:.12em;color:var(--gold)}
+.scene1-chat-head button{min-height:44px;padding:8px;color:var(--gold);font-size:14px}
+.scene1-messages{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;padding:8px 18px 12px}
+.scene1-message{border-left:1px solid rgba(228,196,138,.4);padding:0 0 0 12px;margin:0 0 16px}
+.scene1-message p{margin:0;font-size:17px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.scene1-message.user{margin-left:16px;border-color:#7fa38a}
+.scene1-message>span{display:block;font-size:11px;letter-spacing:.08em;color:var(--gold);margin-bottom:4px}
+.scene1-message>span:empty{display:none}
+.scene1-status{margin:0 18px 8px;font-size:14px;color:var(--muted)}
+.scene1-status button{min-height:44px;margin-top:4px;color:var(--gold);font-size:15px}
+.scene1-compose{display:flex;align-items:center;gap:8px;padding:8px 14px 12px;flex-shrink:0}
+.scene1-compose textarea{
+  flex:1;min-width:0;resize:none;max-height:96px;min-height:48px;
+  padding:10px 12px;background:rgba(18,28,16,.92);border:1px solid rgba(228,196,138,.35);
+  border-radius:6px;color:var(--ink);font-size:16px;line-height:1.45;
+}
+.scene1-compose button{min-width:48px;min-height:48px;background:var(--gold);color:#1a2114;border-radius:6px;font-size:22px}
+.scene1-next{
+  display:block;width:calc(100% - 36px);margin:4px 18px 10px;min-height:48px;
+  background:var(--gold);color:#1a2114;border-radius:6px;font-size:16px;
+}
+.scene1-app.reduce-motion .scene1-chat,.scene1-app.reduce-motion .scene1-stage .scene1-cinema,.scene1-app.reduce-motion .scene1-frame{transition:none;filter:none;transform:none;animation:none}
+@media(min-width:720px){
+  .scene1-app{max-width:430px;left:50%;right:auto;transform:translateX(-50%)}
+}

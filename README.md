@@ -1,12 +1,12 @@
-# ZeroSmokeWay — Лабиринт
+# ZeroSmokeWay
 
-Браузерная игра о курении, рассчитанная прежде всего на телефон. Порог по собственной причине, четыре главные комнаты с жестами, боковые двери по желанию и отдельный выход. После двери сначала комната в Phaser; разговор открывается по желанию и помнит прошлые слова на карте.
+Mobile cinematic path about the nicotine trap: a short film, then a live conversation with Meta Muse Spark. The model does not lecture and does not run a questionnaire. It stays with the player’s words and decides whether to hold, probe, or open the next scene.
 
-Главный путь: порог → удовольствие, напряжение, петля, упаковка → выход. Остальные темы не обязательны. Прогресс определяется действиями в сцене и сохранением собственной мысли, без числа реплик и AI-оценки. Последний ответ из чата предлагается для записи автоматически. При сбое AI доступны подготовленные вопросы и самостоятельные действия. Музыка оригинальная, меняется между комнатами; mute и громкость доступны.
+Not an “AI quit-smoking coach.” Existing apps already explain harm. This project uses fairy-tale images so a person can name the private reason they keep smoking.
 
-## Запуск
+## Run locally
 
-Node.js 22.18+ или 24+. В двух терминалах:
+Node.js 22.18+ or 24+. Two terminals:
 
 ```bash
 npm ci --prefix backend
@@ -18,11 +18,11 @@ npm ci --prefix webapp
 npm run dev --prefix webapp
 ```
 
-Открыть адрес Vite, обычно http://localhost:5173. Он проксирует `/api/labyrinth` на localhost:3000. Также можно использовать `./start-local.sh` после установки зависимостей.
+Open the Vite URL (usually http://localhost:5173). It proxies `/api` to localhost:3000.
 
-Ключ хранится в `backend/.env`: `OPENAI_API_KEY`. Необязательный `LABYRINTH_MODEL` задаёт модель, по умолчанию gpt-4o-mini. Пример без ключа — backend/env.example. При разговоре на сервер передаются сообщение, история комнаты и контекст записей.
+Put `MODEL_API_KEY` in `backend/.env` (Meta Model API, `muse-spark-1.3`). See `backend/env.example`. Never commit the key.
 
-## Проверки
+## Checks
 
 ```bash
 npm test --prefix webapp
@@ -30,14 +30,42 @@ npm run build --prefix webapp
 npm test --prefix backend
 ```
 
-## Структура
+## Structure
 
-- `webapp/src/game/` — единственный игровой интерфейс, состояние, сцены и музыка.
-- `backend/services/labyrinthService.js` — разговор; `backend/api/labyrinth.js` — общий API-обработчик.
-- `api/labyrinth.js` — вход Vercel; vercel.json собирает webapp/dist.
-- `docs/design/` — дизайн и описание реализованного; `docs/archive/` — исторические материалы.
-- `knowledge-base/` — исходные материалы, не отдельное приложение.
+- `webapp/src/scenes/` — cinema + full-screen chat; live product starts here.
+- `backend/services/sceneDialogue.js` — Meta Muse dialogue and routing.
+- `backend/services/speechProfile.js` — hardcoded speech profile.
+- `api/scene.js` — Vercel entry; `vercel.json` builds `webapp/dist`.
+- `webapp/src/game/` — previous Labyrinth (Phaser rooms). Not shown in the live app.
+- `docs/design/` — current scene design; `docs/hackathon/` — submission notes; `docs/archive/` — history.
 
-Старые Flutter-приложение, чат с кубиком, альтернативный Лабиринт и их API удалены. Их код доступен в Git. Сохранённые ключи localStorage не удаляются; текущий путь использует `zsw_labyrinth_v2`, старый `zsw_three_rooms_v1` мигрирует без удаления. Нет аккаунтов, облачной синхронизации и service worker. Эффективность для отказа от курения пока не проверена на участниках.
+No accounts, cloud sync, or service worker in this build. Gmail auth is deferred. Effectiveness for quitting has not been tested with participants.
 
-[Устройство игры](docs/design/labyrinth-implementation.md) · [Голос](docs/design/voice.md) · [Проверки](docs/qa/labyrinth-qa.md)
+## Hackathon work
+
+Meta Global AI Developer Hackathon 2026. Track: **Indie Developer**. Theme: **Build for Your World**. Bonus categories to mark: **Best Agent Use Case**, **Best Creative Build**.
+
+Deadline: 4 November 2026, 9:00 PM ET. Branch: `hackathon-2026`.
+
+### Prior work (before 26 October 2026)
+
+Concept, research, and the Labyrinth prototype already existed: Phaser gesture rooms, corridor map, OpenAI room chat with authored fallbacks. Last pre-hackathon commit on `main`: `2e1c89a`. That layer is frozen. Judges should not score it.
+
+### Built during the hackathon
+
+- Scene-by-scene mobile path (4 acts / 15 scenes planned). One scene finished before the next starts.
+- Act 1 Scene 1 — *Garden of the Pitcher Plant*: cinema, then full-screen Meta chat. Bee = “I only wanted to try / I can stop whenever I want.”
+- Act 1 Scene 2 — *The Salt Well*: new hero (desert hare). Drink that “helps” is salt — relief that is only the end of thirst the well itself created.
+- Meta Model API (`muse-spark-1.3` at `https://api.meta.ai/v1`) as the dialogue core. No prepared questions, no fake replies when the model fails.
+- Hardcoded assistant speech profile (peer, short, match user language).
+- Muse returns a **decision**, not only a line: `hold` / `probe` / `release` / `advance`. The server, not the client, decides whether the next scene may open.
+
+Draft for the submission form:
+
+> Existing project concept and a Phaser labyrinth existed before the event. During the hackathon I replaced that loop with cinematic scenes and a Meta Muse agent that talks after each film, tracks how to lead the player, and unlocks the next scene when they connect the image to their own smoking.
+
+Suggested one-line impact: people do not keep smoking because they lack facts; they keep a private story. ZeroSmokeWay makes that story visible.
+
+Submission checklist and credit links: [docs/hackathon/submission.md](docs/hackathon/submission.md). Demo voiceover: [docs/hackathon/demo-script.md](docs/hackathon/demo-script.md).
+
+[Scene 1](docs/design/act1-scene1.md) · [Scene 2](docs/design/act1-scene2.md) · [Dialogue](docs/design/scene-dialogue.md)
