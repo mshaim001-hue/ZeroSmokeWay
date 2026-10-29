@@ -185,7 +185,7 @@ export function Scene1App() {
       )}
       <section className={`scene1-chat ${chatting ? 'is-open' : ''}`} aria-hidden={!chatting} {...(!chatting ? { inert: '' } : {})}>
         <div className="scene1-chat-head">
-          <p>After the scene</p>
+          <p>{scene.afterLabel ?? 'After the scene'}</p>
           <button type="button" onClick={replay}>Watch again</button>
         </div>
         <div className="scene1-messages" role="log" aria-label="Conversation">

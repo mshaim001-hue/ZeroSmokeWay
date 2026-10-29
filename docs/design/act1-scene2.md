@@ -1,10 +1,10 @@
 # Act 1 · Scene 2 — The First Disgusting Cigarette
 
-Date: 27 October 2026. Same loop as scene 1: a short film, then a talk. New picture, not the bee.
+Date: 29 October 2026. Live takes with sound, same loop as scene 1.
 
 ## Why
 
-A flashback. He stands in the crowd. Someone gives him a cigarette. He takes a drag, starts to cough, the others laugh. To not be the fool he keeps smoking and holds the cough in. The trap is pride in the group, not the taste.
+A flashback at about sixteen. Friends offer him a cigarette. He takes a drag, coughs — he hates it — they laugh. He smokes again so he will not look weak. The trap is pride in the group, not the taste.
 
 ## How to watch
 

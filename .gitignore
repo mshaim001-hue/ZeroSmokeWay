@@ -62,3 +62,15 @@ node_modules/
 
 # Generated local QA captures
 docs/qa/playthrough-run/
+
+# Local generation scratch (Grok takes, prompts, end-stills)
+workspace/
+
+# Unused RAG dump from the old Flutter / Supabase stack
+knowledge-base/
+
+# Desktop image dumps
+/ChatGPT Image*.png
+
+# Supabase CLI local cache
+supabase/.temp/

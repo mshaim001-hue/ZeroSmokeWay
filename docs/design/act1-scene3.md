@@ -12,7 +12,7 @@ The talk is so they can name a manipulation and put a fact against it. Muse does
 
 1. From scene 2, **Next scene**.
 2. Tap or Enter.
-3. Shots: the city of screens → the last-request cowboy → sport and romance ads → the myths peel.
+3. Shots: night walk under the last-request cowboy → sport sold as fuel → romance in smoke.
 4. Full-screen chat. Muse speaks first.
 
 ## Files

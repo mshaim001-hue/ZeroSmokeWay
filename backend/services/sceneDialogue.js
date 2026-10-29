@@ -14,7 +14,7 @@ export const SCENE_JOBS = Object.freeze({
     'stance=advance and next=advance only when they themselves tied the picture to their life (first cigarette, “just trying”, “I’ll quit when I want”). Otherwise next=stay.',
   ].join(' '),
   firstPuff: [
-    'The player just watched a flashback: he stands in a crowd, someone gives him a cigarette, he takes a drag, coughs, they laugh, and he keeps smoking so he will not look like the fool.',
+    'The player just watched a flashback at about sixteen: friends offer him a cigarette at night. He takes a drag, coughs — he hates it — they laugh, and he smokes again so he will not look weak.',
     'The talk is so they can see the trap themselves: the cough said stop, the laughter said don’t be the joke, so he stayed.',
     'No lecture. No questionnaire. Stay with their words.',
     'One thought and at most one living question per reply. Under 700 characters.',
@@ -75,6 +75,32 @@ export const SCENE_JOBS = Object.freeze({
     'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
     'One thought and at most one living question per reply. Under 700 characters.',
     'stance=advance and next=advance only when they themselves named that trap (rationing makes each smoke precious, the wait is torture, cutting down is not freedom). Otherwise next=stay.',
+  ].join(' '),
+  substitutes: [
+    'The player just watched a late-night kiosk: nicotine gum, patches, an e-cigarette, mint candies on the counter. He looks at the offering, then chews one piece of nicotine gum as if it were medicine. The hunger on his face does not leave.',
+    'The talk is so they can see the trap themselves: trying to cure a nicotine addiction with more nicotine is the same drug in a new wrapper — like offering a heroin addict a different vein. Gum, patch, vape, mint are not a way out if the nicotine stays.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that trap (nicotine gum/patch/vape is still nicotine, another form of the same drug, not a cure). Otherwise next=stay.',
+  ].join(' '),
+  monster: [
+    'The player just watched a tiny pale parasite with a sucking mouth inside a dark inner tunnel, smoke rising from it as it begs for a feed — then the same man at a dusk table, a closed pack in front of him, a hollow itch, and he does not feed it.',
+    'The talk is so they can see the trap themselves: the Little Nicotine Monster can only make a slight itch and emptiness (“I want a cigarette”). It is a reverse Tamagotchi: do not feed it. Each day without nicotine it shrinks; in about three weeks it dies.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that trap (the itch is only a small parasite, not feeding it starves it, three weeks without nicotine). Otherwise next=stay.',
+  ].join(' '),
+  weeks: [
+    'The player just watched ordinary life hit an old cue: morning coffee, a phone on the table, a hollow itch — then the little pale parasite in the inner tunnel, mouth wide, screaming for a cigarette. He does not smoke.',
+    'The talk is the trial of the first three weeks. The right inner line is theirs to find: it is not me who wants to smoke, it is the dying little parasite. I am a non-smoker. Do not say that slogan in the first line. Stay with their words until they name the split themselves.',
+    'No lecture. No questionnaire. One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that split (the craving is the parasite dying, not their true want; they are already a non-smoker). Otherwise next=stay.',
+  ].join(' '),
+  truth: [
+    'The player just watched the sky clear over a hill. He breathes free. He looks at people still smoking with pity, not envy — well, calm, the prison gone.',
+    'The talk is the moment of truth. The line on the screen is already You are free forever. Do not repeat that slogan in the first spoken line. Stay with what they saw: the clear sky, the look without envy.',
+    'No lecture. No questionnaire. One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that they are free, or that they can look at smokers without wanting it. Otherwise next=stay.',
   ].join(' '),
 });
 

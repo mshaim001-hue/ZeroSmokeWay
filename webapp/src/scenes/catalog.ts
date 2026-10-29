@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax' | 'combo' | 'willpower' | 'swamp';
+export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax' | 'combo' | 'willpower' | 'swamp' | 'substitutes' | 'monster' | 'weeks' | 'truth';
 
 export type SceneDef = {
   id: SceneId;
@@ -13,6 +13,7 @@ export type SceneDef = {
   shots: readonly string[];
   next: SceneId | null;
   kickoff: string;
+  afterLabel?: string;
 };
 
 const KICKOFF = 'The film ended. The player just watched it. Speak the first line.';
@@ -39,13 +40,13 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 1,
     number: 2,
     title: 'The First Disgusting Cigarette',
-    film: '/game/act1-scene2/scene.mp4?v=10',
-    poster: '/game/act1-scene2/shot-wide.webp?v=10',
+    film: '/game/act1-scene2/scene.mp4?v=12',
+    poster: '/game/act1-scene2/shot-wide.webp?v=12',
     shots: [
-      '/game/act1-scene2/shot-wide.webp?v=10',
-      '/game/act1-scene2/shot-pressure.webp?v=10',
-      '/game/act1-scene2/shot-burn.webp?v=10',
-      '/game/act1-scene2/shot-spin.webp?v=10',
+      '/game/act1-scene2/shot-wide.webp?v=12',
+      '/game/act1-scene2/shot-pressure.webp?v=12',
+      '/game/act1-scene2/shot-burn.webp?v=12',
+      '/game/act1-scene2/shot-spin.webp?v=12',
     ],
     next: 'labyrinth',
     kickoff: KICKOFF,
@@ -55,13 +56,13 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 1,
     number: 3,
     title: 'The Brainwashing Labyrinth',
-    film: '/game/act1-scene3/scene.mp4',
-    poster: '/game/act1-scene3/shot-wide.webp',
+    film: '/game/act1-scene3/scene.mp4?v=2',
+    poster: '/game/act1-scene3/shot-wide.webp?v=2',
     shots: [
-      '/game/act1-scene3/shot-wide.webp',
-      '/game/act1-scene3/shot-last.webp',
-      '/game/act1-scene3/shot-myth.webp',
-      '/game/act1-scene3/shot-peel.webp',
+      '/game/act1-scene3/shot-wide.webp?v=2',
+      '/game/act1-scene3/shot-last.webp?v=2',
+      '/game/act1-scene3/shot-myth.webp?v=2',
+      '/game/act1-scene3/shot-peel.webp?v=2',
     ],
     next: 'shoes',
     kickoff: KICKOFF,
@@ -71,13 +72,13 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 1,
     number: 4,
     title: 'The Tight Shoes Paradox',
-    film: '/game/act1-scene4/scene.mp4?v=2',
-    poster: '/game/act1-scene4/shot-wide.webp?v=2',
+    film: '/game/act1-scene4/scene.mp4?v=3',
+    poster: '/game/act1-scene4/shot-wide.webp?v=3',
     shots: [
-      '/game/act1-scene4/shot-wide.webp?v=2',
-      '/game/act1-scene4/shot-pinch.webp?v=2',
-      '/game/act1-scene4/shot-off.webp?v=2',
-      '/game/act1-scene4/shot-back.webp?v=2',
+      '/game/act1-scene4/shot-wide.webp?v=3',
+      '/game/act1-scene4/shot-pinch.webp?v=3',
+      '/game/act1-scene4/shot-off.webp?v=3',
+      '/game/act1-scene4/shot-back.webp?v=3',
     ],
     next: 'stress',
     kickoff: KICKOFF,
@@ -87,13 +88,13 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 2,
     number: 5,
     title: 'Boss: Stress',
-    film: '/game/act2-scene5/scene.mp4?v=6',
-    poster: '/game/act2-scene5/shot-wide.webp?v=6',
+    film: '/game/act2-scene5/scene.mp4?v=7',
+    poster: '/game/act2-scene5/shot-wide.webp?v=7',
     shots: [
-      '/game/act2-scene5/shot-wide.webp?v=6',
-      '/game/act2-scene5/shot-storm.webp?v=6',
-      '/game/act2-scene5/shot-drag.webp?v=6',
-      '/game/act2-scene5/shot-graph.webp?v=6',
+      '/game/act2-scene5/shot-wide.webp?v=7',
+      '/game/act2-scene5/shot-storm.webp?v=7',
+      '/game/act2-scene5/shot-drag.webp?v=7',
+      '/game/act2-scene5/shot-graph.webp?v=7',
     ],
     next: 'boredom',
     kickoff: KICKOFF,
@@ -103,13 +104,13 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 2,
     number: 6,
     title: 'Bosses: Boredom and Concentration',
-    film: '/game/act2-scene6/scene.mp4',
-    poster: '/game/act2-scene6/shot-wide.webp',
+    film: '/game/act2-scene6/scene.mp4?v=2',
+    poster: '/game/act2-scene6/shot-wide.webp?v=2',
     shots: [
-      '/game/act2-scene6/shot-wide.webp',
-      '/game/act2-scene6/shot-puff.webp',
-      '/game/act2-scene6/shot-paradox.webp',
-      '/game/act2-scene6/shot-starve.webp',
+      '/game/act2-scene6/shot-wide.webp?v=2',
+      '/game/act2-scene6/shot-puff.webp?v=2',
+      '/game/act2-scene6/shot-paradox.webp?v=2',
+      '/game/act2-scene6/shot-starve.webp?v=2',
     ],
     next: 'relax',
     kickoff: KICKOFF,
@@ -175,13 +176,78 @@ export const SCENES: Record<SceneId, SceneDef> = {
       '/game/act3-scene10/shot-drag.webp',
       '/game/act3-scene10/shot-sink.webp',
     ],
+    next: 'substitutes',
+    kickoff: KICKOFF,
+  },
+  substitutes: {
+    id: 'substitutes',
+    act: 3,
+    number: 11,
+    title: 'The Shop of Substitutes',
+    film: '/game/act3-scene11/scene.mp4',
+    poster: '/game/act3-scene11/shot-wide.webp',
+    shots: [
+      '/game/act3-scene11/shot-wide.webp',
+      '/game/act3-scene11/shot-counter.webp',
+      '/game/act3-scene11/shot-gum.webp',
+      '/game/act3-scene11/shot-itch.webp',
+    ],
+    next: 'monster',
+    kickoff: KICKOFF,
+  },
+  monster: {
+    id: 'monster',
+    act: 4,
+    number: 12,
+    title: 'The Lair of the Little Nicotine Monster',
+    film: '/game/act4-scene12/scene.mp4?v=2',
+    poster: '/game/act4-scene12/shot-wide.webp?v=2',
+    shots: [
+      '/game/act4-scene12/shot-wide.webp?v=2',
+      '/game/act4-scene12/shot-lair.webp?v=2',
+      '/game/act4-scene12/shot-itch.webp?v=2',
+      '/game/act4-scene12/shot-starve.webp?v=2',
+    ],
+    next: 'weeks',
+    kickoff: KICKOFF,
+  },
+  weeks: {
+    id: 'weeks',
+    act: 4,
+    number: 14,
+    title: 'Trial: The First Three Weeks',
+    film: '/game/act4-scene14/scene.mp4',
+    poster: '/game/act4-scene14/shot-wide.webp',
+    shots: [
+      '/game/act4-scene14/shot-wide.webp',
+      '/game/act4-scene14/shot-coffee.webp',
+      '/game/act4-scene14/shot-scream.webp',
+      '/game/act4-scene14/shot-hold.webp',
+    ],
+    next: 'truth',
+    kickoff: KICKOFF,
+  },
+  truth: {
+    id: 'truth',
+    act: 4,
+    number: 15,
+    title: 'The Moment of Truth',
+    film: '/game/act4-scene15/scene.mp4?v=1',
+    poster: '/game/act4-scene15/shot-wide.webp?v=1',
+    shots: [
+      '/game/act4-scene15/shot-wide.webp?v=1',
+      '/game/act4-scene15/shot-sky.webp?v=1',
+      '/game/act4-scene15/shot-pity.webp?v=1',
+      '/game/act4-scene15/shot-free.webp?v=1',
+    ],
     next: null,
     kickoff: KICKOFF,
+    afterLabel: 'You are free forever',
   },
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
-export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp'];
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp', 'substitutes', 'monster', 'weeks', 'truth'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];

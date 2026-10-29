@@ -12,7 +12,7 @@ The talk is the duel with the myth called Stress: smoking does not soothe the ne
 
 1. From scene 4, **Next scene**.
 2. Tap or Enter.
-3. Shots: the crunch → nerves maxed → the cigarette for calm → the graph going up.
+3. Shots: the crunch → nerves maxed → the cigarette for calm → a red line climbing on a monitor, he looks worse.
 4. Full-screen chat. Muse speaks first. Do not say the answer in the first line.
 
 ## Files

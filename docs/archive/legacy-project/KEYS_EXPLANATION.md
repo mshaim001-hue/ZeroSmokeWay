@@ -5,7 +5,7 @@
 ### Для Flutter приложения (Клиент)
 **Publishable key** - это то, что нужно!
 ```
-sb_publishable_luXacOL3lA_KUoG7DUHEKg_fp-UdsQI
+sb_publishable_<from-dashboard>
 ```
 
 ✅ **Безопасен для использования в браузере** (если включен RLS)
@@ -15,7 +15,7 @@ sb_publishable_luXacOL3lA_KUoG7DUHEKg_fp-UdsQI
 ### Для Backend (Сервер) - НЕ ИСПОЛЬЗУЙТЕ В КЛИЕНТЕ!
 **Secret key** - только для серверных компонентов
 ```
-sb_secret_8H7ONWzv3xSOKe2S3g7owg_hrBvMazo
+sb_secret_<server-only-never-commit>
 ```
 
 ⚠️ **НИКОГДА не используйте в Flutter приложении!**
@@ -40,20 +40,20 @@ postgresql://postgres.ousrgbmapuhimblhyetj:[YOUR-PASSWORD]@aws-1-eu-west-1.poole
 ### ✅ Правильно:
 ```dart
 // frontend/lib/utils/constants.dart
-static const String supabaseAnonKey = 'sb_publishable_luXacOL3lA_KUoG7DUHEKg_fp-UdsQI';
+static const String supabaseAnonKey = 'sb_publishable_<from-dashboard>';
 ```
 
 ### ❌ НЕПРАВИЛЬНО:
 ```dart
 // НИКОГДА не делайте так!
-static const String supabaseAnonKey = 'sb_secret_8H7ONWzv3xSOKe2S3g7owg_hrBvMazo'; // ❌
+static const String supabaseAnonKey = 'sb_secret_<server-only-never-commit>'; // ❌
 ```
 
 ## 📝 Текущая конфигурация
 
 ✅ **Frontend** (`frontend/lib/utils/constants.dart`):
 - URL: `https://ousrgbmapuhimblhyetj.supabase.co`
-- Anon Key: `sb_publishable_luXacOL3lA_KUoG7DUHEKg_fp-UdsQI` ✅
+- Anon Key: `sb_publishable_<from-dashboard>` ✅
 
 ✅ **Backend** (если понадобится):
 - DATABASE_URL можно добавить в `backend/.env` (если нужны миграции)

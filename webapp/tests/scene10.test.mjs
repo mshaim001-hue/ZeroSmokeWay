@@ -18,5 +18,5 @@ test('scene 10 follows Willpower in Act 3', () => {
   assert.equal(sceneOf('swamp').title, 'The Swamp of Cutting Down');
   assert.equal(sceneOf('swamp').act, 3);
   assert.equal(sceneOf('swamp').number, 10);
-  assert.equal(sceneOf('swamp').next, null);
+  assert.equal(sceneOf('swamp').next, 'substitutes');
 });
