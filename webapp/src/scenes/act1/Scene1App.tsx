@@ -58,6 +58,7 @@ export function Scene1App() {
       if (phase === 'idle') {
         e.preventDefault();
         setPhase('playing');
+        playFilmSound();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -69,8 +70,16 @@ export function Scene1App() {
     void speak(scene.kickoff, []);
   }, [phase, play, scene.kickoff]);
 
+  function playFilmSound() {
+    const node = document.querySelector('.scene1-film') as HTMLVideoElement | null;
+    if (!node) return;
+    node.muted = false;
+    void node.play();
+  }
   function startFilm() {
-    if (phase === 'idle') setPhase('playing');
+    if (phase !== 'idle') return;
+    setPhase('playing');
+    playFilmSound();
   }
   function openChat() {
     setPhase(now => now === 'playing' ? 'chat' : now);

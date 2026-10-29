@@ -33,6 +33,7 @@ export function CinematicStage({ phase, reducedMotion, film, poster, shots, onEn
     node.pause();
     try { node.currentTime = 0; } catch { /* not ready */ }
     if (phase !== 'playing') return;
+    node.muted = false;
     const play = node.play();
     if (play) play.catch(() => setUseStills(true));
     const seconds = Number.isFinite(node.duration) && node.duration > 0 ? node.duration : 12;
@@ -63,7 +64,6 @@ export function CinematicStage({ phase, reducedMotion, film, poster, shots, onEn
         src={film}
         poster={poster}
         playsInline
-        muted
         preload="auto"
         onEnded={finish}
         onError={() => setUseStills(true)}
