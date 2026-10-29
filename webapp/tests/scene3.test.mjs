@@ -14,7 +14,7 @@ test('scene 3 film and four shots are in public assets', () => {
 });
 
 test('scene 3 follows the first cigarette in the catalog', () => {
-  assert.deepEqual(SCENE_ORDER, ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax']);
+  assert.deepEqual(SCENE_ORDER, ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp']);
   assert.equal(sceneOf('firstPuff').next, 'labyrinth');
   assert.equal(neighbor('firstPuff', 1), 'labyrinth');
   assert.equal(sceneOf('labyrinth').title, 'The Brainwashing Labyrinth');

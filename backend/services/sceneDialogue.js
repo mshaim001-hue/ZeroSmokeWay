@@ -55,6 +55,27 @@ export const SCENE_JOBS = Object.freeze({
     'One thought and at most one living question per reply. Under 700 characters.',
     'stance=advance and next=advance only when they themselves named that trap (waiting to escape, guilt and deprivation, the party was already happening without the smoke). Otherwise next=stay.',
   ].join(' '),
+  combo: [
+    'The player just watched a man stuck in dusk traffic after the dentist: swollen cheek, cars not moving. Stress, boredom, and the itch to relax hit at once. He lights a cigarette in the cabin. The jam does not move.',
+    'The talk is a duel with the Combined Cigarette: split the real feeling (road fatigue, a sore mouth) from the false signal of the nicotine parasite that pretends to fix all three at once.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that split (real tiredness vs the itch, one cigarette claiming to fix stress and boredom and relaxation). Otherwise next=stay.',
+  ].join(' '),
+  willpower: [
+    'The player just watched a man crawl up a granite cliff at dusk as if quitting by force of will: every hold is a sacrifice, the face goes angry and irritable, then a foothold crumbles and he falls.',
+    'The talk is so they can see the trap themselves: the method of willpower is doomed while the feeling of deprivation stays in the head — as if he is losing a friend, not dropping a parasite.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that trap (forcing it, the sense of terrible sacrifice or losing a friend, willpower failing while deprivation remains). Otherwise next=stay.',
+  ].join(' '),
+  swamp: [
+    'The player just watched a man waist-deep in a cold peat bog. He stares at a wet pack with a few remaining cigarettes, waiting as if each minute lasts a year. Then he takes one precious drag and the bog pulls him deeper.',
+    'The talk is so they can see the trap themselves: cutting down to five a day makes each cigarette hyper-valuable and stretches the withdrawal across a whole life. Cutting down is the cruelest torture, not a way out.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that trap (rationing makes each smoke precious, the wait is torture, cutting down is not freedom). Otherwise next=stay.',
+  ].join(' '),
 });
 
 const ROUTING_RULES = [

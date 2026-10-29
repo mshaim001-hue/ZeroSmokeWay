@@ -13,6 +13,9 @@ The film shows a trap. The chat is so the person can put their own life on it.
 - Scene 5, Boss Stress: smoking does not soothe the nerves; nicotine hunger feeds the storm.
 - Scene 6, Boredom and Concentration: the same cigarette cannot both wake you up and calm you down; it only distracts and starves the brain.
 - Scene 7, Boss Relaxation: the party is already relaxed; the smoker waits for the toast to run into the frost, caught between guilt and deprivation.
+- Scene 8, Combined Cigarette: stuck in traffic after the dentist; stress, boredom, and the itch to relax hit at once — split road fatigue from the nicotine parasite.
+- Scene 9, Rocky Mountain of Willpower: he crawls the cliff as a terrible sacrifice, grows angry, falls — willpower is doomed while deprivation stays in the head.
+- Scene 10, Swamp of Cutting Down: five a day; the wait is eternity, each smoke becomes precious, the bog pulls him deeper — cutting down is the cruelest torture.
 
 No lecture. No list. Stay with their words. Deeper per-scene dialogue graphs come after the films.
 

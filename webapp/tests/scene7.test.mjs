@@ -17,5 +17,5 @@ test('scene 7 follows Boredom in Act 2', () => {
   assert.equal(neighbor('boredom', 1), 'relax');
   assert.equal(sceneOf('relax').title, 'Boss: Relaxation');
   assert.equal(sceneOf('relax').act, 2);
-  assert.equal(sceneOf('relax').next, null);
+  assert.equal(sceneOf('relax').next, 'combo');
 });

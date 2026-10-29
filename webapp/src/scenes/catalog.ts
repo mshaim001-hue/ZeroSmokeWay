@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax';
+export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax' | 'combo' | 'willpower' | 'swamp';
 
 export type SceneDef = {
   id: SceneId;
@@ -127,13 +127,61 @@ export const SCENES: Record<SceneId, SceneDef> = {
       '/game/act2-scene7/shot-frost.webp?v=4',
       '/game/act2-scene7/shot-vice.webp?v=4',
     ],
+    next: 'combo',
+    kickoff: KICKOFF,
+  },
+  combo: {
+    id: 'combo',
+    act: 2,
+    number: 8,
+    title: 'Boss: Combined Cigarette',
+    film: '/game/act2-scene8/scene.mp4?v=2',
+    poster: '/game/act2-scene8/shot-wide.webp?v=2',
+    shots: [
+      '/game/act2-scene8/shot-wide.webp?v=2',
+      '/game/act2-scene8/shot-wait.webp?v=2',
+      '/game/act2-scene8/shot-pack.webp?v=2',
+      '/game/act2-scene8/shot-drag.webp?v=2',
+    ],
+    next: 'willpower',
+    kickoff: KICKOFF,
+  },
+  willpower: {
+    id: 'willpower',
+    act: 3,
+    number: 9,
+    title: 'The Rocky Mountain of Willpower',
+    film: '/game/act3-scene9/scene.mp4',
+    poster: '/game/act3-scene9/shot-wide.webp',
+    shots: [
+      '/game/act3-scene9/shot-wide.webp',
+      '/game/act3-scene9/shot-climb.webp',
+      '/game/act3-scene9/shot-rage.webp',
+      '/game/act3-scene9/shot-fall.webp',
+    ],
+    next: 'swamp',
+    kickoff: KICKOFF,
+  },
+  swamp: {
+    id: 'swamp',
+    act: 3,
+    number: 10,
+    title: 'The Swamp of Cutting Down',
+    film: '/game/act3-scene10/scene.mp4',
+    poster: '/game/act3-scene10/shot-wide.webp',
+    shots: [
+      '/game/act3-scene10/shot-wide.webp',
+      '/game/act3-scene10/shot-wait.webp',
+      '/game/act3-scene10/shot-drag.webp',
+      '/game/act3-scene10/shot-sink.webp',
+    ],
     next: null,
     kickoff: KICKOFF,
   },
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
-export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax'];
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];
