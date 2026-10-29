@@ -11,6 +11,8 @@ The film shows a trap. The chat is so the person can put their own life on it.
 - Scene 3, the labyrinth: last-request, sport, and romance ads; they name the trick and put a fact against it.
 - Scene 4, tight shoes: the “pleasure” is only stopping a pain the shoes (the cigarette) created.
 - Scene 5, Boss Stress: smoking does not soothe the nerves; nicotine hunger feeds the storm.
+- Scene 6, Boredom and Concentration: the same cigarette cannot both wake you up and calm you down; it only distracts and starves the brain.
+- Scene 7, Boss Relaxation: the party is already relaxed; the smoker waits for the toast to run into the frost, caught between guilt and deprivation.
 
 No lecture. No list. Stay with their words. Deeper per-scene dialogue graphs come after the films.
 

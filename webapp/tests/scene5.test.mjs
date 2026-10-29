@@ -17,5 +17,5 @@ test('scene 5 opens Act 2 after the tight shoes', () => {
   assert.equal(neighbor('shoes', 1), 'stress');
   assert.equal(sceneOf('stress').title, 'Boss: Stress');
   assert.equal(sceneOf('stress').act, 2);
-  assert.equal(sceneOf('stress').next, null);
+  assert.equal(sceneOf('stress').next, 'boredom');
 });

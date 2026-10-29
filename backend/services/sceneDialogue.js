@@ -41,6 +41,20 @@ export const SCENE_JOBS = Object.freeze({
     'One thought and at most one living question per reply. Under 700 characters.',
     'stance=advance and next=advance only when they themselves named that the cigarette raises the anxiety, it does not calm it. Otherwise next=stay.',
   ].join(' '),
+  boredom: [
+    'The player just watched a dull lecture and an empty report on a laptop. He lights a cigarette to wake up, or to concentrate. The same smoke is sold as a stimulant for boredom and a sedative for stress.',
+    'The talk is a duel with that absurdity: one substance cannot both excite and relax. The cigarette only pulls him off the work and starves the brain of oxygen. The report stays blank.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named the contradiction (cannot both wake and calm) or that the smoke only distracts and starves the brain. Otherwise next=stay.',
+  ].join(' '),
+  relax: [
+    'The player just watched a festive restaurant dinner. Non-smokers at the table are already relaxed and happy. The smokers sit tight, watching the glasses, waiting for the toast so they can bolt out into the frost.',
+    'The talk is a duel with the myth called Relaxation: they see from outside how the smoker sits between hammer and anvil — guilt at leaving the friends, and the itch of going without. The cigarette did not give the party. It pulled him out of it.',
+    'No lecture. No questionnaire. Stay with their words. Do not say the answer in the first line.',
+    'One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that trap (waiting to escape, guilt and deprivation, the party was already happening without the smoke). Otherwise next=stay.',
+  ].join(' '),
 });
 
 const ROUTING_RULES = [

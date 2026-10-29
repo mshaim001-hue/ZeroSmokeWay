@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress';
+export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax';
 
 export type SceneDef = {
   id: SceneId;
@@ -87,13 +87,45 @@ export const SCENES: Record<SceneId, SceneDef> = {
     act: 2,
     number: 5,
     title: 'Boss: Stress',
-    film: '/game/act2-scene5/scene.mp4',
-    poster: '/game/act2-scene5/shot-wide.webp',
+    film: '/game/act2-scene5/scene.mp4?v=6',
+    poster: '/game/act2-scene5/shot-wide.webp?v=6',
     shots: [
-      '/game/act2-scene5/shot-wide.webp',
-      '/game/act2-scene5/shot-storm.webp',
-      '/game/act2-scene5/shot-drag.webp',
-      '/game/act2-scene5/shot-graph.webp',
+      '/game/act2-scene5/shot-wide.webp?v=6',
+      '/game/act2-scene5/shot-storm.webp?v=6',
+      '/game/act2-scene5/shot-drag.webp?v=6',
+      '/game/act2-scene5/shot-graph.webp?v=6',
+    ],
+    next: 'boredom',
+    kickoff: KICKOFF,
+  },
+  boredom: {
+    id: 'boredom',
+    act: 2,
+    number: 6,
+    title: 'Bosses: Boredom and Concentration',
+    film: '/game/act2-scene6/scene.mp4',
+    poster: '/game/act2-scene6/shot-wide.webp',
+    shots: [
+      '/game/act2-scene6/shot-wide.webp',
+      '/game/act2-scene6/shot-puff.webp',
+      '/game/act2-scene6/shot-paradox.webp',
+      '/game/act2-scene6/shot-starve.webp',
+    ],
+    next: 'relax',
+    kickoff: KICKOFF,
+  },
+  relax: {
+    id: 'relax',
+    act: 2,
+    number: 7,
+    title: 'Boss: Relaxation',
+    film: '/game/act2-scene7/scene.mp4?v=3',
+    poster: '/game/act2-scene7/shot-wide.webp',
+    shots: [
+      '/game/act2-scene7/shot-wide.webp',
+      '/game/act2-scene7/shot-wait.webp',
+      '/game/act2-scene7/shot-frost.webp',
+      '/game/act2-scene7/shot-vice.webp',
     ],
     next: null,
     kickoff: KICKOFF,
@@ -101,7 +133,7 @@ export const SCENES: Record<SceneId, SceneDef> = {
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
-export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress'];
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];
