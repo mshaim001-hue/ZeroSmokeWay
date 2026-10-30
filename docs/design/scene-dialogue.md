@@ -18,6 +18,7 @@ The film shows a trap. The chat is so the person can put their own life on it.
 - Scene 10, Swamp of Cutting Down: five a day; the wait is eternity, each smoke becomes precious, the bog pulls him deeper — cutting down is the cruelest torture.
 - Scene 11, Shop of Substitutes: gum, patches, vapes, mints — treating nicotine with nicotine is the same drug in another wrapper.
 - Scene 12, Lair of the Little Nicotine Monster: a tiny worm with no claws, only an itch; reverse Tamagotchi — do not feed it and in about three weeks it dies.
+- Scene 13, Ritual of the Last Cigarette: last drag in a cell whose door is already open; he kills it on the bars and walks into the light. After the film the head line is I am free.
 - Scene 14, First Three Weeks: coffee, phone, the old cue; the monster screams for a smoke — the craving is the parasite dying, not you.
 - Scene 15, Moment of Truth: the sky clears; he looks at smokers with pity, not envy. After the film the head line is You are free forever.
 

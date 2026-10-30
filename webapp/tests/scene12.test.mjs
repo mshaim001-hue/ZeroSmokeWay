@@ -18,5 +18,5 @@ test('scene 12 opens Act 4 after the Shop of Substitutes', () => {
   assert.equal(sceneOf('monster').title, 'The Lair of the Little Nicotine Monster');
   assert.equal(sceneOf('monster').act, 4);
   assert.equal(sceneOf('monster').number, 12);
-  assert.equal(sceneOf('monster').next, 'weeks');
+  assert.equal(sceneOf('monster').next, 'ritual');
 });

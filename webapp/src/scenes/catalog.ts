@@ -1,7 +1,7 @@
 import type { Phase } from './act1/sceneFlow';
 
 export type { Phase };
-export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax' | 'combo' | 'willpower' | 'swamp' | 'substitutes' | 'monster' | 'weeks' | 'truth';
+export type SceneId = 'pitcher' | 'firstPuff' | 'labyrinth' | 'shoes' | 'stress' | 'boredom' | 'relax' | 'combo' | 'willpower' | 'swamp' | 'substitutes' | 'monster' | 'ritual' | 'weeks' | 'truth';
 
 export type SceneDef = {
   id: SceneId;
@@ -208,8 +208,25 @@ export const SCENES: Record<SceneId, SceneDef> = {
       '/game/act4-scene12/shot-itch.webp?v=2',
       '/game/act4-scene12/shot-starve.webp?v=2',
     ],
+    next: 'ritual',
+    kickoff: KICKOFF,
+  },
+  ritual: {
+    id: 'ritual',
+    act: 4,
+    number: 13,
+    title: 'The Ritual of the Last Cigarette',
+    film: '/game/act4-scene13/scene.mp4?v=2',
+    poster: '/game/act4-scene13/shot-wide.webp?v=2',
+    shots: [
+      '/game/act4-scene13/shot-wide.webp?v=2',
+      '/game/act4-scene13/shot-drag.webp?v=2',
+      '/game/act4-scene13/shot-stub.webp?v=2',
+      '/game/act4-scene13/shot-door.webp?v=2',
+    ],
     next: 'weeks',
     kickoff: KICKOFF,
+    afterLabel: 'I am free',
   },
   weeks: {
     id: 'weeks',
@@ -247,7 +264,7 @@ export const SCENES: Record<SceneId, SceneDef> = {
 };
 
 export const FIRST_SCENE: SceneId = 'pitcher';
-export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp', 'substitutes', 'monster', 'weeks', 'truth'];
+export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp', 'substitutes', 'monster', 'ritual', 'weeks', 'truth'];
 
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];

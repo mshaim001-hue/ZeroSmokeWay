@@ -10,7 +10,7 @@ The right inner line is not “I want a smoke.” It is: this is not me. This is
 
 ## How to watch
 
-1. From scene 12, **Next scene**.
+1. From scene 13, **Next scene**.
 2. Tap or Enter.
 3. Shots: the café → the phone and the coffee → the monster’s scream → he does not feed it.
 4. Full-screen chat. Muse speaks first. Do not say the answer in the first line.

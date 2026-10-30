@@ -13,8 +13,8 @@ test('scene 14 film and four shots are in public assets', () => {
   }
 });
 
-test('scene 14 follows the lair in Act 4', () => {
-  assert.equal(neighbor('monster', 1), 'weeks');
+test('scene 14 follows the last-cigarette ritual in Act 4', () => {
+  assert.equal(neighbor('ritual', 1), 'weeks');
   assert.equal(sceneOf('weeks').title, 'Trial: The First Three Weeks');
   assert.equal(sceneOf('weeks').act, 4);
   assert.equal(sceneOf('weeks').number, 14);

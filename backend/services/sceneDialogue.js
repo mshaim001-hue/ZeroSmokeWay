@@ -90,6 +90,12 @@ export const SCENE_JOBS = Object.freeze({
     'One thought and at most one living question per reply. Under 700 characters.',
     'stance=advance and next=advance only when they themselves named that trap (the itch is only a small parasite, not feeding it starves it, three weeks without nicotine). Otherwise next=stay.',
   ].join(' '),
+  ritual: [
+    'The player just watched a stone prison cell. The iron door is already standing open, daylight beyond it. Inside, a man smokes one last cigarette with full attention — poison taste, a choke, soot on the fingers — then mashes the ember dead on the bars and walks out into the light, empty-handed.',
+    'The talk is the ritual of leaving: the cell was never locked; the cigarette was the prison. He saw it as it is and walked out. The line on the screen is already I am free. Do not repeat that slogan in the first spoken line. Stay with what they saw: the open door, the ugly last drag, the walk into the light.',
+    'No lecture. No questionnaire. One thought and at most one living question per reply. Under 700 characters.',
+    'stance=advance and next=advance only when they themselves named that the cigarette was the prison, or that this is the last one, or that they walked out / are free. Otherwise next=stay.',
+  ].join(' '),
   weeks: [
     'The player just watched ordinary life hit an old cue: morning coffee, a phone on the table, a hollow itch — then the little pale parasite in the inner tunnel, mouth wide, screaming for a cigarette. He does not smoke.',
     'The talk is the trial of the first three weeks. The right inner line is theirs to find: it is not me who wants to smoke, it is the dying little parasite. I am a non-smoker. Do not say that slogan in the first line. Stay with their words until they name the split themselves.',
