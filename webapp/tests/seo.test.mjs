@@ -16,6 +16,14 @@ test('homepage has a unique title, description, canonical and JSON-LD', () => {
   assert.doesNotMatch(html, /quit-smoking coach<\/title>/i);
 });
 
+test('Google Analytics gtag is on the homepage and about page', () => {
+  const about = readFileSync(join(web, 'public/about.html'), 'utf8');
+  for (const page of [html, about]) {
+    assert.match(page, /gtag\/js\?id=G-3JT4W3QM05/);
+    assert.match(page, /gtag\('config', 'G-3JT4W3QM05'\)/);
+  }
+});
+
 test('GEO crawl files exist in public', () => {
   const pub = join(web, 'public');
   for (const name of ['robots.txt', 'sitemap.xml', 'llms.txt', 'about.html', 'og.jpg']) {
