@@ -50,6 +50,12 @@
 }
 .gate-copy ul{margin:0 0 16px;padding:0 0 0 18px}
 .gate-copy li{margin:0 0 8px;font-size:16px;line-height:1.5}
+.gate-copy .gate-line{
+  margin:18px 0;font:normal clamp(20px,5.5vw,24px)/1.35 Georgia,serif;color:#f6ead6;
+}
+.gate-note{
+  margin:10px 0 0;text-align:center;font-size:12px;line-height:1.4;color:#c9c2b4;
+}
 .gate-actions{margin-top:22px;display:flex;flex-direction:column;gap:12px}
 .gate-sticky{
   position:sticky;bottom:0;margin-top:auto;padding-top:18px;

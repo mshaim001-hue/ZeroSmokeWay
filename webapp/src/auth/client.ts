@@ -1,7 +1,15 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+function supabaseUrl(): string {
+  return import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
+}
+
+function supabaseKey(): string {
+  return (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
+}
+
 export function isAuthConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+  return Boolean(supabaseUrl() && supabaseKey());
 }
 
 let client: SupabaseClient | null = null;
@@ -11,7 +19,7 @@ export function supabase(): SupabaseClient {
     throw new Error('Supabase is not configured');
   }
   if (!client) {
-    client = createClient(import.meta.env.VITE_SUPABASE_URL!, import.meta.env.VITE_SUPABASE_ANON_KEY!, {
+    client = createClient(supabaseUrl(), supabaseKey(), {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

@@ -44,11 +44,36 @@ Google sign-in through Supabase. Progress is stored in `player_progress` (cloud 
 
 ## Google auth (Supabase)
 
-1. Create or open the Supabase project. Copy **Project URL** and **anon public** key into `webapp/.env` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Same names on Vercel.
-2. Run `supabase/migrations/20261030000000_player_progress.sql` in the SQL editor.
-3. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth client **Web**. Authorized JavaScript origins: `http://localhost:5173`, production origin. Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
-4. Supabase → Authentication → Providers → Google: paste Client ID and Secret. Enable.
-5. Authentication → URL Configuration: Site URL = production. Redirect URLs: `http://localhost:5173`, `http://localhost:5174`, `https://zerosmokeway.vercel.app`.
+Google Cloud holds the OAuth *client*. Supabase is the callback. The app domain never goes in Google’s redirect list.
+
+### 1. Google Cloud → Credentials → Web client `ZeroSmokeWay`
+
+**Authorized JavaScript origins** (no trailing slash):
+
+- `http://localhost:5173`
+- `http://localhost:5174`
+- `https://zerosmokeway.life`
+- `https://www.zerosmokeway.life`
+- `https://zerosmokeway.vercel.app`
+
+**Authorized redirect URIs** — only the Supabase callback:
+
+- `https://uakgprwpnrykzatqylhy.supabase.co/auth/v1/callback`
+
+Save. Changes can take a few minutes.
+
+### 2. Supabase → Authentication
+
+Providers → Google: enable, paste the same Client ID and Secret, Save.
+
+URL Configuration:
+
+- Site URL: `https://zerosmokeway.life`
+- Redirect URLs: `http://localhost:5173/**`, `http://localhost:5174/**`, `https://zerosmokeway.life/**`, `https://www.zerosmokeway.life/**`, `https://zerosmokeway.vercel.app/**`
+
+SQL editor: run `supabase/migrations/20261030000000_player_progress.sql`.
+
+Settings → API: `VITE_SUPABASE_URL` and the **anon** / **publishable** key in `webapp/.env` and in Vercel. Restart Vite after changing `.env`.
 
 New Google accounts see the intro, then scene 1. Returning accounts resume the last scene: chat restores the dialogue; a film in progress plays again from the poster.
 
