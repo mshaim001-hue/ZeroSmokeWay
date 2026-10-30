@@ -1,16 +1,25 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { FIRST_SCENE, neighbor, sceneOf, type SceneId, type Phase } from '../catalog';
 import { askScene, type ChatLine } from './api';
+import { saveProgress } from '../../auth/progress';
+import { persistPhase, type PlayerProgress } from '../../auth/progressModel';
+import '../../auth/gate.css';
 import './scene1.css';
 
 const CinematicStage = lazy(() => import('./CinematicStage').then(m => ({ default: m.CinematicStage })));
 
-export function Scene1App() {
-  const [sceneId, setSceneId] = useState<SceneId>(FIRST_SCENE);
+type Props = {
+  userId: string;
+  initial: PlayerProgress;
+  onSignOut: () => void;
+};
+
+export function Scene1App({ userId, initial, onSignOut }: Props) {
+  const [sceneId, setSceneId] = useState<SceneId>(initial.sceneId || FIRST_SCENE);
   const scene = sceneOf(sceneId);
   const [play, setPlay] = useState(0);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [chat, setChat] = useState<ChatLine[]>([]);
+  const [phase, setPhase] = useState<Phase>(initial.phase === 'chat' ? 'chat' : 'idle');
+  const [chat, setChat] = useState<ChatLine[]>(initial.phase === 'chat' ? initial.chat : []);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
@@ -18,7 +27,9 @@ export function Scene1App() {
   const request = useRef<AbortController>();
   const end = useRef<HTMLDivElement>(null);
   const kickoffFor = useRef(-1);
-  const saveKey = `zsw_act${scene.act}_scene${scene.number}_v1`;
+  const skipKickoff = useRef(initial.phase === 'chat' && initial.chat.length > 0);
+  const snapshot = useRef({ sceneId, phase, chat });
+  snapshot.current = { sceneId, phase, chat };
 
   useEffect(() => {
     const m = matchMedia('(prefers-reduced-motion: reduce)');
@@ -46,9 +57,35 @@ export function Scene1App() {
     };
   }, []);
   useEffect(() => {
-    try { localStorage.setItem(saveKey, JSON.stringify(chat.slice(-40))); }
-    catch { /* private mode */ }
-  }, [chat, saveKey]);
+    const stored: PlayerProgress = {
+      sceneId,
+      phase: persistPhase(phase),
+      chat: persistPhase(phase) === 'chat' ? chat.slice(-40) : [],
+      seenIntro: true,
+    };
+    const timer = window.setTimeout(() => { void saveProgress(userId, stored); }, 400);
+    return () => window.clearTimeout(timer);
+  }, [userId, sceneId, phase, chat]);
+  useEffect(() => {
+    const flush = () => {
+      const now = snapshot.current;
+      void saveProgress(userId, {
+        sceneId: now.sceneId,
+        phase: persistPhase(now.phase),
+        chat: persistPhase(now.phase) === 'chat' ? now.chat.slice(-40) : [],
+        seenIntro: true,
+      });
+    };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, [userId]);
   useEffect(() => {
     if (phase === 'chat') end.current?.scrollIntoView({ block: 'nearest' });
   }, [chat.length, busy, phase]);
@@ -66,6 +103,11 @@ export function Scene1App() {
   }, [phase]);
   useEffect(() => {
     if (phase !== 'chat' || kickoffFor.current === play) return;
+    if (skipKickoff.current) {
+      skipKickoff.current = false;
+      kickoffFor.current = play;
+      return;
+    }
     kickoffFor.current = play;
     void speak(scene.kickoff, []);
   }, [phase, play, scene.kickoff]);
@@ -87,6 +129,7 @@ export function Scene1App() {
   function resetTalk() {
     request.current?.abort();
     kickoffFor.current = -1;
+    skipKickoff.current = false;
     setIssue('');
     setDraft('');
     setBusy(false);
@@ -176,6 +219,9 @@ export function Scene1App() {
           <p className="scene1-hint">Tap to watch · Enter</p>
         </button>
       )}
+      {!chatting && (
+        <button type="button" className="gate-signout" onClick={onSignOut}>Sign out</button>
+      )}
       {phase === 'playing' && <p className="scene1-kicker scene1-kicker-live">{kicker}</p>}
       {!chatting && neighbor(sceneId, -1) && (
         <button type="button" className="scene1-skip scene1-skip-prev" aria-label="Previous scene" onClick={goPrev}>←</button>
@@ -186,7 +232,10 @@ export function Scene1App() {
       <section className={`scene1-chat ${chatting ? 'is-open' : ''}`} aria-hidden={!chatting} {...(!chatting ? { inert: '' } : {})}>
         <div className="scene1-chat-head">
           <p>{scene.afterLabel ?? 'After the scene'}</p>
-          <button type="button" onClick={replay}>Watch again</button>
+          <div className="gate-head-actions">
+            <button type="button" onClick={replay}>Watch again</button>
+            <button type="button" className="gate-signout is-inline" onClick={onSignOut}>Sign out</button>
+          </div>
         </div>
         <div className="scene1-messages" role="log" aria-label="Conversation">
           {chat.map((m, i) => (

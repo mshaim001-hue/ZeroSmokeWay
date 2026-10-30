@@ -35,7 +35,7 @@
   transform:translateY(110%);transition:transform .45s ease;pointer-events:none;visibility:hidden;
 }
 .scene1-chat.is-open{transform:translateY(0);pointer-events:auto;visibility:visible}
-.scene1-chat-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;flex-shrink:0}
+.scene1-chat-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;flex-shrink:0;min-height:52px}
 .scene1-chat-head p{margin:0;font-size:12px;letter-spacing:.12em;color:var(--gold)}
 .scene1-chat-head button{min-height:44px;padding:8px;color:var(--gold);font-size:14px}
 .scene1-messages{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;padding:8px 18px 12px}
@@ -67,4 +67,8 @@
 .scene1-app.reduce-motion .scene1-chat,.scene1-app.reduce-motion .scene1-stage .scene1-cinema,.scene1-app.reduce-motion .scene1-frame{transition:none;filter:none;transform:none;animation:none}
 @media(min-width:720px){
   .scene1-app{max-width:430px;left:50%;right:auto;transform:translateX(-50%)}
+}
+html:fullscreen .scene1-app,
+html:-webkit-full-screen .scene1-app{
+  max-width:none;width:100%;left:0;right:0;transform:none;
 }

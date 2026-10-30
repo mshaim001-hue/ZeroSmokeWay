@@ -38,8 +38,30 @@ npm test --prefix backend
 - `api/scene.js` — Vercel entry; `vercel.json` builds `webapp/dist`.
 - `webapp/src/game/` — previous Labyrinth (Phaser rooms). Not shown in the live app.
 - `docs/design/` — current scene design; `docs/hackathon/` — submission notes; `docs/archive/` — history.
+- `webapp/public/llms.txt`, `robots.txt`, `sitemap.xml`, `about.html` — SEO / GEO crawl layer. Canonical host in those files is `https://zerosmokeway.vercel.app` until a custom domain exists.
 
-No accounts, cloud sync, or service worker in this build. Gmail auth is deferred. Effectiveness for quitting has not been tested with participants.
+Google sign-in through Supabase. Progress is stored in `player_progress` (cloud source of truth) and cached on the phone. Effectiveness for quitting has not been tested with participants.
+
+## Google auth (Supabase)
+
+1. Create or open the Supabase project. Copy **Project URL** and **anon public** key into `webapp/.env` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Same names on Vercel.
+2. Run `supabase/migrations/20261030000000_player_progress.sql` in the SQL editor.
+3. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth client **Web**. Authorized JavaScript origins: `http://localhost:5173`, production origin. Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
+4. Supabase → Authentication → Providers → Google: paste Client ID and Secret. Enable.
+5. Authentication → URL Configuration: Site URL = production. Redirect URLs: `http://localhost:5173`, `http://localhost:5174`, `https://zerosmokeway.vercel.app`.
+
+New Google accounts see the intro, then scene 1. Returning accounts resume the last scene: chat restores the dialogue; a film in progress plays again from the poster.
+
+## SEO operator (`seo_ai_agent`)
+
+The cinematic UI is not rewritten by the agent (no fix-loop on the films). After the site is live:
+
+1. Add the production URL in `seo_ai_agent`.
+2. Connect Google Search Console.
+3. Settings: local repo `/Users/Guest/ZeroSmokeWay`, `git_content_path=content`, language `en`.
+4. Keep `make up` on that machine.
+
+New articles land as `content/<slug>.md`. They are not a live `/blog` route yet.
 
 ## Hackathon work
 

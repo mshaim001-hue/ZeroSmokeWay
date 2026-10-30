@@ -266,6 +266,10 @@ export const SCENES: Record<SceneId, SceneDef> = {
 export const FIRST_SCENE: SceneId = 'pitcher';
 export const SCENE_ORDER: SceneId[] = ['pitcher', 'firstPuff', 'labyrinth', 'shoes', 'stress', 'boredom', 'relax', 'combo', 'willpower', 'swamp', 'substitutes', 'monster', 'ritual', 'weeks', 'truth'];
 
+export function isSceneId(value: string): value is SceneId {
+  return (SCENE_ORDER as readonly string[]).includes(value);
+}
+
 export function sceneOf(id: SceneId): SceneDef {
   return SCENES[id];
 }

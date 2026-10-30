@@ -1,2 +1,8 @@
-import { Scene1App } from './scenes/act1/Scene1App';
-export default function App(){return <Scene1App/>;}
+import { useEffect } from 'react';
+import { AuthGate } from './auth/AuthGate';
+import { installFullscreen } from './fullscreen';
+
+export default function App() {
+  useEffect(() => installFullscreen(), []);
+  return <AuthGate />;
+}

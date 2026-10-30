@@ -1,0 +1,26 @@
+# ZeroSmokeWay
+
+> A short film about the nicotine trap, then a live talk. Not a quit-smoking coach.
+
+ZeroSmokeWay is a mobile cinematic path. Each scene is a short film (a fairy-tale image of why people keep smoking). After the film, Meta Muse Spark talks with the player. It does not lecture and does not run a questionnaire. It stays with their words and decides whether to hold, probe, or open the next scene.
+
+People do not keep smoking because they lack facts. They keep a private story (“I can stop whenever I want”, “it calms me”). This project makes that story visible.
+
+It is not medical advice. Effectiveness for quitting has not been tested with participants.
+
+## Pages
+
+- [Play](https://zerosmokeway.vercel.app/): the film and the talk. Starts at Act 1, Scene 1 — Garden of the Pitcher Plant.
+- [About](https://zerosmokeway.vercel.app/about.html): what it is, what it is not, and how a scene works.
+- [Source](https://github.com/mshaim001-hue/ZeroSmokeWay): public repository.
+
+## What a scene is
+
+1. A photoreal short film. No on-screen slogan.
+2. Full-screen chat. Muse speaks first.
+3. The server, not the client, decides if the next scene may open (`hold` / `probe` / `release` / `advance`).
+
+## Optional
+
+- Allen Carr’s Easyway is an influence (the trap is in the head, not a lack of willpower). This is not an official Carr product.
+- Dialogue model: Meta Muse Spark (`muse-spark-1.3`).
