@@ -91,6 +91,8 @@ export function AuthGate() {
       phase: 'idle',
       chat: [],
       seenIntro: true,
+      canAdvance: false,
+      memory: [],
     };
     await saveProgress(userId, next);
     setProgress(next);

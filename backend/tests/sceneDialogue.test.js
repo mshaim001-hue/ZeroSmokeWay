@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handleSceneRequest,validateSceneInput,META_MODEL,SCENE_JOBS} from '../services/sceneDialogue.js';
+import {mergeMemory} from '../services/sceneMemory.js';
 import {ASSISTANT_SPEECH_PROFILE,speechSystemPrompt} from '../services/speechProfile.js';
 import handler from '../api/scene.js';
 
@@ -19,16 +20,16 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   let sent;
   const result = await handleSceneRequest({
     ...request,
-    history: [{ role: 'assistant', content: 'You are that bee.' }, { role: 'user', content: 'Yeah.' }],
+    history: [{ role: 'assistant', content: 'What did you make of that?' }, { role: 'user', content: 'Yeah.' }],
   }, {
     env: { META_MODEL: 'muse-spark-1.3' },
     createCompletion: async params => {
       sent = params;
-      return { choices: [{ message: { content: 'Look. “Whenever I want” is the same as “I’ll fly out now”.' } }] };
+      return { choices: [{ message: { content: '{"reply":"When did that stop feeling true?","stance":"probe","next":"stay","memory":[]}' } }] };
     },
   });
   assert.equal(result.mode, 'ai');
-  assert.equal(result.stance, 'hold');
+  assert.equal(result.stance, 'probe');
   assert.equal(result.next, 'stay');
   assert.equal(sent.model, META_MODEL);
   assert.equal(sent.reasoning_effort, 'low');
@@ -38,26 +39,84 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.match(sent.messages[0].content, /bee/);
   assert.match(sent.messages[0].content, /nectar/);
   assert.match(sent.messages[0].content, /peer/);
-  assert.match(sent.messages[0].content, /stance/);
+  assert.match(sent.messages[0].content, /not the bee/i);
+  assert.match(sent.messages[0].content, /next=offer/);
   assert.match(sent.messages[0].content, /Do not start with/);
   assert.equal(sent.messages.at(-1).content, request.message);
 });
 
-test('Muse JSON decides whether the next scene may open', async () => {
-  const advanced = await handleSceneRequest({
+test('Muse JSON may offer the next scene; kickoff cannot', async () => {
+  const offered = await handleSceneRequest({
     ...request,
     history: [{ role: 'user', content: 'The first one was just to try.' }],
   }, {
-    createCompletion: completion('{"reply":"Look. That is no longer “I’ll fly out whenever I want”.","stance":"advance","next":"advance"}'),
+    createCompletion: completion('{"reply":"You describe it sliding into the day. Want to look at how it started?","stance":"advance","next":"advance"}'),
   });
-  assert.equal(advanced.response, 'Look. That is no longer “I’ll fly out whenever I want”.');
-  assert.equal(advanced.stance, 'advance');
-  assert.equal(advanced.next, 'advance');
+  assert.equal(offered.response, 'You describe it sliding into the day. Want to look at how it started?');
+  assert.equal(offered.stance, 'advance');
+  assert.equal(offered.next, 'offer');
   const first = await handleSceneRequest({ ...request, history: [] }, {
     createCompletion: completion('{"reply":"It flew in for a second.","stance":"advance","next":"advance"}'),
   });
   assert.equal(first.next, 'stay');
   assert.equal(first.stance, 'hold');
+});
+
+test('launch is only allowed after can_advance is already true', async () => {
+  const denied = await handleSceneRequest({
+    ...request,
+    canAdvance: false,
+    history: [{ id: 'a1', role: 'assistant', content: 'Want to look?' }, { id: 'u1', role: 'user', content: 'Ok.' }],
+  }, {
+    createCompletion: completion('{"reply":"Next is the beginning.","stance":"advance","next":"launch"}'),
+  });
+  assert.equal(denied.next, 'offer');
+  const allowed = await handleSceneRequest({
+    ...request,
+    canAdvance: true,
+    history: [{ id: 'a1', role: 'assistant', content: 'Want to look?' }, { id: 'u1', role: 'user', content: 'Ok.' }],
+  }, {
+    createCompletion: completion('{"reply":"Next is the beginning.","stance":"advance","next":"launch"}'),
+  });
+  assert.equal(allowed.next, 'launch');
+});
+
+test('memory is merged and sent into the next scene prompt', async () => {
+  const prior = [{
+    id: 'm1',
+    theme: 'stress',
+    sceneId: 'stress',
+    quote: 'After I talk to my boss I want one',
+    source: 'player',
+    depth: 'partial',
+    summary: 'especially after talking to the boss',
+    openQuestion: 'what the cigarette does in that minute',
+    turnRef: 'u2',
+  }];
+  let sent;
+  const result = await handleSceneRequest({
+    sceneId: 'firstPuff',
+    message: 'The film ended. The player just watched it. Speak the first line.',
+    history: [],
+    memory: prior,
+  }, {
+    createCompletion: async params => {
+      sent = params;
+      return { choices: [{ message: { content: '{"reply":"What did you make of that?","stance":"hold","next":"stay","memory":[]}' } }] };
+    },
+  });
+  assert.equal(result.next, 'stay');
+  assert.equal(result.memory[0].summary, 'especially after talking to the boss');
+  assert.match(sent.messages[0].content, /after talking to the boss/);
+  assert.match(sent.messages[0].content, /not theirs/);
+  const merged = mergeMemory(prior, [{
+    id: 'm1',
+    depth: 'partial',
+    summary: 'especially after talking to the boss; still wants one then',
+    source: 'player',
+  }]);
+  assert.equal(merged[0].quote, 'After I talk to my boss I want one');
+  assert.match(merged[0].summary, /still wants one then/);
 });
 
 test('provider failure does not invent a prepared question or leak secrets', async () => {
@@ -97,6 +156,10 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.ok(SCENE_JOBS.ritual.length > 40);
   assert.ok(SCENE_JOBS.weeks.length > 40);
   assert.ok(SCENE_JOBS.truth.length > 40);
+  assert.match(SCENE_JOBS.pitcher, /MAIN THEME/);
+  assert.match(SCENE_JOBS.pitcher, /not the bee/i);
+  assert.doesNotMatch(SCENE_JOBS.pitcher, /They are that bee/);
+  assert.match(SCENE_JOBS.firstPuff, /Start from living memory/);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
   assert.match(speechSystemPrompt(), /peer/);
 });

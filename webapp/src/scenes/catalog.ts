@@ -13,6 +13,7 @@ export type SceneDef = {
   shots: readonly string[];
   next: SceneId | null;
   kickoff: string;
+  openingLine?: string;
   afterLabel?: string;
 };
 
@@ -34,6 +35,7 @@ export const SCENES: Record<SceneId, SceneDef> = {
     ],
     next: 'firstPuff',
     kickoff: KICKOFF,
+    openingLine: 'What did you make of that?',
   },
   firstPuff: {
     id: 'firstPuff',
