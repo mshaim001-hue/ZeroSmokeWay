@@ -20,5 +20,5 @@ test('scene 13 is the last-cigarette ritual between the lair and the three weeks
   assert.equal(sceneOf('ritual').act, 4);
   assert.equal(sceneOf('ritual').number, 13);
   assert.equal(sceneOf('ritual').next, 'weeks');
-  assert.equal(sceneOf('ritual').afterLabel, 'I am free');
+  assert.equal(sceneOf('ritual').afterLabel, undefined);
 });

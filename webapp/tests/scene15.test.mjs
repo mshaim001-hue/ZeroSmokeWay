@@ -20,5 +20,5 @@ test('scene 15 is the finale after the first three weeks', () => {
   assert.equal(sceneOf('truth').act, 4);
   assert.equal(sceneOf('truth').number, 15);
   assert.equal(sceneOf('truth').next, null);
-  assert.equal(sceneOf('truth').afterLabel, 'You are free forever');
+  assert.equal(sceneOf('truth').afterLabel, undefined);
 });

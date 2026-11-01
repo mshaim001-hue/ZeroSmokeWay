@@ -227,7 +227,7 @@ test('scenes 3–6 inherit shared contract, continue from memory, and do not req
       }) } }] };
     },
   });
-  assert.match(boredomPrompt, /return to the task/);
+  assert.match(boredomPrompt, /return to a task/);
   assert.match(boredomPrompt, /Do not require “it can’t both excite and relax,”/);
   assert.doesNotMatch(boredomPrompt, /cannot both wake and calm/);
   assert.equal(boredomKickoff.next, 'stay');

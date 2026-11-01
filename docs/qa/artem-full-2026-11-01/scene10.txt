@@ -1,0 +1,32 @@
+Browser tab: 4, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text Waist-deep in that bog, trying to make the last few last.
+
+Have you ever tried to cap it like that — fewer a day, longer waits in between?
+			10 container
+				11 text YOU Not properly. I've thought about going from six to three before stopping in a couple of weeks. It sounds less intimidating. The swamp makes it look doomed, but I haven't actually tried it.
+			12 text Less intimidating makes sense — three feels more doable than zero straight away.
+
+What makes three the number for you, if I'm reading that right?
+			13 container
+				14 text YOU Just half of what I usually smoke, no special reason. Maybe I'd keep one after lunch and a couple in the evening. But I can already imagine spending all afternoon waiting for the evening ones.
+			15 text Halving it to something concrete — one after lunch, a couple in the evening — sounds like a real plan.
+
+That image of spending all afternoon waiting, do you picture those evening ones feeling better for the wait, or mostly just relief?
+			16 container
+				17 text YOU Probably relief, but I'm guessing. It isn't a plan I've decided on. I still want to stop completely; I'm just trying to work out how to approach it.
+			18 text So it's an idea on the table, not something you've tested — six to three as a step toward stopping, with that afternoon wait hanging over it.
+
+Want to keep talking about this waiting part, or watch the next scene?
+		19 button Watch the next scene
+		20 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

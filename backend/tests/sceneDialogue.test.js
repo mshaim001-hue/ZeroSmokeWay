@@ -249,7 +249,7 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.shoes, /Identifying “relief” alone is not automatically thorough/);
   assert.match(SCENE_JOBS.stress, /Do not open with “You smoke because of stress\?”/);
   assert.match(SCENE_JOBS.stress, /Do not require “smoking raises my anxiety.”/);
-  assert.match(SCENE_JOBS.boredom, /return to the task/);
+  assert.match(SCENE_JOBS.boredom, /return to a task/);
   assert.match(SCENE_JOBS.boredom, /Do not require “it can’t both excite and relax,”/);
   assert.match(SCENE_JOBS.labyrinth, /Boundaries stay silent/);
   assert.doesNotMatch(SCENE_JOBS.labyrinth, /named an ad or film trick/);
@@ -268,6 +268,12 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.ritual, /Do not require that the cigarette was the prison/);
   assert.match(SCENE_JOBS.weeks, /Do not require “it is not me who wants it/);
   assert.match(SCENE_JOBS.truth, /Still smoking, unsure, or done are all complete enough/);
+  assert.match(SCENE_JOBS.truth, /next is always stay/);
+  assert.match(SCENE_JOBS.willpower, /Dossier examples are not their life/);
+  assert.doesNotMatch(SCENE_JOBS.willpower, /From memory: two-week intention/);
+  assert.doesNotMatch(SCENE_JOBS.weeks, /From memory: a ten-day/);
+  assert.doesNotMatch(SCENE_JOBS.firstPuff, /after talking to your boss/);
+  assert.doesNotMatch(SCENE_JOBS.swamp, /six on a normal day and twelve/);
   assert.doesNotMatch(SCENE_JOBS.relax, /named that trap \(waiting to escape/);
   assert.doesNotMatch(SCENE_JOBS.combo, /nicotine parasite that pretends to fix all three/);
   assert.doesNotMatch(SCENE_JOBS.willpower, /willpower failing while deprivation remains/);
@@ -285,6 +291,39 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(speechSystemPrompt(), /peer/);
   assert.match(speechSystemPrompt(), /No catchphrase as a template/);
   assert.match(speechSystemPrompt(), /Film metaphors are pictures/);
+});
+
+test('empty memory does not plant a ten-day attempt, and the finale cannot offer a next film', async () => {
+  let empty;
+  await handleSceneRequest({
+    sceneId: 'willpower',
+    message: 'The film ended. The player just watched it. Speak the first line.',
+    history: [],
+    memory: [],
+  }, {
+    createCompletion: async params => {
+      empty = params.messages[0].content;
+      return { choices: [{ message: { content: '{"reply":"What do you make of that climb?","stance":"hold","next":"stay"}' } }] };
+    },
+  });
+  assert.match(empty, /Living memory is empty/);
+  assert.doesNotMatch(empty, /From memory: two-week intention/);
+  assert.doesNotMatch(empty, /You'd mentioned that ten-day/);
+
+  let finale;
+  const last = await handleSceneRequest({
+    sceneId: 'truth',
+    message: 'I still smoke.',
+    history: [{ role: 'user', content: 'The sky was clear.' }],
+  }, {
+    createCompletion: async params => {
+      finale = params.messages[0].content;
+      return { choices: [{ message: { content: '{"reply":"Want to watch the next scene?","stance":"advance","next":"offer"}' } }] };
+    },
+  });
+  assert.equal(last.next, 'stay');
+  assert.match(finale, /There is no next scene/);
+  assert.match(finale, /next is always stay/);
 });
 
 test('HTTP layer returns 503 without a fake reply body', async () => {

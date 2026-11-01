@@ -1,0 +1,30 @@
+Browser tab: 4, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text That noisy little creature after coffee and the phone — did anything like that show up during your ten days?
+			10 container
+				11 text YOU After lunch was a big one. I'd finish eating and automatically think about going out. In the morning I don't smoke straight away anyway, so that wasn't as hard. My girlfriend was supportive, but I didn't really tell my friends what I needed.
+			12 text Lunch as the automatic go-out thought — while mornings barely registered.
+
+In those ten days, when lunch ended and that thought hit, what happened if you didn't go out? Did it fade, or just hang around?
+			13 container
+				14 text YOU Sometimes I went for a quick walk without smoking. Other days I went straight back to work and kept thinking about it. Next time I'd like an actual break after lunch, not feeling like I have to work through everything to avoid cigarettes.
+			15 text Working straight through to avoid thinking about it sounds like losing the break entirely — not much of a trade.
+
+If you kept an actual pause after lunch without a cigarette, what would you want in it? Walk, outside, something else?
+			16 container
+				17 text YOU A short walk, maybe call my girlfriend if she's free. And tell my friends before the next night out that I'm stopping and not to offer me one. I still want to come outside with them sometimes.
+			18 text Keeping the break but changing what's in it — a walk, a call, still stepping outside with friends but with a heads-up first. That lunch loop you mapped feels like the core of it.
+
+Want to watch the next scene, or stay with this a bit more?
+		19 button Watch the next scene
+		20 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

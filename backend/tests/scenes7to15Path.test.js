@@ -66,7 +66,7 @@ test('scenes 7–15 continue from memory, stay distinct, and drop moral gates', 
   const relax = await promptOf('relax');
   assert.match(relax, /belonging more than the ads/);
   assert.match(relax, /NEW here, not scenes 4–6/);
-  assert.match(relax, /Do not re-run the work-break/);
+  assert.match(relax, /Do not re-run a solo work-break/);
   assert.doesNotMatch(relax, /named that trap \(waiting to escape/);
 
   const combo = await promptOf('combo');
@@ -95,7 +95,7 @@ test('scenes 7–15 continue from memory, stay distinct, and drop moral gates', 
   assert.doesNotMatch(monster, /reverse Tamagotchi: do not feed it/);
 
   const ritual = await promptOf('ritual');
-  assert.match(ritual, /Do not repeat that slogan in the first spoken line/);
+  assert.match(ritual, /Do not repeat a freedom slogan/);
   assert.match(ritual, /They may not be ready/);
   assert.doesNotMatch(ritual, /next=offer only when they themselves named that the cigarette was the prison/);
 

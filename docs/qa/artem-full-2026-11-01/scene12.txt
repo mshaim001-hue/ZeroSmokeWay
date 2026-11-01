@@ -1,0 +1,29 @@
+Browser tab: 4, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			10 text That film made it a small hollow itch that whispers "I want one."
+When it hits you — stuck on a bug, or when a pack comes out — what is it like in your words?
+			11 container
+				12 text YOU Restless. I keep thinking about going out and I lose my place in what I'm doing. Sometimes it's barely there, other times it's all I can think about for a while. Calling it little doesn't always fit.
+			13 text Little doesn't always fit — barely there sometimes, crowding everything else out other times.
+
+When it's loud and you're losing your place, where do you notice that restlessness most?
+			14 container
+				15 text YOU Mostly in my attention. I start checking the time and rereading the same lines. I'm not in pain. During those ten days there were moments it passed when I got absorbed in something, but not every time.
+			16 text What feels different between the times it fades when you get absorbed, and the times it keeps pulling you back?
+			17 container
+				18 text YOU If I'm into something I forget to check. If I'm already frustrated I keep noticing it. I don't know beyond that. It helps to call it restlessness rather than some huge emergency, but I don't want to pretend it's always easy.
+			19 text Fair — restlessness fits better than emergency, without making it sound small every time.
+
+Frustration seems to keep it loud, getting absorbed lets it fade. Want to watch the next scene, or keep talking about this one?
+		20 button Watch the next scene
+		21 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

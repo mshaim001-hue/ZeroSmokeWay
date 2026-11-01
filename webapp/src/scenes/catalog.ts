@@ -228,7 +228,6 @@ export const SCENES: Record<SceneId, SceneDef> = {
     ],
     next: 'weeks',
     kickoff: KICKOFF,
-    afterLabel: 'I am free',
   },
   weeks: {
     id: 'weeks',
@@ -261,7 +260,6 @@ export const SCENES: Record<SceneId, SceneDef> = {
     ],
     next: null,
     kickoff: KICKOFF,
-    afterLabel: 'You are free forever',
   },
 };
 

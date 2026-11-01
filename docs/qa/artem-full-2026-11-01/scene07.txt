@@ -1,0 +1,32 @@
+Browser tab: 4, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text That toast moment, then out into the frost while everyone else stays at the table — what's your version of that, if you have one?
+			10 container
+				11 text YOU Usually it's the opposite for me. Most of my friends come outside too, so that's where the chat is. My girlfriend doesn't smoke and sometimes she's left inside. I feel a bit bad about that.
+			12 text So for you the party doesn't stay inside — it moves outside with you, and she's the one left at the table.
+
+Was there a last time like that where you noticed it — were you enjoying the outside chat, or thinking about her inside?
+			13 container
+				14 text YOU At a birthday a few weeks ago. I was enjoying the chat and only noticed afterwards that she'd been sitting with people she barely knew. It's not that smoking ruins every evening, but I don't like making that choice automatically.
+			15 text That automatic part stands out — you weren't choosing her over the chat in the moment, you just drifted outside and saw it after.
+
+If I'm reading this right, outside was where you actually wanted to be that night — is the cigarette doing anything there, or is it just the ticket to that circle?
+			16 container
+				17 text YOU Other way round — I left her inside, I didn't choose her over the chat. And I don't need a ticket, they're my friends. I just tend to light one when they do, especially after a drink.
+			18 text You're right, I had it backwards — you went with the chat outside, and she was the one inside with people she barely knew.
+
+Sounds like with friends the cigarette isn't the ticket in, it's just what you light up when they do, drinks in hand. But that automatic drift still splits the table.
+
+Want to watch the next scene, or keep talking about this one a bit more?
+		19 button Watch the next scene
+		20 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
