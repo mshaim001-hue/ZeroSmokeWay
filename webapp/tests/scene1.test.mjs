@@ -29,4 +29,6 @@ test('developer skip arrows are gone and the next-scene offer can be declined',(
   assert.match(src,/Watch the next scene/);
   assert.match(src,/Keep talking about this/);
   assert.match(src,/offerOpen/);
+  assert.match(src,/canAdvance: hidden.ready/);
+  assert.match(src,/offerOpen: hidden.open/);
 });

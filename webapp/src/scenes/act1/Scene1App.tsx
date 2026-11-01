@@ -178,7 +178,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     setCanAdvance(next.ready);
     setOfferOpen(next.open);
   }
-  async function speak(message: string, history: ChatLine[], retry = false) {
+  async function speak(message: string, history: ChatLine[], retry = false, extras?: { canAdvance: boolean; offerOpen: boolean }) {
     if (busy && !retry) return;
     const forScene = sceneId;
     setIssue('');
@@ -187,14 +187,16 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     request.current = control;
     const timeout = window.setTimeout(() => control.abort(), 28000);
     try {
+      const ready = extras?.canAdvance ?? snapshot.current.canAdvance;
+      const open = extras?.offerOpen ?? snapshot.current.offerOpen;
       const reply = await askScene(sceneId, message, history, control.signal, {
         memory: snapshot.current.memory,
-        canAdvance: snapshot.current.canAdvance,
-        offerOpen: snapshot.current.offerOpen,
+        canAdvance: ready,
+        offerOpen: open,
       });
       if (request.current !== control) return;
       if (snapshot.current.sceneId !== forScene) return;
-      const gate = gateAfterModel({ ready: snapshot.current.canAdvance, open: snapshot.current.offerOpen }, reply.next);
+      const gate = gateAfterModel({ ready, open }, reply.next);
       setChat(old => [...old, line('assistant', reply.response)]);
       setMemory(Array.isArray(reply.memory) ? reply.memory : snapshot.current.memory);
       setCanAdvance(gate.ready);
@@ -240,7 +242,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     setOfferOpen(hidden.open);
     setChat([...history, line('user', message)]);
     setDraft('');
-    await speak(message, history);
+    await speak(message, history, false, { canAdvance: hidden.ready, offerOpen: hidden.open });
   }
 
   const chatting = phase === 'chat';

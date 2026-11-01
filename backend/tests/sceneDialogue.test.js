@@ -47,6 +47,8 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.match(sent.messages[0].content, /conversational note/);
   assert.doesNotMatch(sent.messages[0].content, /You may say: “Look.”/);
   assert.match(sent.messages[0].content, /Do not open several turns with “Look”/);
+  assert.match(sent.messages[0].content, /That tracks/);
+  assert.match(sent.messages[0].content, /do not tell them it is not that feeling/);
   assert.equal(sent.messages.at(-1).content, request.message);
 });
 
@@ -65,6 +67,23 @@ test('Muse JSON may offer the next scene; kickoff cannot', async () => {
   });
   assert.equal(first.next, 'stay');
   assert.equal(first.stance, 'hold');
+});
+
+test('a hidden offer tells Muse to stay with the new thought, not re-pitch', async () => {
+  let sent;
+  await handleSceneRequest({
+    ...request,
+    canAdvance: true,
+    offerOpen: false,
+    history: [{ role: 'user', content: 'I wasn’t a smoker because I didn’t buy my own.' }],
+  }, {
+    createCompletion: async params => {
+      sent = params;
+      return { choices: [{ message: { content: '{"reply":"When did that line start to blur?","stance":"probe","next":"stay","memory_updates":[]}' } }] };
+    },
+  });
+  assert.match(sent.messages[0].content, /Do not re-offer because they clarified/);
+  assert.doesNotMatch(sent.messages[0].content, /next=offer only when you explicitly propose again/);
 });
 
 test('launch is only allowed after can_advance is already true', async () => {
@@ -218,8 +237,12 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.firstPuff, /Start from living memory/);
   assert.match(SCENE_JOBS.firstPuff, /Do not open with “Yours was different.”/);
   assert.match(SCENE_JOBS.firstPuff, /not a fact about their first cigarette/);
+  assert.match(SCENE_JOBS.firstPuff, /mentioned, not examined/);
+  assert.match(SCENE_JOBS.firstPuff, /do not re-offer/);
   assert.match(SCENE_JOBS.pitcher, /Do not say a birthday/);
   assert.match(SCENE_JOBS.pitcher, /Number of turns is not enough/);
+  assert.match(SCENE_JOBS.pitcher, /keep it as theirs/);
+  assert.match(SCENE_JOBS.pitcher, /mark it tentative/);
   assert.match(APP_CAPABILITIES, /There is no Tracker/);
   assert.match(APP_CAPABILITIES, /Do not invent UI/);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
