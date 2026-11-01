@@ -256,6 +256,27 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.doesNotMatch(SCENE_JOBS.shoes, /thirst the smoke made/);
   assert.doesNotMatch(SCENE_JOBS.stress, /raises the anxiety/);
   assert.doesNotMatch(SCENE_JOBS.boredom, /cannot both wake and calm/);
+  assert.match(SCENE_JOBS.boredom, /shame at stalling/);
+  assert.match(SCENE_JOBS.relax, /NEW here, not scenes 4–6/);
+  assert.match(SCENE_JOBS.combo, /NEW here, not scenes 5–7/);
+  assert.match(SCENE_JOBS.willpower, /Previous attempts and cutting down are efforts/);
+  assert.match(SCENE_JOBS.willpower, /Do not say the method of willpower is doomed/);
+  assert.match(SCENE_JOBS.swamp, /do not devalue it/);
+  assert.match(SCENE_JOBS.substitutes, /Do not analogize to heroin/);
+  assert.match(SCENE_JOBS.substitutes, /Do not devalue medical or chosen help/);
+  assert.match(SCENE_JOBS.monster, /not a three-week medical timeline/);
+  assert.match(SCENE_JOBS.ritual, /Do not require that the cigarette was the prison/);
+  assert.match(SCENE_JOBS.weeks, /Do not require “it is not me who wants it/);
+  assert.match(SCENE_JOBS.truth, /Still smoking, unsure, or done are all complete enough/);
+  assert.doesNotMatch(SCENE_JOBS.relax, /named that trap \(waiting to escape/);
+  assert.doesNotMatch(SCENE_JOBS.combo, /nicotine parasite that pretends to fix all three/);
+  assert.doesNotMatch(SCENE_JOBS.willpower, /willpower failing while deprivation remains/);
+  assert.doesNotMatch(SCENE_JOBS.swamp, /cutting down is the cruelest torture/);
+  assert.doesNotMatch(SCENE_JOBS.substitutes, /like offering a heroin addict/);
+  assert.doesNotMatch(SCENE_JOBS.monster, /reverse Tamagotchi: do not feed it/);
+  assert.doesNotMatch(SCENE_JOBS.ritual, /next=offer only when they themselves named that the cigarette was the prison/);
+  assert.doesNotMatch(SCENE_JOBS.weeks, /the craving is the parasite dying, not their true want/);
+  assert.doesNotMatch(SCENE_JOBS.truth, /they can look at smokers without wanting it/);
   assert.match(APP_CAPABILITIES, /There is no Tracker/);
   assert.match(APP_CAPABILITIES, /Do not invent UI/);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
@@ -263,6 +284,7 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.ok(!ASSISTANT_SPEECH_PROFILE.writing_preferences.prefer.includes('Look.'));
   assert.match(speechSystemPrompt(), /peer/);
   assert.match(speechSystemPrompt(), /No catchphrase as a template/);
+  assert.match(speechSystemPrompt(), /Film metaphors are pictures/);
 });
 
 test('HTTP layer returns 503 without a fake reply body', async () => {
