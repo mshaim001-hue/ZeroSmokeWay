@@ -1,0 +1,24 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text In the film he smokes one last cigarette slowly, then kills it on the bars and walks out empty-handed with the door already open.
+
+Where does that sit with you — does a last one feel close, or far away right now?
+			10 container
+				11 text YOU Closer than it used to, but not tonight. I still want to choose a date next week after speaking with my sister. I don't need the last one to taste disgusting or feel dramatic. I'd like it to be a decision I can stand behind the next morning.
+			12 text Closer, but not tonight — that stands on its own.
+
+Not disgusting, not dramatic. Just a decision you can still stand behind the next morning.
+
+We can keep with this one, or watch the next scene if you want.
+		13 button Watch the next scene
+		14 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

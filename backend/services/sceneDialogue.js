@@ -35,7 +35,7 @@ const ROUTING_RULES = [
   'stance release — they argue or leave the topic: hear them, do not push.',
   'stance advance — this scene may be offered, or they agreed to move.',
   'next=stay — keep talking. next=offer — you are explicitly proposing the next film. next=launch — they clearly agreed after an offer was already allowed; do not ask again.',
-  'memory_updates: ONLY new or changed entries this turn. Do not repeat the whole profile. Empty array if nothing changed.',
+  'memory_updates: ONLY new or changed entries this turn. Do not repeat the whole profile. Empty array if nothing changed. quote is their words. An inferred picture is source=muse_hypothesis. If they correct you, revise that note (status=revised or disagreed) so the invented event is not kept as a player fact.',
   'assessment is hidden. reply is ordinary speech: no JSON, no service words, no memory dump.',
   'On the first line after the film (empty history) next is always stay.',
 ].join(' ');
@@ -176,7 +176,7 @@ function memoryPrompt(entries) {
   const compact = compactMemory(entries);
   if (compact.length === 0) return 'Living memory is empty. Do not invent biography. memory_updates may add the first notes.';
   return [
-    'Living memory is already stored. Treat source=player quotes as theirs. Treat muse_hypothesis as unconfirmed, not as something they said.',
+    'Living memory is already stored. Treat source=player quotes as theirs. Treat muse_hypothesis as unconfirmed, not as something they said. Treat status=revised or disagreed as not the current fact; prefer current player quotes. Do not repeat a corrected invented event.',
     'Use only these notes plus this chat. Do not add facts from the scene job.',
     'Return memory_updates only for new or changed notes, never the whole list.',
     JSON.stringify(compact),

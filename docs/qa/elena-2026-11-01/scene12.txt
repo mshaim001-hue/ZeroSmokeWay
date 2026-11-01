@@ -1,0 +1,24 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			9 text That hollow itch in the film — when it shows up for you, like in those first twenty minutes after waking, where is it and what is it like?
+			10 container
+				11 text YOU In the morning it's an impatient feeling, like I can't properly start until I've had coffee and a cigarette. In a meeting I notice it as checking the clock. Not a pain exactly, more a thought that keeps interrupting.
+			12 text That morning impatient part — does it live anywhere in your body, or is it only that looping thought that you can't start yet?
+			13 container
+				14 text YOU A bit restless in my body too. I move around and get impatient if something delays me. It's not always tiny like in the film. During the first days of stopping it could take up a lot of my attention.
+			15 text Mornings it takes your whole body — pacing, snapping when you're held up. A long way from tiny.
+
+If that names the itch as you know it, shall we watch the next scene, or stay with this one a little longer?
+			16 container
+				17 text YOU Not my whole body, and I'm not always snapping. More low-level restlessness most mornings; it was stronger when I stopped. I want to keep that distinction.
+			18 text You're right, I overstated that — low-level restlessness most mornings, stronger when you stopped. I'll keep that distinction.
+		6 container
+			7 text entry area (settable) Your reply
+			8 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

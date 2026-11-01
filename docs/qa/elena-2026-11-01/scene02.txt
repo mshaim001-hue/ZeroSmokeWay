@@ -1,0 +1,35 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text That one hits different for everyone.
+
+You've mentioned smoking since 19 — what do you remember of that first stretch back then?
+			10 container
+				11 text YOU I was nineteen, with girls from university. We would have coffee between classes and a few of them smoked. I don't remember one dramatic first cigarette. Mostly I remember wanting to sit there with them and feel grown up.
+			12 text Wanting to stay at the table and feel grown up — that's a clear picture.
+
+What pulled you to the next one after those coffees — more of that same staying with them, or something else kicking in?
+			13 container
+				14 text YOU At first it was the same. Then I bought my own and started having one with coffee before classes, even alone. I can't give you an exact moment it changed. It just stopped being something I only did with them.
+			15 text No single dramatic moment — just sliding from staying with them to a solo coffee before class. Buying your own sounds like the quiet turn there.
+
+Want to watch the next scene, or stay with this one a little more?
+			16 container
+				17 text YOU Looking back makes me sad, actually. That coffee was such a nice little ritual. Now it's twenty minutes after I wake up, and I'm already thinking about cigarettes before the day has even started.
+			18 text That contrast sounds painful — from a nice little ritual with people to waking up already counting the minutes.
+
+What part of that feels saddest to sit with right now?
+			19 container
+				20 text YOU How ordinary it became. Nineteen years went by and I still think of it as a small treat, even when I'm planning around it. I don't blame those girls. I just hadn't really put the beginning and now next to each other before.
+			21 text Nineteen years of ordinary mornings — still calling it a small treat even while you plan your day around it. And you're clear you're not putting that on them.
+
+Putting that first coffee next to now for the first time, that's a lot to hold.
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

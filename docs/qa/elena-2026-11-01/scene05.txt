@@ -1,0 +1,27 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text That one was all pressure — deadlines, stepping out to calm down while that red line kept climbing.
+
+For you, what's one recent stressful moment where you smoked — what was going on before, and what felt different after, if anything?
+			10 container
+				11 text YOU A client complained and a colleague blamed my team. I was furious, so I went to the car and smoked before calling back. I was still angry, but I wasn't about to shout anymore. I don't know if it was smoking or just getting away from them.
+			12 text Still furious, but able to call back without shouting — that's a real difference.
+
+Do you lean more toward the stepping away doing the work, or does the cigarette still feel like part of it?
+			13 container
+				14 text YOU It still feels like part of it. Sitting in the car without one would feel unfinished. But the client hadn't changed and I still had to make the call. I suppose it gave me a pause rather than solving the argument.
+			15 text Pause, not solution — that puts it well. The anger was still there, the call was still there, but you got those minutes in the car to come back steadier.
+
+If you're up for it, we could watch the next scene, or keep talking about this one a bit more.
+		16 button Watch the next scene
+		17 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

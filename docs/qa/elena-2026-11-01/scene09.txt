@@ -1,0 +1,31 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text That cliff scene was raw — just grinding upward with nothing to hold onto.
+
+Have you ever tried to quit that way, by pure grit?
+			10 container
+				11 text YOU I've tried three times. The longest was two months. At first I was irritable and kept telling myself to get through the day, but it wasn't two months of climbing a cliff. Some days were quite normal.
+			12 text Two months is a long run — and that some days felt normal is important, not just the hard start.
+
+What do you remember about how that longest stretch went day to day?
+			13 container
+				14 text YOU The first week I was short with people and snacked more. Then I stopped counting every hour. During a really pressured period at work I took 'just one' in the car. I hadn't decided to start again, but within a week I was buying packs.
+			15 text That first week with snapping and extra snacking, then it loosened and you stopped clock-watching. Until a pressured stretch at work and that 'just one' in the car turned into packs again.
+
+How do you see trying by pure grit now, after that run?
+			16 container
+				17 text YOU I don't think effort was pointless. Those two months showed I could live without it. But I don't want the whole plan to be 'be stronger', especially after a hard day. I'd rather ask my sister for support earlier than hide that I'm struggling.
+			18 text Those two months proved you can live without it, even on ordinary days. And it makes sense not to bet everything on being stronger after a hard day.
+Want to watch the next scene, or stay with this one a little longer?
+		19 button Watch the next scene
+		20 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

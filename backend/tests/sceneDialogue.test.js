@@ -48,7 +48,11 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.doesNotMatch(sent.messages[0].content, /You may say: “Look.”/);
   assert.match(sent.messages[0].content, /Do not open several turns with “Look”/);
   assert.match(sent.messages[0].content, /That tracks/);
+  assert.match(sent.messages[0].content, /that lands/);
   assert.match(sent.messages[0].content, /do not tell them it is not that feeling/);
+  assert.match(sent.messages[0].content, /happened vs wanted vs imagined/);
+  assert.match(sent.messages[0].content, /Fear before offer/);
+  assert.match(sent.messages[0].content, /source=muse_hypothesis/);
   assert.equal(sent.messages.at(-1).content, request.message);
 });
 
@@ -141,6 +145,24 @@ test('memory is merged and sent into the next scene prompt', async () => {
   }]);
   assert.equal(merged[0].quote, 'After I talk to my boss I want one');
   assert.match(merged[0].summary, /still wants one then/);
+});
+
+test('a correction revises the invented memory instead of leaving it as a player fact', () => {
+  const stored = mergeMemory(
+    [{ id: 'm-miss', source: 'muse_hypothesis', summary: 'missed the school story', depth: 'partial' }],
+    [{
+      id: 'm-stay',
+      revises: 'm-miss',
+      source: 'player',
+      status: 'revised',
+      summary: 'stayed and listened; thought about leaving',
+      quote: 'I stayed',
+      depth: 'partial',
+    }],
+  );
+  assert.equal(stored.find(item => item.id === 'm-miss').status, 'revised');
+  assert.equal(stored.find(item => item.id === 'm-stay').status, 'current');
+  assert.equal(stored.find(item => item.id === 'm-stay').quote, 'I stayed');
 });
 
 test('provider failure does not invent a prepared question or leak secrets', async () => {
@@ -243,6 +265,9 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.pitcher, /Number of turns is not enough/);
   assert.match(SCENE_JOBS.pitcher, /keep it as theirs/);
   assert.match(SCENE_JOBS.pitcher, /mark it tentative/);
+  assert.match(SCENE_JOBS.pitcher, /happened vs wanted vs imagined/);
+  assert.match(SCENE_JOBS.pitcher, /Fear before offer/);
+  assert.match(SCENE_JOBS.pitcher, /that lands/);
   assert.match(SCENE_JOBS.labyrinth, /MAIN THEME/);
   assert.match(SCENE_JOBS.labyrinth, /No mandatory anti-ad slogan/);
   assert.match(SCENE_JOBS.shoes, /Do not re-ask “what would you miss\?”/);
@@ -291,6 +316,8 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(speechSystemPrompt(), /peer/);
   assert.match(speechSystemPrompt(), /No catchphrase as a template/);
   assert.match(speechSystemPrompt(), /Film metaphors are pictures/);
+  assert.match(speechSystemPrompt(), /that lands/);
+  assert.doesNotMatch(speechSystemPrompt(), /stay tentative \(/);
 });
 
 test('empty memory does not plant a ten-day attempt, and the finale cannot offer a next film', async () => {

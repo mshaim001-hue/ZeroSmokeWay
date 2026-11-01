@@ -70,6 +70,14 @@ export function mergeMemory(current, updates) {
   for (const entry of parseMemory(updates)) {
     const previous = merged.get(entry.id);
     merged.set(entry.id, previous ? overlay(previous, entry) : entry);
+    if (entry.revises && entry.revises !== entry.id && merged.has(entry.revises)) {
+      const older = merged.get(entry.revises);
+      const status = entry.status === 'disagreed' ? 'disagreed' : 'revised';
+      merged.set(entry.revises, overlay(older, { status }));
+      if (entry.status === 'revised') {
+        merged.set(entry.id, overlay(merged.get(entry.id), { status: 'current' }));
+      }
+    }
   }
   return [...merged.values()].slice(-MAX_ENTRIES);
 }

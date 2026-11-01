@@ -1,0 +1,33 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text You mentioned starting at 19 with coffee to feel grown up — when you saw those giant screens, cowboy, sport, romance, did any of that match what grown-up looked like to you then?
+			10 container
+				11 text YOU Not the cowboy or sport. Maybe the image of a woman with coffee, looking like she has her own life. I can't point to a particular advert. It was more the women around me, and films, I suppose.
+			12 text A woman with coffee, having her own life — that's a quieter picture than those billboards.
+
+What made her look like she had her own life to you at 19?
+			13 container
+				14 text YOU She could sit down without explaining herself to anyone. No parents telling her what to do. Funny, because now I'm the one managing everyone, and I still use a cigarette to claim a few minutes for myself.
+			15 text From no parents telling her what to do, to now managing everyone and stealing five minutes outside.
+
+If I'm reading this right, it's almost the opposite of that free picture — but still about not having to explain yourself for a minute? Does that fit or am I off?
+			16 container
+				17 text YOU The not explaining myself part fits. I wouldn't call my whole life the opposite of freedom. I like my work and being a mother. I just need some time that's mine without having to smoke for it.
+			18 text Fair — I put that too strongly. You like your work and being a mother, it's really about having minutes that are yours without needing a cigarette to get them.
+			19 container
+				20 text YOU Exactly. Let's go on.
+			21 text That time that's yours without having to smoke for it — I hear that.
+
+We can watch the next short film now, or stay with this a bit more. Want to go on?
+		22 button Watch the next scene
+		23 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

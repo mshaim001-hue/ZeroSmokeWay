@@ -1,0 +1,32 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text You said those five minutes outside are the only time nobody is asking you for anything.
+
+This film was tight shoes — pinch, brief ease, pinch again. If we take one recent smoke break of yours, what actually shifted before, during, and after?
+			10 container
+				11 text YOU Yesterday after lunch I went outside before the afternoon meetings. I wasn't upset, I just wanted a few quiet minutes. I liked the cigarette with my coffee. Afterwards I went back in. The shoes didn't really match that one.
+			12 text Fair enough — that one wasn't about an urge pinching you.
+
+If you pull that lunch break apart a little, what did the quiet itself give you, separate from the coffee and the cigarette alongside it?
+			13 container
+				14 text YOU Not having to respond to anyone. I could just stand there. The quiet was good in its own right, but I still enjoyed smoking. I don't know how much of that is taste and how much is just familiar.
+			15 text Quiet that lets you just stand there without answering anyone — that lands as its own good part.
+
+And alongside that you still liked smoking, though you're not sure where taste ends and familiar begins. If I'm reading this right, familiar might mean the whole known feel of it — is that close, or is it something else for you?
+			16 container
+				17 text YOU Yes, the whole routine. Cup in one hand, cigarette in the other, nobody needing me. That's the bit I can describe. I can't really separate it any further right now.
+			18 text That image stays with me — cup in one hand, cigarette in the other, nobody needing you.
+
+Not being able to separate it further right now is fine as it is. Want to watch the next short scene, or stay with this one a little longer?
+		19 button Watch the next scene
+		20 button Keep talking about this
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

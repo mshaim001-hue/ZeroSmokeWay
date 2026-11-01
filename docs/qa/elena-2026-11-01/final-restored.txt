@@ -1,0 +1,25 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text The film left him on a hill under a clear sky, just breathing while others smoked nearby.
+
+Where are you right now when you see someone smoking — is there envy, distance, or something else?
+			8 container
+				9 text YOU I still smoke myself, so I don't feel distant from them. Part of me still wants that quiet minute. But I can see more clearly that I want the minute to myself, not a day organised around fifteen cigarettes. I'm going to speak with my sister and choose the date next week.
+			10 text Still smoking, still wanting that quiet minute — and clearer now that you want the minute without the day built around fifteen cigarettes.
+
+That decision you want to stand behind, with your sister next week, is yours to keep shaping here. You can keep talking, watch again, or sign out and come back.
+			11 container
+				12 text YOU I'll stop here for today. When I come back next week, will this conversation still be here? And is there a daily plan or craving log, or is the support through this chat?
+			13 text Yes — sign in on this account next week and this conversation will still be here.
+
+This path doesn't have a daily plan or craving log yet. The support is through these films and this chat. I can keep your date as a note when you choose it.
+		14 container
+			15 text entry area (settable) Your reply
+			16 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
