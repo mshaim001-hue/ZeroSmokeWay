@@ -20,7 +20,7 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   let sent;
   const result = await handleSceneRequest({
     ...request,
-    history: [{ role: 'assistant', content: 'What did you make of that?' }, { role: 'user', content: 'Yeah.' }],
+    history: [{ role: 'assistant', content: 'Did anything in that scene feel familiar to you, or was your experience different?' }, { role: 'user', content: 'Yeah.' }],
   }, {
     env: { META_MODEL: 'muse-spark-1.3' },
     createCompletion: async params => {
@@ -41,6 +41,7 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.match(sent.messages[0].content, /peer/);
   assert.match(sent.messages[0].content, /not the bee/i);
   assert.match(sent.messages[0].content, /next=offer/);
+  assert.match(sent.messages[0].content, /memory_updates/);
   assert.match(sent.messages[0].content, /Do not start with/);
   assert.equal(sent.messages.at(-1).content, request.message);
 });
@@ -102,7 +103,7 @@ test('memory is merged and sent into the next scene prompt', async () => {
   }, {
     createCompletion: async params => {
       sent = params;
-      return { choices: [{ message: { content: '{"reply":"What did you make of that?","stance":"hold","next":"stay","memory":[]}' } }] };
+      return { choices: [{ message: { content: '{"reply":"Earlier you mentioned the boss. Was this film like that?","stance":"hold","next":"stay","memory_updates":[]}' } }] };
     },
   });
   assert.equal(result.next, 'stay');
@@ -126,11 +127,60 @@ test('provider failure does not invent a prepared question or leak secrets', asy
   await assert.rejects(handleSceneRequest(request, { createCompletion: completion('') }), e => e.issue === 'empty_response');
 });
 
-test('reply text is bounded and progress fields are ignored', async () => {
-  const result = await handleSceneRequest(request, { createCompletion: completion(`${'x'.repeat(8000)}\n{"progress":true}`) });
-  assert.equal(result.response.length, 1200);
-  assert.equal(result.progress, undefined);
-  assert.equal(result.mode, 'ai');
+test('invalid or truncated JSON is retried once, then never shown as chat', async () => {
+  let calls = 0;
+  await assert.rejects(handleSceneRequest(request, {
+    createCompletion: async () => {
+      calls += 1;
+      return { choices: [{ message: { content: `${'x'.repeat(800)}\n{"progress":true}` }, finish_reason: 'stop' }] };
+    },
+  }), e => e.issue === 'invalid_response');
+  assert.equal(calls, 2);
+
+  calls = 0;
+  await assert.rejects(handleSceneRequest({
+    ...request,
+    history: [{ role: 'user', content: 'Wait — also this.' }],
+  }, {
+    createCompletion: async () => {
+      calls += 1;
+      return { choices: [{ message: { content: '{"reply":"Look,','finish_reason': 'ignored' }, finish_reason: 'length' }] };
+    },
+  }), e => e.issue === 'truncated_response');
+  assert.equal(calls, 2);
+
+  calls = 0;
+  const recovered = await handleSceneRequest({
+    ...request,
+    history: [{ role: 'user', content: 'I just hate the promising.' }],
+  }, {
+    createCompletion: async () => {
+      calls += 1;
+      if (calls === 1) return { choices: [{ message: { content: '{"reply":""}' }, finish_reason: 'stop' }] };
+      return { choices: [{ message: { content: '{"reply":"What bothers you most about those promises?","stance":"probe","next":"stay","memory_updates":[]}' }, finish_reason: 'stop' }] };
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(recovered.response, 'What bothers you most about those promises?');
+  assert.equal(recovered.progress, undefined);
+});
+
+test('saved JSON in history is sent to Meta as the spoken reply', async () => {
+  let sent;
+  await handleSceneRequest({
+    ...request,
+    history: [
+      { role: 'assistant', content: '{"reply":"When did that stop feeling true?","stance":"probe","next":"stay","memory":[]}' },
+      { role: 'user', content: 'After coffee.' },
+    ],
+  }, {
+    createCompletion: async params => {
+      sent = params;
+      return { choices: [{ message: { content: '{"reply":"What about the coffee?","stance":"probe","next":"stay","memory_updates":[]}' } }] };
+    },
+  });
+  assert.equal(sent.messages[1].content, 'When did that stop feeling true?');
+  assert.doesNotMatch(sent.messages[1].content, /"stance"/);
 });
 
 test('unknown scene, injected roles and oversized payloads never reach Meta', async () => {
@@ -158,7 +208,9 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.ok(SCENE_JOBS.truth.length > 40);
   assert.match(SCENE_JOBS.pitcher, /MAIN THEME/);
   assert.match(SCENE_JOBS.pitcher, /not the bee/i);
+  assert.match(SCENE_JOBS.pitcher, /Did anything in that scene feel familiar/);
   assert.doesNotMatch(SCENE_JOBS.pitcher, /They are that bee/);
+  assert.doesNotMatch(SCENE_JOBS.firstPuff, /Did anything in that scene feel familiar/);
   assert.match(SCENE_JOBS.firstPuff, /Start from living memory/);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
   assert.match(speechSystemPrompt(), /peer/);

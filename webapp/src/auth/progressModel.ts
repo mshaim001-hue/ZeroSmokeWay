@@ -30,6 +30,7 @@ export type PlayerProgress = {
   chat: ChatLine[];
   seenIntro: boolean;
   canAdvance: boolean;
+  offerOpen: boolean;
   memory: MemoryEntry[];
 };
 
@@ -45,7 +46,35 @@ export function newMessageId(): string {
 }
 
 export function defaultProgress(): PlayerProgress {
-  return { sceneId: FIRST_SCENE, phase: 'idle', chat: [], seenIntro: false, canAdvance: false, memory: [] };
+  return {
+    sceneId: FIRST_SCENE,
+    phase: 'idle',
+    chat: [],
+    seenIntro: false,
+    canAdvance: false,
+    offerOpen: false,
+    memory: [],
+  };
+}
+
+export function looksLikeServiceJson(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{')) return false;
+  return /"(reply|response|stance|next|memory|memory_updates|assessment)"\s*:/.test(trimmed);
+}
+
+export function playerFacingReply(content: string): string {
+  const text = content.trim();
+  if (!text) return '';
+  if (!looksLikeServiceJson(text)) return text;
+  try {
+    const parsed = JSON.parse(text) as { reply?: unknown; response?: unknown };
+    const reply = parsed.reply ?? parsed.response;
+    if (typeof reply === 'string' && reply.trim()) return reply.trim();
+  } catch {
+    /* truncated or invalid */
+  }
+  return '';
 }
 
 export function persistPhase(phase: Phase | string): StoredPhase {
@@ -61,9 +90,11 @@ export function parseChat(value: unknown): ChatLine[] {
     const content = (row as { content?: unknown }).content;
     if (role !== 'user' && role !== 'assistant') continue;
     if (typeof content !== 'string' || !content.trim()) continue;
+    const visible = role === 'assistant' ? playerFacingReply(content) : content.trim();
+    if (!visible) continue;
     const rawId = (row as { id?: unknown }).id;
     const id = typeof rawId === 'string' && rawId.trim() ? rawId.trim().slice(0, 80) : newMessageId();
-    lines.push({ id, role, content: content.slice(0, 2000) });
+    lines.push({ id, role, content: visible.slice(0, 2000) });
   }
   return lines.slice(-40);
 }
@@ -125,8 +156,9 @@ export function parseProgress(raw: unknown): PlayerProgress {
   const chat = phase === 'chat' ? parseChat(row.chat) : [];
   const seenIntro = row.seenIntro === true || row.seen_intro === true;
   const canAdvance = row.canAdvance === true || row.can_advance === true;
+  const offerOpen = (row.offerOpen === true || row.offer_open === true) && canAdvance;
   const memory = parseMemory(row.memory);
-  return { sceneId, phase, chat, seenIntro, canAdvance, memory };
+  return { sceneId, phase, chat, seenIntro, canAdvance, offerOpen, memory };
 }
 
 export function parseEnvelope(raw: unknown, userId: string): ProgressEnvelope | null {

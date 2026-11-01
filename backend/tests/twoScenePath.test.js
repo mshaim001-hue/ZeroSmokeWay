@@ -6,7 +6,7 @@ const json = (value) => JSON.stringify(value);
 const completion = (value) => async () => ({ choices: [{ message: { content: json(value) } }] });
 
 test('scripted path: scene 1 offer, new thought stays, scene 2 continues from memory', async () => {
-  const opener = { role: 'assistant', id: 'a0', content: 'What did you make of that?' };
+  const opener = { role: 'assistant', id: 'a0', content: 'Did anything in that scene feel familiar to you, or was your experience different?' };
 
   const identified = await handleSceneRequest({
     sceneId: 'pitcher',

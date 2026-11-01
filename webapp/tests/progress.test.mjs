@@ -16,6 +16,7 @@ test('new users have not seen the intro and start on scene 1', () => {
   assert.equal(start.phase, 'idle');
   assert.deepEqual(start.chat, []);
   assert.equal(start.canAdvance, false);
+  assert.equal(start.offerOpen, false);
   assert.deepEqual(start.memory, []);
 });
 
@@ -38,6 +39,7 @@ test('a chat in progress restores the previous dialogue with stable ids', () => 
     phase: 'chat',
     seen_intro: true,
     can_advance: true,
+    offer_open: true,
     chat: [
       { id: 'a1', role: 'assistant', content: 'What did that remind you of?' },
       { id: 'u1', role: 'user', content: 'It calms me.' },
@@ -47,6 +49,7 @@ test('a chat in progress restores the previous dialogue with stable ids', () => 
   assert.equal(saved.phase, 'chat');
   assert.equal(saved.seenIntro, true);
   assert.equal(saved.canAdvance, true);
+  assert.equal(saved.offerOpen, true);
   assert.equal(saved.chat.length, 2);
   assert.equal(saved.chat[0].id, 'a1');
   assert.equal(saved.chat[1].id, 'u1');
@@ -66,6 +69,22 @@ test('legacy chat rows without ids get an id and unknown scenes do not crash res
   assert.equal(lines[0].role, 'user');
   assert.equal(lines[0].content, 'ok');
   assert.ok(lines[0].id);
+});
+
+test('saved model JSON is shown as the reply or hidden if it never closed', () => {
+  const saved = parseProgress({
+    sceneId: 'pitcher',
+    phase: 'chat',
+    seenIntro: true,
+    chat: [
+      { id: 'a1', role: 'assistant', content: '{"reply":"When did that stop feeling true?","stance":"probe","next":"stay"}' },
+      { id: 'u1', role: 'user', content: 'After coffee.' },
+      { id: 'a2', role: 'assistant', content: '{"reply":"Look.","memory":[{"id":"m1"' },
+    ],
+  });
+  assert.equal(saved.chat.length, 2);
+  assert.equal(saved.chat[0].content, 'When did that stop feeling true?');
+  assert.equal(saved.chat[1].content, 'After coffee.');
 });
 
 test('memory keeps player words, hypotheses, and depth', () => {

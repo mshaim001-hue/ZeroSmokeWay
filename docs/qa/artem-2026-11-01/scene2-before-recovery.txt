@@ -1,0 +1,33 @@
+Browser tab: 4, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text That scene was awkward — cough, laughter, then he goes again.
+In your case: what do you actually remember from your first stretch?
+			10 container
+				11 text YOU I started at 20, four years ago, at a party with friends. It wasn't like the film: nobody laughed at me or pressured me. I was curious and wanted to join them outside. I don't remember coughing much. It wasn't especially nice, but it wasn't horrible either.
+			12 text Yours was calmer than the film — no pressure, just curiosity to join them outside.
+
+It wasn't nice but wasn't horrible either, so what made a next one follow after that party?
+			13 container
+				14 text YOU At the next get-together someone offered again, and I said yes. For a while it was just a couple when we were drinking. Later I bought a pack so I wouldn't keep asking people. Then I started taking breaks with a cigarette during work too. I can't point to one day when it became daily.
+			15 text No pressure, no single day it flipped — just second offer, then a couple when drinking, then your own pack, then work breaks.
+
+That gradual slide makes sense for why it's hard to point to a moment. Want to park this origin here and look at the next piece when you're ready?
+			17 container
+				18 text YOU Before we move on, does that mean I'm not really dependent because it started socially? On some days it's six, on a night out twelve, and my first cigarette is usually an hour and a half or two after waking. Also, do you remember what I said I wanted to change and when?
+			19 text Look. Starting socially says how it began, not how hooked it is now.
+
+And yeah, I remember: you said you want to quit in two weeks, you're about six out of ten ready, and you don't want quitting to mean avoiding friends.
+			20 container
+				21 text YOU Yes, that's right. A pack costs me 1,000 tenge for 20 cigarettes. I'd like to see savings based on what I actually smoke each day, not a fixed six every day. Can I set my quit date for two weeks from now and track those different days here, or is this part just the conversations?
+			22 text {"reply": "Look. Here we only talk — I can't set the date or count the savings here.\n\nIn your case: I've got 1,000 tenge for 20, 6 most days, 12 on a night out, quit in two weeks. Shall we keep that and look at the next piece?", "stance": "advance", "next": "offer", "memory": [{"id": "smoking-now", "theme": "how they see their smoking now", "sceneId": "pitcher", "source": "player", "status": "current", "depth": "thorough", "summary": "Does not feel trapped; smokes socially to be with friends and alone to switch off; would miss conversations outside not taste; worries would feel outsider going out without lighting one", "quote": "The conversations outside, not really the taste.", "context": "24, work from home junior dev, 6/day, 12 at party; social + alone to switch off; wants to quit in two weeks", "openQuestion": "What would be missed if gone?", "turnRef": "m8"}, {"id": "switch-off", "theme": "what switch-off looks like", "sceneId": "pitcher", "source": "player", "status": "current", "depth": "partial", "summary": "Switch-off = few minutes away from screen when stops thinking about bug", "quote": "A few minutes away from the screen when I stop thinking about the bug.", "context"
+		16 button Next scene
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

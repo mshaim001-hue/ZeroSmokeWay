@@ -19,12 +19,14 @@ test('scene 1 is a film of four shots, then talk',()=>{
 test('hidden kickoff is not a prepared question; the player sees a live opener',()=>{
   assert.match(OPENING_KICKOFF,/film/i);
   assert.doesNotMatch(OPENING_KICKOFF,/\?/);
-  assert.equal(sceneOf('pitcher').openingLine,'What did you make of that?');
+  assert.equal(sceneOf('pitcher').openingLine,'Did anything in that scene feel familiar to you, or was your experience different?');
+  assert.equal(sceneOf('firstPuff').openingLine,undefined);
 });
 
-test('developer skip arrows are gone and Next waits for can_advance',()=>{
+test('developer skip arrows are gone and the next-scene offer can be declined',()=>{
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../src/scenes/act1/Scene1App.tsx'), 'utf8');
   assert.doesNotMatch(src,/scene1-skip/);
-  assert.match(src,/canAdvance/);
-  assert.match(src,/agreeNext/);
+  assert.match(src,/Watch the next scene/);
+  assert.match(src,/Keep talking about this/);
+  assert.match(src,/offerOpen/);
 });

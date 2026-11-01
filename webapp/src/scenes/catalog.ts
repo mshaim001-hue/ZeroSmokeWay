@@ -35,7 +35,7 @@ export const SCENES: Record<SceneId, SceneDef> = {
     ],
     next: 'firstPuff',
     kickoff: KICKOFF,
-    openingLine: 'What did you make of that?',
+    openingLine: 'Did anything in that scene feel familiar to you, or was your experience different?',
   },
   firstPuff: {
     id: 'firstPuff',

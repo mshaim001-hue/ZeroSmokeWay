@@ -22,6 +22,7 @@ function storedProgress(progress: PlayerProgress): PlayerProgress {
     chat: phase === 'chat' ? progress.chat.slice(-40) : [],
     seenIntro: progress.seenIntro,
     canAdvance: progress.canAdvance === true,
+    offerOpen: progress.offerOpen === true && progress.canAdvance === true,
     memory: progress.memory.slice(-40),
   };
 }
@@ -49,6 +50,7 @@ function asRemoteProgress(data: {
   seen_intro: boolean;
   updated_at: string;
   can_advance?: boolean;
+  offer_open?: boolean;
   memory?: unknown;
 }, userId: string): ProgressEnvelope {
   return {
@@ -60,6 +62,7 @@ function asRemoteProgress(data: {
       chat: data.chat,
       seenIntro: data.seen_intro,
       canAdvance: data.can_advance,
+      offerOpen: data.offer_open,
       memory: data.memory,
     }),
   };
@@ -69,7 +72,7 @@ async function readRemote(userId: string): Promise<ProgressEnvelope | null> {
   if (!isAuthConfigured()) return null;
   const full = await supabase()
     .from('player_progress')
-    .select('scene_id, phase, chat, seen_intro, can_advance, memory, updated_at')
+    .select('scene_id, phase, chat, seen_intro, can_advance, offer_open, memory, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
   if (!full.error && full.data) return asRemoteProgress(full.data, userId);
@@ -93,6 +96,7 @@ async function writeRemote(envelope: ProgressEnvelope): Promise<void> {
     chat: stored.chat,
     seen_intro: stored.seenIntro,
     can_advance: stored.canAdvance,
+    offer_open: stored.offerOpen,
     memory: stored.memory,
     updated_at: new Date(updatedAt).toISOString(),
   };

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { FIRST_SCENE, neighbor, sceneOf, type SceneId, type Phase } from '../catalog';
 import { askScene, type ChatLine } from './api';
+import { gateAfterKeepTalking, gateAfterModel, gateAfterUserTalk } from './offerState';
 import { saveProgress } from '../../auth/progress';
 import { newMessageId, persistPhase, type MemoryEntry, type PlayerProgress } from '../../auth/progressModel';
 import '../../auth/gate.css';
@@ -26,6 +27,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
   const [chat, setChat] = useState<ChatLine[]>(initial.phase === 'chat' ? initial.chat : []);
   const [memory, setMemory] = useState<MemoryEntry[]>(initial.memory ?? []);
   const [canAdvance, setCanAdvance] = useState(initial.canAdvance === true);
+  const [offerOpen, setOfferOpen] = useState(initial.offerOpen === true && initial.canAdvance === true);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
@@ -34,8 +36,8 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
   const end = useRef<HTMLDivElement>(null);
   const kickoffFor = useRef(-1);
   const skipKickoff = useRef(initial.phase === 'chat' && initial.chat.length > 0);
-  const snapshot = useRef({ sceneId, phase, chat, memory, canAdvance });
-  snapshot.current = { sceneId, phase, chat, memory, canAdvance };
+  const snapshot = useRef({ sceneId, phase, chat, memory, canAdvance, offerOpen });
+  snapshot.current = { sceneId, phase, chat, memory, canAdvance, offerOpen };
 
   useEffect(() => {
     const m = matchMedia('(prefers-reduced-motion: reduce)');
@@ -69,11 +71,12 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
       chat: persistPhase(phase) === 'chat' ? chat.slice(-40) : [],
       seenIntro: true,
       canAdvance,
+      offerOpen,
       memory: memory.slice(-40),
     };
     const timer = window.setTimeout(() => { void saveProgress(userId, stored); }, 400);
     return () => window.clearTimeout(timer);
-  }, [userId, sceneId, phase, chat, memory, canAdvance]);
+  }, [userId, sceneId, phase, chat, memory, canAdvance, offerOpen]);
   useEffect(() => {
     const flush = () => {
       const now = snapshot.current;
@@ -83,6 +86,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
         chat: persistPhase(now.phase) === 'chat' ? now.chat.slice(-40) : [],
         seenIntro: true,
         canAdvance: now.canAdvance,
+        offerOpen: now.offerOpen,
         memory: now.memory.slice(-40),
       });
     };
@@ -149,6 +153,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     setBusy(false);
     setChat([]);
     setCanAdvance(false);
+    setOfferOpen(false);
   }
   function replay() {
     resetTalk();
@@ -163,11 +168,19 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     setPhase('idle');
   }
   function agreeNext() {
-    if (!canAdvance) return;
+    if (busy || !canAdvance) return;
+    request.current?.abort();
     goTo(scene.next ?? neighbor(sceneId, 1));
+  }
+  function keepTalking() {
+    if (busy) return;
+    const next = gateAfterKeepTalking({ ready: canAdvance, open: offerOpen });
+    setCanAdvance(next.ready);
+    setOfferOpen(next.open);
   }
   async function speak(message: string, history: ChatLine[], retry = false) {
     if (busy && !retry) return;
+    const forScene = sceneId;
     setIssue('');
     setBusy(true);
     const control = new AbortController();
@@ -177,13 +190,23 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
       const reply = await askScene(sceneId, message, history, control.signal, {
         memory: snapshot.current.memory,
         canAdvance: snapshot.current.canAdvance,
+        offerOpen: snapshot.current.offerOpen,
       });
       if (request.current !== control) return;
+      if (snapshot.current.sceneId !== forScene) return;
+      const gate = gateAfterModel({ ready: snapshot.current.canAdvance, open: snapshot.current.offerOpen }, reply.next);
       setChat(old => [...old, line('assistant', reply.response)]);
       setMemory(Array.isArray(reply.memory) ? reply.memory : snapshot.current.memory);
-      if (reply.next === 'offer' || reply.next === 'launch') setCanAdvance(true);
+      setCanAdvance(gate.ready);
+      setOfferOpen(gate.open);
+      if (gate.launch) {
+        request.current = undefined;
+        goTo(sceneOf(forScene).next ?? neighbor(forScene, 1));
+      }
     } catch {
-      if (request.current === control) setIssue('The model did not answer. You can retry.');
+      if (request.current === control && snapshot.current.sceneId === forScene) {
+        setIssue('The model did not answer. You can retry.');
+      }
     } finally {
       window.clearTimeout(timeout);
       if (request.current === control) {
@@ -212,6 +235,9 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     const message = draft.trim();
     if (!message) return;
     const history = chat;
+    const hidden = gateAfterUserTalk({ ready: canAdvance, open: offerOpen });
+    setCanAdvance(hidden.ready);
+    setOfferOpen(hidden.open);
     setChat([...history, line('user', message)]);
     setDraft('');
     await speak(message, history);
@@ -271,10 +297,13 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
             <button type="button" onClick={retryLast} disabled={busy}>Retry</button>
           </div>
         )}
-        {chatting && canAdvance && nextScene && (
-          <div className="scene1-status">
-            <button type="button" className="scene1-next" onClick={agreeNext}>
-              Next scene
+        {chatting && offerOpen && nextScene && (
+          <div className="scene1-offer">
+            <button type="button" className="scene1-next" onClick={agreeNext} disabled={busy}>
+              Watch the next scene
+            </button>
+            <button type="button" className="scene1-offer-stay" onClick={keepTalking} disabled={busy}>
+              Keep talking about this
             </button>
           </div>
         )}
