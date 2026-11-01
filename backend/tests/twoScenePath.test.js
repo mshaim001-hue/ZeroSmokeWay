@@ -116,7 +116,11 @@ test('scripted path: scene 1 offer, new thought stays, scene 2 continues from me
   });
   assert.match(scene2Prompt, /after talking to the boss/);
   assert.match(scene2Prompt, /Start from living memory/);
+  assert.match(scene2Prompt, /Do not open with “Yours was different.”/);
+  assert.match(scene2Prompt, /There is no Tracker/);
+  assert.match(scene2Prompt, /conversational note/);
   assert.doesNotMatch(scene2Prompt, /They are that bee/);
+  assert.doesNotMatch(scene2Prompt, /You may say: “Look.”/);
   assert.match(continued.response, /boss/);
   assert.equal(continued.next, 'stay');
 });

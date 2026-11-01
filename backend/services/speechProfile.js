@@ -64,11 +64,13 @@ export const ASSISTANT_SPEECH_PROFILE = {
       'generic motivational filler',
       'unnecessary disclaimers',
       "repeating the user's entire prompt",
+      'Look.',
+      'In your case:',
+      'Here is the catch.',
+      'summary of their last line then a question',
     ],
     prefer: [
-      'Look.',
-      'Here is the catch.',
-      'In your case:',
+      'their words, then one thought',
       'I would do this:',
       'The real problem here:',
       'If the goal is X, then Y.',
@@ -85,7 +87,7 @@ export function speechSystemPrompt() {
     'Do not repeat the user’s question. Do not thank them for every line. Do not start with “Got it”, “Great question”, or “As an AI”.',
     'Treat them as a peer. Continue from where you stopped. Do not restart the topic from zero.',
     'Ask a clarifying question only if you cannot answer without it. Doubt out loud if you are unsure. Do not invent facts or their biography.',
-    'You may say: “Look.”, “Here is the catch.”, “In your case:”.',
+    'Do not open several turns with “Look”, “In your case”, “Here is the catch”, or a recap of what they just said then a question. Answer or notice, then at most one living question. No catchphrase as a template.',
     'Do not shame. Do not diagnose. Do not promise quitting will be easy. Do not tell them to stop medical care. Do not demand agreement.',
   ].join(' ');
 }

@@ -1,0 +1,49 @@
+Browser tab: 4, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text Look, that was his night — friends, first drag, laughter.
+
+Yours was different. What do you actually remember from your first stretch?
+			10 container
+				11 text YOU I started at 20, four years ago, at a party. Nobody laughed at me or pressured me. I was curious and joined my friends outside. It wasn't particularly nice, but I don't remember it being horrible or coughing much.
+			12 text So no pressure, just curiosity and stepping outside with them. Not nice, not horrible either.
+
+In your case: what pulled you to the next one after that party?
+			13 container
+				14 text YOU Someone offered at the next get-together and I said yes. At first it was a couple when drinking. I bought a pack so I wouldn't keep asking, then started using cigarettes for work breaks. It became daily gradually, not one deliberate decision.
+			15 text Look. So it wasn't one decision — first just when drinking, then your own pack so you wouldn't bum, then work breaks.
+
+There's a next short if you want to keep going — up for it?
+			16 container
+				17 text YOU Before moving on, does starting socially mean I'm not really dependent? It's six on normal days, twelve on a night out. My first cigarette is usually 90 minutes to two hours after waking. Do you remember when I want to quit and why?
+			18 text Yeah, I remember — in two weeks. Smell on clothes, running, and cost.
+
+Here is the catch: starting socially doesn't rule anything in or out. Six a day, twelve on a night out, first one 90 minutes after waking — that's just your pattern.
+			19 container
+				20 text YOU Yes, that's right. A pack costs me 1,000 tenge for 20 cigarettes. I'd like to see savings based on what I actually smoke each day, not a fixed six every day. Can I set my quit date for two weeks from now and track those different days here, or is this part just the conversations?
+			21 text Look. Two weeks from today is Nov 15 — I'll keep that as your date.
+
+At 50 tenge a cig, that's 300 on a 6-day, 600 on a night-out. We can track the real mix, not flat six.
+
+How many nights out in a normal week for you?
+			22 container
+				23 text YOU Usually one or two, but it varies. When you say we can track it, do you mean there's an actual daily log and savings counter in the app? Where would I enter today's count? I don't want to mistake a chat note for a working tracker.
+			24 text Look, I won't blur it — a note from me isn't the same as a working counter.
+
+I can't see your app screen, so I don't know where your log lives. I'll keep Nov 15, 50 per cig, and 1-2 nights out here.
+
+Did you see any Tracker or Log tab in your app?
+			25 container
+				26 text YOU No, I only see the conversation. Let's leave tracking aside. I understand how it started: joining friends gradually became buying my own and smoking during work breaks. We can finish this conversation here; don't open the next film yet.
+			27 text Fair. Joining friends, then your own pack, then work breaks — gradual, no single decision.
+
+We'll leave it here, no next film.
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

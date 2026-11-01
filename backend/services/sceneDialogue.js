@@ -9,6 +9,16 @@ export const META_MODEL = 'muse-spark-1.3';
 export const STANCES = Object.freeze(['hold', 'probe', 'release', 'advance']);
 export const NEXT_STATES = Object.freeze(['stay', 'offer', 'launch']);
 
+export const APP_CAPABILITIES = [
+  'Product facts (authoritative; do not guess, do not ask the player to check the screen):',
+  'This app is short films and a conversation after each one. Signed-in progress stores the current scene, this chat, living notes, and whether the next film may be offered.',
+  'On screen: Watch again, Sign out, a reply field, and when offered: Watch the next scene / Keep talking about this.',
+  'There is no Tracker, Log, Settings, quit-date picker, daily count field, savings counter, reminder, or other hidden tab.',
+  'A number you keep, a date they named, or arithmetic in this chat is a conversational note in living memory only. It is not a setting, not a daily record, not a working tracker.',
+  'If they ask to set a quit date, log counts, or see savings: say this path does not have those tools yet. You may keep their numbers as notes and do simple math here.',
+  'Never say we can track, I set your date, I cannot see your screen, or ask whether they see a Tracker or Log tab. Do not invent UI.',
+].join(' ');
+
 const ROUTING_RULES = [
   'Reply with JSON only, no markdown and no extra text:',
   '{"reply":"line to the player","stance":"hold|probe|release|advance","next":"stay|offer|launch","memory_updates":[{"id":"stable","theme":"","sceneId":"","quote":"","turnRef":"message-id","context":"","source":"player|muse_hypothesis","status":"current|revised|disagreed","revises":"","depth":"mentioned|partial|thorough","summary":"","openQuestion":""}],"assessment":{"position":"how they describe it now","quotes":["their words"],"examined":"what this scene looked at","open":"what stays open","whyNext":"why the next film is apt","depth":"not_explored|thin|examined"}}',
@@ -178,6 +188,7 @@ export async function handleSceneRequest(body, dependencies = {}) {
   const model = env.META_MODEL || META_MODEL;
   const developer = [
     speechSystemPrompt(),
+    APP_CAPABILITIES,
     `Scene: ${input.sceneId}. ${SCENE_JOBS[input.sceneId]}`,
     ROUTING_RULES,
     memoryPrompt(input.memory),

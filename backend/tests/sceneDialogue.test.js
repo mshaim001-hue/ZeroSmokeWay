@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleSceneRequest,validateSceneInput,META_MODEL,SCENE_JOBS} from '../services/sceneDialogue.js';
+import {APP_CAPABILITIES,handleSceneRequest,validateSceneInput,META_MODEL,SCENE_JOBS} from '../services/sceneDialogue.js';
 import {mergeMemory} from '../services/sceneMemory.js';
 import {ASSISTANT_SPEECH_PROFILE,speechSystemPrompt} from '../services/speechProfile.js';
 import handler from '../api/scene.js';
@@ -43,6 +43,10 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.match(sent.messages[0].content, /next=offer/);
   assert.match(sent.messages[0].content, /memory_updates/);
   assert.match(sent.messages[0].content, /Do not start with/);
+  assert.match(sent.messages[0].content, /no Tracker, Log/);
+  assert.match(sent.messages[0].content, /conversational note/);
+  assert.doesNotMatch(sent.messages[0].content, /You may say: “Look.”/);
+  assert.match(sent.messages[0].content, /Do not open several turns with “Look”/);
   assert.equal(sent.messages.at(-1).content, request.message);
 });
 
@@ -212,8 +216,17 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.doesNotMatch(SCENE_JOBS.pitcher, /They are that bee/);
   assert.doesNotMatch(SCENE_JOBS.firstPuff, /Did anything in that scene feel familiar/);
   assert.match(SCENE_JOBS.firstPuff, /Start from living memory/);
+  assert.match(SCENE_JOBS.firstPuff, /Do not open with “Yours was different.”/);
+  assert.match(SCENE_JOBS.firstPuff, /not a fact about their first cigarette/);
+  assert.match(SCENE_JOBS.pitcher, /Do not say a birthday/);
+  assert.match(SCENE_JOBS.pitcher, /Number of turns is not enough/);
+  assert.match(APP_CAPABILITIES, /There is no Tracker/);
+  assert.match(APP_CAPABILITIES, /Do not invent UI/);
   assert.equal(ASSISTANT_SPEECH_PROFILE.tone.patronizing, 0);
+  assert.ok(ASSISTANT_SPEECH_PROFILE.writing_preferences.avoid.includes('Look.'));
+  assert.ok(!ASSISTANT_SPEECH_PROFILE.writing_preferences.prefer.includes('Look.'));
   assert.match(speechSystemPrompt(), /peer/);
+  assert.match(speechSystemPrompt(), /No catchphrase as a template/);
 });
 
 test('HTTP layer returns 503 without a fake reply body', async () => {
