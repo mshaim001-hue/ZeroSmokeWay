@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Leave feedback — ZeroSmokeWay</title>
+    <meta name="description" content="Send a short note about ZeroSmokeWay. Your conversation is not attached." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; background: #12180f; color: #f3eee4; font: 18px/1.55 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      main { max-width: 40rem; margin: 0 auto; padding: 48px 22px 80px; }
+      p.kicker { margin: 0; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #e4c48a; }
+      h1 { margin: 12px 0 24px; font: normal 2.1rem/1.2 Georgia, serif; }
+      p { color: #c9c2b4; }
+      a { color: #e4c48a; }
+      textarea { width: 100%; min-height: 8rem; margin: 12px 0; padding: 12px; background: #1a2114; color: #f3eee4; border: 1px solid rgba(228,196,138,.35); border-radius: 6px; font: inherit; }
+      button { min-height: 48px; padding: 0 18px; background: #e4c48a; color: #1a2114; border: 0; border-radius: 6px; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="kicker">ZeroSmokeWay</p>
+      <h1>Leave feedback</h1>
+      <p>This is voluntary. It does not send your talk, your timer, or your name. Write only what you want to share.</p>
+      <form id="feedback-form">
+        <label>
+          Your note
+          <textarea id="note" maxlength="2000" required></textarea>
+        </label>
+        <button type="submit">Open an email draft</button>
+      </form>
+      <p><a href="/">Back</a> · <a href="/about.html">About</a></p>
+    </main>
+    <script>
+      document.getElementById('feedback-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        const note = document.getElementById('note').value.trim().slice(0, 2000);
+        const body = encodeURIComponent(note);
+        window.location.href = 'mailto:hello@underdot.net?subject=' + encodeURIComponent('ZeroSmokeWay feedback') + '&body=' + body;
+      });
+    </script>
+  </body>
+</html>

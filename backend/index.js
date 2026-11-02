@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { labyrinthRouter } from './routes/labyrinth.js';
 import { sceneRouter } from './routes/scene.js';
+import { supportRouter } from './routes/support.js';
 
 dotenv.config();
 const app = express();
@@ -10,6 +11,7 @@ app.use(cors());
 app.use(express.json({ limit: '128kb' }));
 app.use('/api/labyrinth', labyrinthRouter);
 app.use('/api/scene', sceneRouter);
+app.use('/api/support', supportRouter);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use((error, _req, res, _next) => {
   res.status(error.status === 413 ? 413 : 500).json({ error: 'Request failed' });

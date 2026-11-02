@@ -109,6 +109,7 @@ test('scenes 7–15 continue from memory, stay distinct, and drop moral gates', 
 
   const truth = await promptOf('truth');
   assert.match(truth, /Still smoking, unsure, or done/);
-  assert.match(truth, /There is no Tracker/);
+  assert.match(truth, /I’m ready to smoke my last cigarette/);
+  assert.match(truth, /Do not say watch the next scene/);
   assert.doesNotMatch(truth, /they can look at smokers without wanting it/);
 });

@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  currentOpenInterval,
   defaultProgress,
   newerEnvelope,
   parseChat,
   parseMemory,
   parseProgress,
   persistPhase,
+  refuseSceneDowngrade,
 } from '../src/auth/progressModel.ts';
 
 test('new users have not seen the intro and start on scene 1', () => {
@@ -18,6 +20,9 @@ test('new users have not seen the intro and start on scene 1', () => {
   assert.equal(start.canAdvance, false);
   assert.equal(start.offerOpen, false);
   assert.deepEqual(start.memory, []);
+  assert.equal(start.appStage, 'journey');
+  assert.deepEqual(start.supportChat, []);
+  assert.deepEqual(start.intervals, []);
 });
 
 test('a video in progress resumes as idle so the film plays again', () => {
@@ -118,4 +123,33 @@ test('the newer device or cloud copy wins', () => {
   const newer = { userId: 'u', updatedAt: 20, progress: { ...defaultProgress(), seenIntro: true } };
   assert.equal(newerEnvelope(older, newer)?.updatedAt, 20);
   assert.equal(newerEnvelope(newer, older)?.progress.seenIntro, true);
+});
+
+test('a confirmed last cigarette is support, and the client cannot reopen a scene', () => {
+  const saved = parseProgress({
+    scene_id: 'truth',
+    app_stage: 'support',
+    smoking_status: 'abstaining',
+    seen_intro: true,
+    intervals: [{ id: 'i1', started_at: '2026-11-02T06:00:00.000Z', source: 'now' }],
+  });
+  assert.equal(saved.appStage, 'support');
+  assert.equal(currentOpenInterval(saved)?.startedAt, '2026-11-02T06:00:00.000Z');
+  const frozen = refuseSceneDowngrade(saved, { ...defaultProgress(), sceneId: 'pitcher' });
+  assert.equal(frozen.appStage, 'support');
+  assert.equal(frozen.sceneId, 'truth');
+});
+
+test('not yet is intention only: no live interval', () => {
+  const saved = parseProgress({
+    scene_id: 'truth',
+    phase: 'chat',
+    seen_intro: true,
+    app_stage: 'preparing_to_start',
+    completion_offered: true,
+    intended_at: '2026-11-02T11:00:00.000Z',
+    chat: [{ role: 'assistant', content: 'Still smoking is a complete place to stand.' }],
+  });
+  assert.equal(saved.appStage, 'preparing_to_start');
+  assert.equal(currentOpenInterval(saved), null);
 });

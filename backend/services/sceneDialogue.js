@@ -15,16 +15,26 @@ export const APP_CAPABILITIES = [
   'Product facts (authoritative; do not guess, do not ask the player to check the screen):',
   'This app is short films and a conversation after each one. Signed-in progress stores the current scene, this chat, living notes, and whether the next film may be offered.',
   'On screen: Watch again, Sign out, a reply field, and when offered: Watch the next scene / Keep talking about this.',
-  'There is no Tracker, Log, Settings, quit-date picker, daily count field, savings counter, reminder, or other hidden tab.',
+  'There is no Tracker, Log, Settings, quit-date picker, daily count field, savings counter, reminder, or other hidden tab on these earlier scenes.',
   'A number you keep, a date they named, or arithmetic in this chat is a conversational note in living memory only. It is not a setting, not a daily record, not a working tracker.',
-  'If they ask to set a quit date, log counts, or see savings: say this path does not have those tools yet. You may keep their numbers as notes and do simple math here.',
+  'If they ask to set a quit date, log counts, or see savings: say this path does not start a count from watching films. You may keep their numbers as notes and do simple math here.',
   'Never say we can track, I set your date, I cannot see your screen, or ask whether they see a Tracker or Log tab. Do not invent UI.',
 ].join(' ');
 
+export const FINALE_CAPABILITIES = [
+  'Product facts (authoritative; do not guess):',
+  'This is the last film. There is no next scene.',
+  'On screen after talk has started: Watch again, Sign out, a reply field, and a button “I’m ready to smoke my last cigarette and go on.” That button is intention, not a running timer.',
+  'Confirming “Is the last cigarette already behind you?” can start the smoke-free count and open support. “Not yet” keeps this scene. They may enter a past time if they already stopped. Do not ask them to smoke another cigarette to finish.',
+  'There is still no savings counter, reminder, craving log, or notification. A date in this chat is not the timer until they confirm in the product.',
+  'Do not invent UI. Do not say you started their count.',
+].join(' ');
+
 export const FINALE_RULES = [
-  'This is the last film. There is no next scene. next is always stay. Do not say watch the next scene, next short, or keep going to another film.',
-  'On screen: Watch again, Sign out, a reply field. No next-scene buttons.',
-  'After enough: a short wrap. They may keep talking here, watch again, or sign out. Signed-in chat on this account can be resumed. There is still no Tracker, quit-date picker, or support corner.',
+  'This is the last film. There is no next scene. Do not say watch the next scene, next short, or keep going to another film.',
+  'next=stay while talking. next=offer only to propose the on-screen completion, when they clearly want to stop and named obstacles have been heard. Never next=launch a film.',
+  'If “I’m ready” might mean a next film or stopping, ask which. They may declare readiness themselves; do not hold them for a correct answer.',
+  'Not today is complete. They may keep talking, watch again, or sign out. Signed-in chat can be resumed. Do not start a timer or call them a quitter.',
 ].join(' ');
 
 const ROUTING_RULES = [
@@ -62,6 +72,12 @@ export function playerFacingReply(content) {
 export function validateSceneInput(body) {
   const invalid = (message) => { const error = new Error(message); error.status = 400; throw error; };
   if (!body || typeof body !== 'object' || Array.isArray(body)) invalid('Expected a JSON object');
+  if (body.appStage === 'support') {
+    const error = new Error('Scenes are closed after support starts');
+    error.status = 409;
+    error.issue = 'scenes_closed';
+    throw error;
+  }
   const { sceneId, message, history = [], memory = [], canAdvance = false, offerOpen = false } = body;
   if (!Object.hasOwn(SCENE_JOBS, sceneId)) invalid('Unknown sceneId');
   const validText = (text, limit) => typeof text === 'string' && text.trim().length > 0 && text.length <= limit;
@@ -155,8 +171,7 @@ export function parseDecision(raw, { allowAdvance, canAdvance, memory, finishRea
     next = 'offer';
   }
   if (lastScene) {
-    next = 'stay';
-    if (stance === 'advance') stance = 'hold';
+    if (next === 'launch') next = 'offer';
   }
   if (next === 'stay' && stance === 'advance') stance = 'hold';
   if (next === 'offer' && stance !== 'advance') stance = 'advance';
@@ -207,13 +222,13 @@ export async function handleSceneRequest(body, dependencies = {}) {
   const lastScene = input.sceneId === LAST_SCENE_ID;
   const developer = [
     speechSystemPrompt(),
-    APP_CAPABILITIES,
+    lastScene ? FINALE_CAPABILITIES : APP_CAPABILITIES,
     lastScene ? FINALE_RULES : '',
     `Scene: ${input.sceneId}. ${SCENE_JOBS[input.sceneId]}`,
     ROUTING_RULES,
     memoryPrompt(input.memory),
     lastScene
-      ? 'Last film. next is always stay. Do not offer or launch a next scene.'
+      ? 'Last film. Never offer or launch a next scene. next=offer only to propose on-screen completion. next=stay otherwise.'
       : (input.canAdvance
         ? (input.offerOpen
           ? 'An offer is on screen. next=launch if they clearly agreed to move. If they added new substance, next=stay and do not re-pitch.'

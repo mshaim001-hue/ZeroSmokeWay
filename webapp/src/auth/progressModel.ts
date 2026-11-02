@@ -1,9 +1,19 @@
 import { FIRST_SCENE, isSceneId, type Phase, type SceneId } from '../scenes/catalog.ts';
 import type { ChatLine } from '../scenes/act1/api.ts';
 
-export const PROGRESS_CACHE = 'zsw_progress_v2';
+export const PROGRESS_CACHE = 'zsw_progress_v3';
 
 export type StoredPhase = 'idle' | 'chat';
+export type AppStage = 'journey' | 'preparing_to_start' | 'support';
+export type SmokingStatus = 'abstaining' | 'smoking' | '';
+export type IntervalSource = 'now' | 'entered';
+
+export type AbstinenceInterval = {
+  id: string;
+  startedAt: string;
+  endedAt: string;
+  source: IntervalSource;
+};
 
 export type MemorySource = 'player' | 'muse_hypothesis';
 export type MemoryStatus = 'current' | 'revised' | 'disagreed';
@@ -32,6 +42,13 @@ export type PlayerProgress = {
   canAdvance: boolean;
   offerOpen: boolean;
   memory: MemoryEntry[];
+  appStage: AppStage;
+  completionOffered: boolean;
+  intendedAt: string;
+  currentIntervalId: string;
+  smokingStatus: SmokingStatus;
+  supportChat: ChatLine[];
+  intervals: AbstinenceInterval[];
 };
 
 export type ProgressEnvelope = {
@@ -54,6 +71,65 @@ export function defaultProgress(): PlayerProgress {
     canAdvance: false,
     offerOpen: false,
     memory: [],
+    appStage: 'journey',
+    completionOffered: false,
+    intendedAt: '',
+    currentIntervalId: '',
+    smokingStatus: '',
+    supportChat: [],
+    intervals: [],
+  };
+}
+
+export function parseStage(value: unknown): AppStage {
+  return value === 'preparing_to_start' || value === 'support' ? value : 'journey';
+}
+
+export function parseSmokingStatus(value: unknown): SmokingStatus {
+  return value === 'abstaining' || value === 'smoking' ? value : '';
+}
+
+export function parseIntervals(value: unknown): AbstinenceInterval[] {
+  if (!Array.isArray(value)) return [];
+  const rows: AbstinenceInterval[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== 'object') continue;
+    const item = row as Record<string, unknown>;
+    const id = typeof item.id === 'string' ? item.id : '';
+    const startedAt = typeof item.startedAt === 'string' ? item.startedAt : typeof item.started_at === 'string' ? item.started_at : '';
+    if (!startedAt) continue;
+    const endedRaw = item.endedAt ?? item.ended_at;
+    rows.push({
+      id: id || startedAt,
+      startedAt,
+      endedAt: typeof endedRaw === 'string' ? endedRaw : '',
+      source: item.source === 'entered' ? 'entered' : 'now',
+    });
+  }
+  return rows.slice(0, 40);
+}
+
+export function currentOpenInterval(progress: PlayerProgress): AbstinenceInterval | null {
+  if (progress.appStage !== 'support' || progress.smokingStatus === 'smoking') return null;
+  return progress.intervals.find(item => !item.endedAt) ?? null;
+}
+
+export function refuseSceneDowngrade(current: PlayerProgress, incoming: PlayerProgress): PlayerProgress {
+  if (current.appStage !== 'support') return incoming;
+  return {
+    ...incoming,
+    appStage: 'support',
+    sceneId: current.sceneId,
+    phase: current.phase,
+    chat: current.chat,
+    canAdvance: false,
+    offerOpen: false,
+    smokingStatus: current.smokingStatus,
+    currentIntervalId: current.currentIntervalId,
+    intendedAt: current.intendedAt,
+    intervals: current.intervals.length ? current.intervals : incoming.intervals,
+    supportChat: incoming.supportChat.length ? incoming.supportChat : current.supportChat,
+    memory: incoming.memory.length ? incoming.memory : current.memory,
   };
 }
 
@@ -158,7 +234,24 @@ export function parseProgress(raw: unknown): PlayerProgress {
   const canAdvance = row.canAdvance === true || row.can_advance === true;
   const offerOpen = (row.offerOpen === true || row.offer_open === true) && canAdvance;
   const memory = parseMemory(row.memory);
-  return { sceneId, phase, chat, seenIntro, canAdvance, offerOpen, memory };
+  const appStage = parseStage(row.appStage ?? row.app_stage);
+  const supportChat = appStage === 'support' ? parseChat(row.supportChat ?? row.support_chat) : [];
+  return {
+    sceneId,
+    phase,
+    chat,
+    seenIntro,
+    canAdvance,
+    offerOpen,
+    memory,
+    appStage,
+    completionOffered: row.completionOffered === true || row.completion_offered === true,
+    intendedAt: typeof row.intendedAt === 'string' ? row.intendedAt : typeof row.intended_at === 'string' ? row.intended_at : '',
+    currentIntervalId: typeof row.currentIntervalId === 'string' ? row.currentIntervalId : typeof row.current_interval_id === 'string' ? row.current_interval_id : '',
+    smokingStatus: parseSmokingStatus(row.smokingStatus ?? row.smoking_status),
+    supportChat,
+    intervals: parseIntervals(row.intervals),
+  };
 }
 
 export function parseEnvelope(raw: unknown, userId: string): ProgressEnvelope | null {

@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Scene1App } from '../scenes/act1/Scene1App';
-import { FIRST_SCENE } from '../scenes/catalog';
+import { SupportHome } from '../support/SupportHome';
 import { isAuthConfigured, supabase } from './client';
 import { Landing } from './Landing';
 import { Intro } from './Intro';
 import { loadProgress, saveProgress } from './progress';
-import type { PlayerProgress } from './progressModel';
+import { defaultProgress, type PlayerProgress } from './progressModel';
 import { enterFullscreen } from '../fullscreen';
 import './gate.css';
 
-type View = 'boot' | 'landing' | 'intro' | 'play';
+type View = 'boot' | 'landing' | 'intro' | 'play' | 'home';
 
 function cleanAuthParams() {
   const url = new URL(window.location.href);
@@ -59,7 +59,7 @@ export function AuthGate() {
     setProgress(next);
     setBusy(false);
     cleanAuthParams();
-    setView(next.seenIntro ? 'play' : 'intro');
+    setView(next.appStage === 'support' ? 'home' : next.seenIntro ? 'play' : 'intro');
   }
 
   async function signInGoogle() {
@@ -86,15 +86,7 @@ export function AuthGate() {
   async function startPath() {
     if (!userId) return;
     setBusy(true);
-    const next: PlayerProgress = {
-      sceneId: FIRST_SCENE,
-      phase: 'idle',
-      chat: [],
-      seenIntro: true,
-      canAdvance: false,
-      offerOpen: false,
-      memory: [],
-    };
+    const next: PlayerProgress = { ...defaultProgress(), seenIntro: true };
     await saveProgress(userId, next);
     setProgress(next);
     setBusy(false);
@@ -113,5 +105,22 @@ export function AuthGate() {
   if (view === 'landing') return <Landing busy={busy} issue={issue} onGoogle={() => void signInGoogle()} />;
   if (view === 'intro') return <Intro busy={busy} onStart={() => void startPath()} onSignOut={() => void signOut()} />;
   if (!userId || !progress) return <Landing busy={false} issue={issue} onGoogle={() => void signInGoogle()} />;
-  return <Scene1App userId={userId} initial={progress} onSignOut={() => void signOut()} />;
+  if (view === 'home' || progress.appStage === 'support') {
+    return (
+      <SupportHome
+        userId={userId}
+        initial={progress}
+        onSignOut={() => void signOut()}
+        onProgress={next => { setProgress(next); setView('home'); }}
+      />
+    );
+  }
+  return (
+    <Scene1App
+      userId={userId}
+      initial={progress}
+      onSignOut={() => void signOut()}
+      onEnteredSupport={next => { setProgress(next); setView('home'); }}
+    />
+  );
 }

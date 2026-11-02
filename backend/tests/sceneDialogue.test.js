@@ -298,7 +298,10 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.ritual, /Do not require that the cigarette was the prison/);
   assert.match(SCENE_JOBS.weeks, /Do not require “it is not me who wants it/);
   assert.match(SCENE_JOBS.truth, /Still smoking, unsure, or done are all complete enough/);
-  assert.match(SCENE_JOBS.truth, /next is always stay/);
+  assert.match(SCENE_JOBS.truth, /next=stay while talking/);
+  assert.match(SCENE_JOBS.truth, /Heard is not agreed/);
+  assert.match(SCENE_JOBS.pitcher, /AFTER PREVIOUS/);
+  assert.match(SCENE_JOBS.pitcher, /Do not push for a quit today/);
   assert.match(SCENE_JOBS.willpower, /Dossier examples are not their life/);
   assert.doesNotMatch(SCENE_JOBS.willpower, /From memory: two-week intention/);
   assert.doesNotMatch(SCENE_JOBS.weeks, /From memory: a ten-day/);
@@ -354,9 +357,20 @@ test('empty memory does not plant a ten-day attempt, and the finale cannot offer
       return { choices: [{ message: { content: '{"reply":"Want to watch the next scene?","stance":"advance","next":"offer"}' } }] };
     },
   });
-  assert.equal(last.next, 'stay');
+  assert.equal(last.next, 'offer');
   assert.match(finale, /There is no next scene/);
-  assert.match(finale, /next is always stay/);
+  assert.match(finale, /I’m ready to smoke my last cigarette/);
+  assert.match(finale, /Never next=launch a film/);
+});
+
+test('support stage cannot open a scene, and watching films never starts a count', async () => {
+  await assert.rejects(
+    handleSceneRequest({ ...request, appStage: 'support' }, { createCompletion: completion('{"reply":"Hi","stance":"hold","next":"stay"}') }),
+    e => e.status === 409 && e.issue === 'scenes_closed',
+  );
+  const closed = response();
+  await handler({ method: 'POST', body: { ...request, appStage: 'support' } }, closed);
+  assert.equal(closed.code, 409);
 });
 
 test('HTTP layer returns 503 without a fake reply body', async () => {

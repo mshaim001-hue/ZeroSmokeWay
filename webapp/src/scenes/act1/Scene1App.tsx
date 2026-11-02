@@ -4,7 +4,10 @@ import { askScene, type ChatLine } from './api';
 import { gateAfterKeepTalking, gateAfterModel, gateAfterUserTalk } from './offerState';
 import { saveProgress } from '../../auth/progress';
 import { newMessageId, persistPhase, type MemoryEntry, type PlayerProgress } from '../../auth/progressModel';
+import { LastCigaretteDialog } from '../../support/LastCigaretteDialog';
+import { confirmLastCigarette, declareIntent } from '../../support/quitApi';
 import '../../auth/gate.css';
+import '../../support/support.css';
 import './scene1.css';
 
 const CinematicStage = lazy(() => import('./CinematicStage').then(m => ({ default: m.CinematicStage })));
@@ -13,13 +16,14 @@ type Props = {
   userId: string;
   initial: PlayerProgress;
   onSignOut: () => void;
+  onEnteredSupport: (progress: PlayerProgress) => void;
 };
 
 function line(role: ChatLine['role'], content: string): ChatLine {
   return { id: newMessageId(), role, content };
 }
 
-export function Scene1App({ userId, initial, onSignOut }: Props) {
+export function Scene1App({ userId, initial, onSignOut, onEnteredSupport }: Props) {
   const [sceneId, setSceneId] = useState<SceneId>(initial.sceneId || FIRST_SCENE);
   const scene = sceneOf(sceneId);
   const [play, setPlay] = useState(0);
@@ -28,6 +32,10 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
   const [memory, setMemory] = useState<MemoryEntry[]>(initial.memory ?? []);
   const [canAdvance, setCanAdvance] = useState(initial.canAdvance === true);
   const [offerOpen, setOfferOpen] = useState(initial.offerOpen === true && initial.canAdvance === true);
+  const [appStage, setAppStage] = useState(initial.appStage);
+  const [completionOffered, setCompletionOffered] = useState(initial.completionOffered === true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmIssue, setConfirmIssue] = useState('');
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
@@ -36,8 +44,8 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
   const end = useRef<HTMLDivElement>(null);
   const kickoffFor = useRef(-1);
   const skipKickoff = useRef(initial.phase === 'chat' && initial.chat.length > 0);
-  const snapshot = useRef({ sceneId, phase, chat, memory, canAdvance, offerOpen });
-  snapshot.current = { sceneId, phase, chat, memory, canAdvance, offerOpen };
+  const snapshot = useRef({ sceneId, phase, chat, memory, canAdvance, offerOpen, completionOffered, appStage });
+  snapshot.current = { sceneId, phase, chat, memory, canAdvance, offerOpen, completionOffered, appStage };
 
   useEffect(() => {
     const m = matchMedia('(prefers-reduced-motion: reduce)');
@@ -66,6 +74,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
   }, []);
   useEffect(() => {
     const stored: PlayerProgress = {
+      ...initial,
       sceneId,
       phase: persistPhase(phase),
       chat: persistPhase(phase) === 'chat' ? chat.slice(-40) : [],
@@ -73,14 +82,17 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
       canAdvance,
       offerOpen,
       memory: memory.slice(-40),
+      completionOffered,
+      appStage,
     };
     const timer = window.setTimeout(() => { void saveProgress(userId, stored); }, 400);
     return () => window.clearTimeout(timer);
-  }, [userId, sceneId, phase, chat, memory, canAdvance, offerOpen]);
+  }, [userId, sceneId, phase, chat, memory, canAdvance, offerOpen, completionOffered, appStage]);
   useEffect(() => {
     const flush = () => {
       const now = snapshot.current;
       void saveProgress(userId, {
+        ...initial,
         sceneId: now.sceneId,
         phase: persistPhase(now.phase),
         chat: persistPhase(now.phase) === 'chat' ? now.chat.slice(-40) : [],
@@ -88,6 +100,8 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
         canAdvance: now.canAdvance,
         offerOpen: now.offerOpen,
         memory: now.memory.slice(-40),
+        completionOffered: now.completionOffered,
+        appStage: now.appStage,
       });
     };
     const onHide = () => {
@@ -178,6 +192,31 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
     setCanAdvance(next.ready);
     setOfferOpen(next.open);
   }
+  async function completeWith(when: Date, source: 'now' | 'entered') {
+    setBusy(true);
+    setConfirmIssue('');
+    try {
+      onEnteredSupport(await confirmLastCigarette(userId, when, source));
+    } catch (error) {
+      setConfirmIssue(error instanceof Error ? error.message : 'Could not start the count.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function keepIntention() {
+    setBusy(true);
+    setConfirmIssue('');
+    try {
+      await declareIntent(userId);
+      setAppStage('preparing_to_start');
+      setCompletionOffered(true);
+      setConfirmOpen(false);
+    } catch (error) {
+      setConfirmIssue(error instanceof Error ? error.message : 'Could not save that.');
+    } finally {
+      setBusy(false);
+    }
+  }
   async function speak(message: string, history: ChatLine[], retry = false, extras?: { canAdvance: boolean; offerOpen: boolean }) {
     if (busy && !retry) return;
     const forScene = sceneId;
@@ -193,6 +232,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
         memory: snapshot.current.memory,
         canAdvance: ready,
         offerOpen: open,
+        appStage,
       });
       if (request.current !== control) return;
       if (snapshot.current.sceneId !== forScene) return;
@@ -201,6 +241,7 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
       setMemory(Array.isArray(reply.memory) ? reply.memory : snapshot.current.memory);
       setCanAdvance(gate.ready);
       setOfferOpen(gate.open);
+      if (!sceneOf(forScene).next && gate.open) setCompletionOffered(true);
       if (gate.launch) {
         request.current = undefined;
         goTo(sceneOf(forScene).next ?? neighbor(forScene, 1));
@@ -307,6 +348,29 @@ export function Scene1App({ userId, initial, onSignOut }: Props) {
             <button type="button" className="scene1-offer-stay" onClick={keepTalking} disabled={busy}>
               Keep talking about this
             </button>
+          </div>
+        )}
+        {chatting && !nextScene && chat.length > 0 && (
+          <div className="scene1-offer">
+            <button
+              type="button"
+              className={completionOffered || offerOpen ? 'scene1-next' : 'scene1-offer-stay'}
+              onClick={() => { setConfirmIssue(''); setConfirmOpen(true); }}
+              disabled={busy}
+            >
+              I’m ready to smoke my last cigarette and go on
+            </button>
+          </div>
+        )}
+        {confirmOpen && (
+          <div className="support-modal">
+            <LastCigaretteDialog
+              busy={busy}
+              issue={confirmIssue}
+              onNow={() => void completeWith(new Date(), 'now')}
+              onEnter={when => void completeWith(when, 'entered')}
+              onNotYet={() => void keepIntention()}
+            />
           </div>
         )}
         <form className="scene1-compose" onSubmit={e => void send(e)}>

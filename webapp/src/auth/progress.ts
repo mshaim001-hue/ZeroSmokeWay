@@ -6,6 +6,7 @@ import {
   parseEnvelope,
   parseProgress,
   persistPhase,
+  refuseSceneDowngrade,
   type PlayerProgress,
   type ProgressEnvelope,
 } from './progressModel';
@@ -24,6 +25,13 @@ function storedProgress(progress: PlayerProgress): PlayerProgress {
     canAdvance: progress.canAdvance === true,
     offerOpen: progress.offerOpen === true && progress.canAdvance === true,
     memory: progress.memory.slice(-40),
+    appStage: progress.appStage === 'support' || progress.appStage === 'preparing_to_start' ? progress.appStage : 'journey',
+    completionOffered: progress.completionOffered === true,
+    intendedAt: progress.intendedAt,
+    currentIntervalId: progress.currentIntervalId,
+    smokingStatus: progress.smokingStatus,
+    supportChat: progress.appStage === 'support' ? progress.supportChat.slice(-40) : [],
+    intervals: progress.intervals.slice(0, 40),
   };
 }
 
@@ -52,6 +60,13 @@ function asRemoteProgress(data: {
   can_advance?: boolean;
   offer_open?: boolean;
   memory?: unknown;
+  app_stage?: string;
+  completion_offered?: boolean;
+  intended_at?: string | null;
+  current_interval_id?: string | null;
+  smoking_status?: string | null;
+  support_chat?: unknown;
+  intervals?: unknown;
 }, userId: string): ProgressEnvelope {
   return {
     userId,
@@ -64,6 +79,13 @@ function asRemoteProgress(data: {
       canAdvance: data.can_advance,
       offerOpen: data.offer_open,
       memory: data.memory,
+      appStage: data.app_stage,
+      completionOffered: data.completion_offered,
+      intendedAt: data.intended_at,
+      currentIntervalId: data.current_interval_id,
+      smokingStatus: data.smoking_status,
+      supportChat: data.support_chat,
+      intervals: data.intervals,
     }),
   };
 }
@@ -72,10 +94,17 @@ async function readRemote(userId: string): Promise<ProgressEnvelope | null> {
   if (!isAuthConfigured()) return null;
   const full = await supabase()
     .from('player_progress')
-    .select('scene_id, phase, chat, seen_intro, can_advance, offer_open, memory, updated_at')
+    .select('scene_id, phase, chat, seen_intro, can_advance, offer_open, memory, updated_at, app_stage, completion_offered, intended_at, current_interval_id, smoking_status, support_chat')
     .eq('user_id', userId)
     .maybeSingle();
-  if (!full.error && full.data) return asRemoteProgress(full.data, userId);
+  if (!full.error && full.data) {
+    const intervals = await supabase()
+      .from('abstinence_intervals')
+      .select('id, started_at, ended_at, source')
+      .eq('user_id', userId)
+      .order('started_at', { ascending: false });
+    return asRemoteProgress({ ...full.data, intervals: intervals.data ?? [] }, userId);
+  }
   const legacy = await supabase()
     .from('player_progress')
     .select('scene_id, phase, chat, seen_intro, updated_at')
@@ -98,6 +127,12 @@ async function writeRemote(envelope: ProgressEnvelope): Promise<void> {
     can_advance: stored.canAdvance,
     offer_open: stored.offerOpen,
     memory: stored.memory,
+    app_stage: stored.appStage,
+    completion_offered: stored.completionOffered,
+    intended_at: stored.intendedAt || null,
+    current_interval_id: stored.currentIntervalId || null,
+    smoking_status: stored.smokingStatus || null,
+    support_chat: stored.supportChat,
     updated_at: new Date(updatedAt).toISOString(),
   };
   const full = await supabase().from('player_progress').upsert(row);
@@ -126,11 +161,24 @@ export async function loadProgress(userId: string): Promise<PlayerProgress> {
 }
 
 export async function saveProgress(userId: string, progress: PlayerProgress): Promise<void> {
+  const local = readCache(userId);
+  const next = local ? refuseSceneDowngrade(local.progress, progress) : progress;
+  const envelope: ProgressEnvelope = {
+    userId,
+    updatedAt: Date.now(),
+    progress: storedProgress(next),
+  };
+  writeCache(envelope);
+  await writeRemote(envelope).catch(() => undefined);
+}
+
+export async function applyQuitSnapshot(userId: string, snapshot: unknown): Promise<PlayerProgress> {
+  const progress = parseProgress(snapshot);
   const envelope: ProgressEnvelope = {
     userId,
     updatedAt: Date.now(),
     progress: storedProgress(progress),
   };
   writeCache(envelope);
-  await writeRemote(envelope).catch(() => undefined);
+  return envelope.progress;
 }
