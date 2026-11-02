@@ -1,0 +1,36 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text That dinner split in two — the table staying warm, and the ones waiting to slip out into the cold.
+
+When you're with people, do you have a moment like that where you step out to smoke, or is that not much your life?
+			11 container
+				12 text YOU At family dinners I'm often the only one going out. My sister used to come but she's quit. Sometimes I miss a story and ask what everyone was laughing about. Other times I enjoy a few minutes away from the noise.
+			13 text Going out alone after your sister quit is a different kind of exit.
+Sometimes you come back to a laugh you missed, sometimes you get a break you wanted. When it's the break you wanted — what do those few minutes away actually do for you?
+			14 container
+				15 text YOU Quiet, and not having to answer anyone for a minute. But after eating it's often mostly wanting a cigarette. Last Sunday I wanted to stay and hear my child talking about school, but I was already thinking 'I'll just go quickly'. That's the bit I don't like.
+			16 text Wanting to stay for your child talking about school while your head is already on ‘I’ll just go quickly’ — that tug is the part you don’t like.
+
+We can stay with this dinner a bit more, or the next short film is ready if you want it.
+			17 container
+				18 text YOU I did stay that time. It was my attention wandering, not actually leaving. I'd like more of my attention back without turning this into another reason to blame myself.
+			19 text You stayed for the school story even while part of you was already halfway out. That difference matters.
+
+Wanting your attention back without turning it into blame — what is staying like on the times it feels lighter?
+			20 container
+				21 text YOU I don't know if I can compare neatly. Sometimes I'm absorbed and don't check the time. Last Sunday I noticed the pull and stayed anyway. That's enough for me to take from this scene.
+			22 text Staying while noticing the pull, and the times you're just absorbed — both count. That's a clear place to pause this scene.
+
+The next short film is ready if you want it — watch the next scene, or keep talking about this one?
+		23 button Watch the next scene
+		24 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

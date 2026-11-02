@@ -1,0 +1,27 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text You told me those uni coffees were about sitting with the smoking girls, feeling grown up.
+
+Watching those giant billboards selling grown-up and cool — did any of that echo what smoking looked like to you then?
+			11 container
+				12 text YOU Not really the cowboy or sports pictures. More a woman sitting with coffee, looking like her time belongs to her. Women around me and films, not one particular advert I remember.
+			13 text That woman with coffee — time that belongs to her — feels a long way from cowboys and sport.
+
+When you think of those five quiet minutes you mentioned now, does it feel close to that picture, or different?
+			14 container
+				15 text YOU Close in one way: not having to explain why I need a minute. Different because now I schedule around cigarettes. I like my work and being a mother; I just want a little time that's mine without smoking being the excuse.
+			16 text Needing no excuse for a minute still holds from that picture. The shift is the scheduling around cigarettes, while wanting time that's yours without smoking.
+
+We could keep with this, or watch the next scene if you want — what feels right?
+		17 button Watch the next scene
+		18 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

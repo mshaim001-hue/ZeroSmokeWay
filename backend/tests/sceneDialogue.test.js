@@ -266,6 +266,8 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.pitcher, /keep it as theirs/);
   assert.match(SCENE_JOBS.pitcher, /mark it tentative/);
   assert.match(SCENE_JOBS.pitcher, /happened vs wanted vs imagined/);
+  assert.match(SCENE_JOBS.pitcher, /hoped-for purpose vs known outcome/);
+  assert.match(SCENE_JOBS.pitcher, /Something to do/);
   assert.match(SCENE_JOBS.pitcher, /Fear before offer/);
   assert.match(SCENE_JOBS.pitcher, /that lands/);
   assert.match(SCENE_JOBS.labyrinth, /MAIN THEME/);
@@ -289,6 +291,9 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.swamp, /do not devalue it/);
   assert.match(SCENE_JOBS.substitutes, /Do not analogize to heroin/);
   assert.match(SCENE_JOBS.substitutes, /Do not devalue medical or chosen help/);
+  assert.match(SCENE_JOBS.substitutes, /Do not add hands, mouth/);
+  assert.match(SCENE_JOBS.combo, /hoped-for purpose, not as a known effect/);
+  assert.doesNotMatch(SCENE_JOBS.substitutes, /changed the urge, the hands/);
   assert.match(SCENE_JOBS.monster, /not a three-week medical timeline/);
   assert.match(SCENE_JOBS.ritual, /Do not require that the cigarette was the prison/);
   assert.match(SCENE_JOBS.weeks, /Do not require “it is not me who wants it/);
@@ -317,6 +322,7 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(speechSystemPrompt(), /No catchphrase as a template/);
   assert.match(speechSystemPrompt(), /Film metaphors are pictures/);
   assert.match(speechSystemPrompt(), /that lands/);
+  assert.match(speechSystemPrompt(), /hoped-for purpose vs known outcome/);
   assert.doesNotMatch(speechSystemPrompt(), /stay tentative \(/);
 });
 

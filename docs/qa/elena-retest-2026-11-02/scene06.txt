@@ -1,0 +1,27 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text That one was pure boredom — dull lecture, blank report.
+
+For you, is it more empty time that pulls, or getting stuck on something hard?
+			11 container
+				12 text YOU Monthly sales reports. Sometimes I say I need to clear my head, when really I don't want to start the spreadsheet. Not the same as being angry after a client call. It's an excuse to leave my desk for a while.
+			13 text That's a clean split from the client call — not cooling down, just putting off starting.
+
+When you come back from that break, what is the spreadsheet like to start?
+			14 container
+				15 text YOU Sometimes easier, sometimes I make another coffee and postpone it again. The numbers haven't become clearer because I smoked. I think getting away is what I'm looking for, not help concentrating.
+			16 text Getting away is the point for those reports, not sharper focus. And the numbers are the same when you get back — sometimes easier to start, sometimes just another coffee.
+
+Want to watch the next scene, or stay with this one a bit longer?
+		17 button Watch the next scene
+		18 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

@@ -1,0 +1,23 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text You said you've smoked since nineteen — what do you remember from that first stretch? What were you expecting back then?
+			11 container
+				12 text YOU Coffee between classes with girls at university. Some of them smoked, and I wanted to sit with them and feel grown up. I don't remember a big first-cigarette moment or being laughed at like in the film.
+			13 text No single big moment, more coffee between classes — sitting with them, feeling grown up. What made you reach for the next ones after that?
+			14 container
+				15 text YOU At first the same thing. Then I bought my own so I didn't keep asking, and started having one with coffee alone before classes. No exact turning point. What felt like a little treat became an ordinary part of the morning.
+			16 text From joining them to feel grown up, to buying your own and that coffee alone — a little treat turning ordinary.
+
+Want to watch the next scene, or keep talking about this one a bit more?
+		17 button Watch the next scene
+		18 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

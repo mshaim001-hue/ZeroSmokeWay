@@ -1,0 +1,24 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			11 text He just sits with his coffee while that noise goes off.
+
+In those two months without, what did a cue like that do — did the nagging come and then what?
+			12 container
+				13 text YOU Coffee felt strange at first. I'd reach for the pack if I sat in the same place, so sometimes I had breakfast with my child and coffee later. After a while some mornings were ordinary again. Like I said, it wasn't two months of feeling deprived.
+			14 text Reaching in the same seat, then shifting coffee later with breakfast — and some mornings turning ordinary again.
+
+Not deprived all the way through, just strange at first.
+
+Want to watch the next scene, or keep talking about this one a bit more?
+		15 button Watch the next scene
+		16 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

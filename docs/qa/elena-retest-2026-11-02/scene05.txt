@@ -1,0 +1,27 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text That office crunch was pretty loud.
+
+When stress piles up for you, what does one recent moment look like — what was happening right before, and what felt different after the cigarette?
+			11 container
+				12 text YOU A client complained and a colleague blamed my team. I went to the car before calling back and smoked. Still angry afterwards, but less likely to shout. I don't know if it was the cigarette or getting away from the argument.
+			13 text Still angry but less likely to shout — that's a clear split to keep.
+
+What were those few minutes in the car like apart from the smoking itself?
+			14 container
+				15 text YOU Quiet. I could stop answering everyone and decide what I actually wanted to say. The cigarette still felt part of calming down, but it hadn't changed the client or the problem. I needed the pause.
+			16 text The client and the blame were still there, but those minutes gave you space to decide how to call back without shouting.
+
+We can stay with this scene, or the next one is ready if you want it.
+		17 button Watch the next scene
+		18 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

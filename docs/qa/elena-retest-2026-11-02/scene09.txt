@@ -1,0 +1,32 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text That climb was pure forcing — and he still fell.
+
+Have you ever tried to quit that way, by grit and rules?
+			11 container
+				12 text YOU Three attempts. The longest was two months. The first week I was irritable and snacked more, but after a while some days felt normal. It wasn't two months hanging off a cliff.
+			13 text That’s an important correction — not two months hanging off a cliff. First week rough, then some days just normal.
+
+In that longest stretch, what were you leaning on to not smoke — a firm rule, a date, just deciding each day?
+			14 container
+				15 text YOU At first just 'get through today'. Then not smoking became more ordinary. During a pressured period at work I took 'just one' in the car, and within a week I was buying packs. Those two months still showed me I could do it, though.
+			16 text Two months of ordinary days matters — 'get through today' turning into just normal. And that pressured 'just one' in the car pulled you back to packs within a week.
+
+Makes me wonder if part of the weight was feeling deprived in your head, even on the normal days — push that away if it doesn't fit.
+
+Want to watch the next scene, or keep talking about this one a bit more?
+			17 container
+				18 text YOU No, I don't remember feeling deprived on all those normal days. That's why I don't want the effort written off. The difficult bit was that pressured week and deciding one wouldn't matter. Next time I want support before I get that far.
+			19 text You're right — those normal days were normal, not deprived. I'll keep it that way.
+
+That pressured week and the 'just one' decision is the part that mattered.
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

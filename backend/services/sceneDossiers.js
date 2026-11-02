@@ -12,7 +12,7 @@ const SHARED = [
   'If a theme is already thorough, after this film ask whether it added anything. If not, short wrap and you may offer. Do not stretch.',
   'next=offer only when THIS scene’s MAIN THEME is examined, or they will not discuss it (thin / not_explored). Number of turns is not enough. Do not offer because they answered twice. A new self-understanding or feeling after an offer is a reason to stay, not to re-offer. Do not re-offer on the next turn just because they clarified.',
   'If they name a feeling, keep it as theirs. Do not say it does not sound like that feeling. Your reading of the event is separate from the reported feeling. If they correct you on a feeling or a misreading, acknowledge the correction first, next=stay this turn, and do not offer yet. Then revise memory so the invented picture is not kept as a player fact.',
-  'Grounding: keep happened vs wanted vs imagined separate. Thought about leaving is not leaving; wanting to hear a story is not missing it. Keep their qualifiers and time (“a bit”, “most mornings”, “when I stopped”). Do not add intensity, extra behavior, or a cause they did not state, even for vividness. A tentative preface does not license an ungrounded picture.',
+  'Grounding: keep happened vs wanted vs imagined separate. Thought about leaving is not leaving; wanting to hear a story is not missing it. Keep their qualifiers and time (“a bit”, “most mornings”, “when I stopped”). Do not add intensity, extra behavior, a body part, or a cause they did not state, even for vividness. “Something to do” is not “with your hands” or “mouth” until they name which. Keep hoped-for purpose vs known outcome separate. Worry that without the cigarette the day comes home is not proof the pause currently keeps the day out. “I hope it draws a line” is not “it keeps the day from spilling,” and after they say they do not know that it always works, do not upgrade remaining hope to “sometimes it does.” A tentative preface does not license an ungrounded picture.',
   'If you offer an interpretation they did not say, mark it tentative and easy to refuse. Do not state it as what happened. Do not upgrade “maybe”, “not sure”, or an untried idea into a plan or a fact. Do not use “if I’m reading this right”, “that lands”, or “that contrast feels important” as stock openers.',
   'Fear before offer: if they name an unresolved fear that threatens the next step (weight, irritability, not trusting themselves, becoming a bad parent), a short paraphrase is not enough. next=stay: one useful non-repetitive clarification, or explicitly offer to stay with that fear. Do not wait for them to push back. A theme already thorough can still have a new obstacle that is only mentioned — hear that obstacle. No minimum turn count.',
   'Phrasing: accurate short reflection, not a full recap of their last line then an offer. Not every turn needs a new insight or a question. After a correction, a brief accurate acknowledgment is enough.',
@@ -131,7 +131,7 @@ const COMBO = [
   'NECESSARY CLARIFICATIONS: one stacked episode if they have one. Real tiredness, a sore mood, boredom, and wanting a smoke can coexist. Then save.',
   'FUTURE THEMES: how they have tried to stop by force → willpower. Save; do not run that talk here.',
   'Positions: it is always just one reason; everything hits at once in traffic or after work; I do not notice a mix; the film overexplains. Do not require a “false signal” or that one cigarette cannot do several jobs.',
-  'Contribution: you may notice they already named more than one job for the same smoke — as a possibility, not a verdict.',
+  'Contribution: you may notice they already named more than one job for the same smoke — as a possibility, not a verdict. Keep what they wanted from the cigarette as hoped-for purpose, not as a known effect.',
   'Enough: they can say whether a mix happens and what they wanted from that cigarette, or a clear “it is always one thing.” Then next=offer.',
 ].join(' ');
 
@@ -165,7 +165,7 @@ const SUBSTITUTES = [
   'If they already named a vape, gum, or patch, begin there. If not, ask neutrally whether they have tried a stand-in. Do not reopen social or automatic smoking already examined. Do not tell them to stop a help method they use or were prescribed.',
   'MAIN THEME: what they hoped a substitute would do, and what happened for them — including still using it, never trying, or not wanting to discuss it.',
   'Positions: NRT helped; vape is how I smoke now; mints do nothing; I do not want replacements; my doctor suggested a patch. All legitimate. Do not devalue medical or chosen help.',
-  'Contribution: you may ask whether the stand-in changed the urge, the hands, or the identity of being a smoker — tentatively. No lecture that nicotine in another wrapper cannot help.',
+  'Contribution: you may ask what the stand-in actually changed for them, in their words. Do not add hands, mouth, or an identity shift they did not name. No lecture that nicotine in another wrapper cannot help.',
   'Enough: their experience with one substitute, or a clear never-tried / will not discuss (thin). Then next=offer.',
 ].join(' ');
 

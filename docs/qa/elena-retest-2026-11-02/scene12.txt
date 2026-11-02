@@ -1,0 +1,27 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text That film pictured the urge as a tiny thing with a hollow itch in a tunnel.
+
+For you — take one of those moments like after lunch or in the car — what is that itch itself like, where do you feel it?
+			11 container
+				12 text YOU Mostly an impatient thought that keeps interrupting. In a meeting I check the clock. In the morning I feel like I can't properly start until coffee and a cigarette, usually about twenty minutes after waking. Not exactly pain.
+			13 text Not pain, more like an impatient interruption — and mornings have that "can't start properly" feel about twenty minutes after waking.
+
+When that thought keeps nudging in a meeting, does it feel small and nagging, or does it swell huge until you check the clock?
+			14 container
+				15 text YOU Usually low-level and nagging. A bit restless in my body too — I move around and get impatient if delayed. In the first days when I stopped it was stronger and took more attention, but not every ordinary morning is like that.
+			16 text Low-level nagging up top, plus that restless fidget in your body when it's delayed — and ordinary mornings aren't all as loud as those first days stopping.
+
+Want to watch the next scene, or stay with this itch a little longer?
+		17 button Watch the next scene
+		18 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

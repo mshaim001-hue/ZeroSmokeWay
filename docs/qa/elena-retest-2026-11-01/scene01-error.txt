@@ -1,0 +1,18 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	1 container
+		2 text After the scene
+		3 button Watch again
+		4 button Sign out
+		5 container Conversation
+			6 text Did anything in that scene feel familiar to you, or was your experience different?
+			10 container
+				11 text YOU The thinking you can leave whenever you want feels familiar. I'm 38, I've smoked since nineteen, and now it's about fifteen a day. I manage a sales team and I catch myself planning meetings around when I can have a cigarette. I'm tired of that.
+		12 container
+			13 text The model did not answer. You can retry.
+			14 button Retry
+		7 container
+			8 text entry area (settable) Your reply
+			9 button (disabled) Send
+
+The focused UI element is 0 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

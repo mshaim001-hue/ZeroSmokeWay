@@ -72,6 +72,7 @@ test('scenes 7–15 continue from memory, stay distinct, and drop moral gates', 
   const combo = await promptOf('combo');
   assert.match(combo, /NEW here, not scenes 5–7/);
   assert.match(combo, /standing outside/);
+  assert.match(combo, /hoped-for purpose, not as a known effect/);
   assert.doesNotMatch(combo, /nicotine parasite that pretends to fix all three/);
 
   const willpower = await promptOf('willpower');
@@ -88,6 +89,8 @@ test('scenes 7–15 continue from memory, stay distinct, and drop moral gates', 
   const substitutes = await promptOf('substitutes');
   assert.match(substitutes, /Do not analogize to heroin/);
   assert.match(substitutes, /Do not tell them to stop a help method/);
+  assert.match(substitutes, /Do not add hands, mouth/);
+  assert.doesNotMatch(substitutes, /changed the urge, the hands/);
   assert.doesNotMatch(substitutes, /like offering a heroin addict/);
 
   const monster = await promptOf('monster');

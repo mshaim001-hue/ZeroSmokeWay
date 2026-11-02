@@ -1,0 +1,29 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text Swamp. Waist-deep, counting what's left.
+
+Have you ever tried rationing yours — a cap for the day, or waiting longer between them?
+			11 container
+				12 text YOU Yes, in another attempt I put ten aside instead of carrying the pack. It worked some days. On bad workdays I bought more. I spent more time counting what was left, but it wasn't unbearable every minute like the swamp suggests.
+			13 text Ten aside instead of the pack — and counting what was left took up more headspace.
+
+On the days it did work, what was different — the day itself, or something about the waiting?
+			14 container
+				15 text YOU Usually I was busy in the morning and didn't notice as much. Later I'd save one for after dinner. They became little appointments. I don't think cutting down is worthless; it just wasn't the freedom from planning I want now.
+			16 text Busy mornings the count faded into the background, then the evening ones turned into little appointments you saved.
+
+And even when it worked, it still wasn't the freedom from planning you want now.
+
+Want to watch the next scene, or stay with this one a bit more?
+		17 button Watch the next scene
+		18 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

@@ -1,0 +1,32 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text Those five minutes when nobody needs anything from you stuck with me.
+
+If you take one recent break like that — what shifts first when you step out, before you even light up?
+			11 container
+				12 text YOU Yesterday after lunch, I liked just closing the office door behind me. Nobody asking me for anything. I wasn't tense or upset, so the tight shoes didn't quite fit that break. I still enjoyed the cigarette with my coffee.
+			13 text Fair point — no pinch there, just the door shut and quiet.
+
+On top of that quiet, what did the coffee-and-cigarette add yesterday?
+			14 container
+				15 text YOU The familiar routine, something to do while I stood there. Maybe some taste too. I can't separate it neatly. The quiet mattered on its own, but I wouldn't honestly say I didn't enjoy smoking.
+			16 text That honest mix makes sense — quiet on its own, plus the routine and taste tangled in.
+
+When you walked back in after that coffee-cigarette yesterday, what felt different, if anything?
+			17 container
+				18 text YOU Mostly that I'd had a break. I wasn't suddenly a different person or better at my job. I was ready to get on with the afternoon. That's about as far as I can describe it.
+			19 text That's clear — quiet from the door, the familiar coffee-cigarette you honestly enjoyed, then just ready for the afternoon, not transformed.
+
+Want to watch the next scene, or keep talking about this one?
+		20 button Watch the next scene
+		21 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

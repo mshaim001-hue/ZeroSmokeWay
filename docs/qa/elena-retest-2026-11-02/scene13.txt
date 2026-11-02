@@ -1,0 +1,24 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text The door standing open while he smoked that last one slowly — what stayed with you from that?
+
+And for you, does a last cigarette feel near or far right now?
+			11 container
+				12 text YOU Nearer, but not tonight. I want to talk to my sister and choose the date next week. I liked the open door. I don't need the last cigarette to be disgusting or dramatic, just a decision I can stand behind next morning.
+			13 text Nearer but not tonight is a clear place to stand.
+
+Wanting a decision you can stand behind in the morning says more than making it disgusting.
+
+Want to watch the next scene, or keep talking about this one?
+		14 button Watch the next scene
+		15 button Keep talking about this
+		8 container
+			9 text entry area (settable) Your reply
+			10 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
