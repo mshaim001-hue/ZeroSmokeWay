@@ -1,8 +1,10 @@
 import { supabase, isAuthConfigured } from './client';
 import {
   PROGRESS_CACHE,
+  applyLifecycle,
   defaultProgress,
-  newerEnvelope,
+  isLifecycleSnapshot,
+  mergeEnvelopes,
   parseEnvelope,
   parseProgress,
   persistPhase,
@@ -67,10 +69,11 @@ function asRemoteProgress(data: {
   smoking_status?: string | null;
   support_chat?: unknown;
   intervals?: unknown;
-}, userId: string): ProgressEnvelope {
+}, userId: string, schemaComplete = true): ProgressEnvelope {
   return {
     userId,
     updatedAt: Date.parse(data.updated_at) || 0,
+    schemaComplete,
     progress: parseProgress({
       sceneId: data.scene_id,
       phase: data.phase,
@@ -103,7 +106,7 @@ async function readRemote(userId: string): Promise<ProgressEnvelope | null> {
       .select('id, started_at, ended_at, source')
       .eq('user_id', userId)
       .order('started_at', { ascending: false });
-    return asRemoteProgress({ ...full.data, intervals: intervals.data ?? [] }, userId);
+    return asRemoteProgress({ ...full.data, intervals: intervals.data ?? [] }, userId, true);
   }
   const legacy = await supabase()
     .from('player_progress')
@@ -111,7 +114,7 @@ async function readRemote(userId: string): Promise<ProgressEnvelope | null> {
     .eq('user_id', userId)
     .maybeSingle();
   if (legacy.error || !legacy.data) return null;
-  return asRemoteProgress(legacy.data, userId);
+  return asRemoteProgress(legacy.data, userId, false);
 }
 
 async function writeRemote(envelope: ProgressEnvelope): Promise<void> {
@@ -150,12 +153,21 @@ async function writeRemote(envelope: ProgressEnvelope): Promise<void> {
 
 export async function loadProgress(userId: string): Promise<PlayerProgress> {
   const local = readCache(userId);
-  const remote = await readRemote(userId).catch(() => null);
-  const winner = newerEnvelope(local, remote);
+  let remote: ProgressEnvelope | null = null;
+  try {
+    remote = await readRemote(userId);
+  } catch {
+    remote = null;
+  }
+  const winner = mergeEnvelopes(local, remote);
   if (!winner) return defaultProgress();
   writeCache(winner);
-  if (local && remote && local.updatedAt > remote.updatedAt) {
-    void writeRemote(local).catch(() => undefined);
+  if (
+    local && remote && local.updatedAt > remote.updatedAt
+    && remote.progress.appStage !== 'support'
+    && remote.schemaComplete !== false
+  ) {
+    void writeRemote({ ...local, progress: storedProgress({ ...local.progress, ...winner.progress, appStage: remote.progress.appStage }) }).catch(() => undefined);
   }
   return winner.progress;
 }
@@ -173,12 +185,36 @@ export async function saveProgress(userId: string, progress: PlayerProgress): Pr
 }
 
 export async function applyQuitSnapshot(userId: string, snapshot: unknown): Promise<PlayerProgress> {
+  if (!isLifecycleSnapshot(snapshot)) {
+    const current = readCache(userId)?.progress;
+    if (current) return current;
+  }
   const progress = parseProgress(snapshot);
+  const cached = readCache(userId)?.progress;
+  const merged = cached
+    ? { ...applyLifecycle(cached, progress), supportChat: cached.supportChat, memory: cached.memory }
+    : progress;
   const envelope: ProgressEnvelope = {
     userId,
     updatedAt: Date.now(),
-    progress: storedProgress(progress),
+    schemaComplete: true,
+    progress: storedProgress(merged),
   };
   writeCache(envelope);
   return envelope.progress;
+}
+
+export function cacheSupportContent(userId: string, progress: PlayerProgress): void {
+  const cached = readCache(userId)?.progress;
+  writeCache({
+    userId,
+    updatedAt: Date.now(),
+    schemaComplete: true,
+    progress: storedProgress({
+      ...(cached ?? progress),
+      appStage: 'support',
+      supportChat: progress.supportChat.slice(-40),
+      memory: progress.memory.slice(-40),
+    }),
+  });
 }

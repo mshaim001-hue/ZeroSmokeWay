@@ -15,8 +15,11 @@ test('body cards are a fixed list with sources, not generated copy', () => {
     assert.ok(card.body.includes('not') || card.body.includes('population') || card.body.includes('general'));
   }
   const early = visibleBodyCards('2026-11-02T12:00:00.000Z', false, Date.parse('2026-11-02T12:10:00.000Z'));
-  assert.equal(early.length, 1);
-  assert.equal(early[0].id, '20min');
+  assert.equal(early.length, 0);
+  const twenty = visibleBodyCards('2026-11-02T12:00:00.000Z', false, Date.parse('2026-11-02T12:20:00.000Z'));
+  assert.equal(twenty[0].id, '20min');
+  assert.ok(BODY_CARDS.find(card => card.id === '1y')?.source.url.includes('nhs.uk'));
+  assert.ok(BODY_CARDS.find(card => card.id === '3-6y')?.source.url.includes('cdc.gov'));
 });
 
 test('smoke-free copy uses the confirmed timestamp', () => {
@@ -32,11 +35,19 @@ test('scene 15 has the last-cigarette CTA and confirmation, not a next film', ()
 
 test('home keeps support, about, and feedback without blocking support', () => {
   const home = readFileSync(join(root, '../src/support/SupportHome.tsx'), 'utf8');
+  const quit = readFileSync(join(root, '../src/support/quitApi.ts'), 'utf8');
   assert.match(home, />Support</);
   assert.match(home, /\/feedback.html/);
   assert.match(home, /\/about.html/);
   assert.match(home, /I smoked/);
   assert.match(home, /Record that I smoked/);
+  assert.match(home, /saveSupportContent\(userId, progress\)/);
+  assert.match(home, /mergeSupportSnapshot/);
+  assert.match(home, /Could not save this talk/);
+  assert.doesNotMatch(home, /saveProgress/);
+  assert.match(quit, /save_support_content/);
+  assert.match(quit, /p_memory/);
+  assert.doesNotMatch(quit, /saveSupportContent[\s\S]*applyQuitSnapshot/);
 });
 
 test('feedback page does not attach the conversation', () => {

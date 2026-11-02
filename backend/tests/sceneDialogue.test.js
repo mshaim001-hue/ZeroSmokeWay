@@ -365,12 +365,21 @@ test('empty memory does not plant a ten-day attempt, and the finale cannot offer
 
 test('support stage cannot open a scene, and watching films never starts a count', async () => {
   await assert.rejects(
-    handleSceneRequest({ ...request, appStage: 'support' }, { createCompletion: completion('{"reply":"Hi","stance":"hold","next":"stay"}') }),
+    handleSceneRequest(request, {
+      resolvedAppStage: 'support',
+      createCompletion: completion('{"reply":"Hi","stance":"hold","next":"stay"}'),
+    }),
     e => e.status === 409 && e.issue === 'scenes_closed',
   );
-  const closed = response();
-  await handler({ method: 'POST', body: { ...request, appStage: 'support' } }, closed);
-  assert.equal(closed.code, 409);
+  const allowed = await handleSceneRequest(request, {
+    resolvedAppStage: 'journey',
+    createCompletion: completion('{"reply":"Hi","stance":"hold","next":"stay"}'),
+  });
+  assert.equal(allowed.response, 'Hi');
+  const ignoredBody = await handleSceneRequest({ ...request, appStage: 'support' }, {
+    createCompletion: completion('{"reply":"Hi","stance":"hold","next":"stay"}'),
+  });
+  assert.equal(ignoredBody.response, 'Hi');
 });
 
 test('HTTP layer returns 503 without a fake reply body', async () => {
@@ -378,11 +387,8 @@ test('HTTP layer returns 503 without a fake reply body', async () => {
   await handler({ method: 'POST', body: request }, missing);
   assert.equal(missing.code, 503);
   assert.equal(missing.body.response, undefined);
-  assert.equal(missing.body.issue, 'missing_key');
+  assert.equal(missing.body.issue, 'not_configured');
   assert.equal(missing.headers['Cache-Control'], 'no-store');
-  const bad = response();
-  await handler({ method: 'POST', body: {} }, bad);
-  assert.equal(bad.code, 400);
   const get = response();
   await handler({ method: 'GET' }, get);
   assert.equal(get.code, 405);

@@ -45,13 +45,7 @@ function extractObject(raw) {
 export function validateSupportInput(body) {
   const invalid = (message) => { const error = new Error(message); error.status = 400; throw error; };
   if (!body || typeof body !== 'object' || Array.isArray(body)) invalid('Expected a JSON object');
-  if (body.appStage && body.appStage !== 'support') {
-    const error = new Error('Support chat is only after a confirmed last cigarette');
-    error.status = 409;
-    error.issue = 'not_in_support';
-    throw error;
-  }
-  const { message, history = [], memory = [], smokingStatus = '' } = body;
+  const { message, history = [], memory = [] } = body;
   const validText = (text, limit) => typeof text === 'string' && text.trim().length > 0 && text.length <= limit;
   if (!validText(message, 2000)) invalid('message must contain 1–2000 characters');
   if (!Array.isArray(history) || history.length > 24) invalid('Invalid history (maximum 24 user/assistant messages, 2000 characters each)');
@@ -72,7 +66,6 @@ export function validateSupportInput(body) {
     message: message.trim(),
     history: lines,
     memory: parseMemory(memory),
-    smokingStatus: smokingStatus === 'smoking' ? 'smoking' : 'abstaining',
   };
 }
 
@@ -115,7 +108,15 @@ function memoryPrompt(entries, smokingStatus) {
 }
 
 export async function handleSupportRequest(body, dependencies = {}) {
+  const resolved = dependencies.resolvedAppStage ?? '';
+  if (resolved !== 'support') {
+    const error = new Error('Support chat is only after a confirmed last cigarette');
+    error.status = 409;
+    error.issue = 'not_in_support';
+    throw error;
+  }
   const input = validateSupportInput(body);
+  input.smokingStatus = dependencies.smokingStatus === 'smoking' ? 'smoking' : 'abstaining';
   const env = dependencies.env ?? process.env;
   const apiKey = env.MODEL_API_KEY?.trim();
   if (!apiKey && !dependencies.createCompletion) fail('missing_key');

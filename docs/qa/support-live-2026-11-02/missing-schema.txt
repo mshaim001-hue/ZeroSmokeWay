@@ -1,0 +1,41 @@
+Browser tab: 5, Title: "ZeroSmokeWay — why you still smoke", URL: "https://www.zerosmokeway.life/".
+1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/
+	2 container
+		3 text After the scene
+		4 button Watch again
+		5 button Sign out
+		6 container Conversation
+			7 text The film leaves him on that hill under a clear sky, breathing while others still smoke below.
+
+When you picture other people smoking now, where do you find yourself — wanting it, indifferent, something else?
+			8 container
+				9 text YOU I'm still smoking, so I don't feel above them or separate from them. I still want that minute to myself. But I can see the difference between wanting a pause and needing a cigarette as permission. I'll talk to my sister and choose the date next week.
+			10 text You're still in it with them, not looking down — just clearer on what you actually want.
+
+That pause being yours without needing a cigarette as permission, that's a real shift to take to your sister next week.
+
+I'm here if you want to keep talking, you can watch again, or sign out and come back.
+		11 button I’m ready to smoke my last cigarette and go on
+		15 container Is the last cigarette already behind you?
+			16 heading Is the last cigarette already behind you?, Value: 2, ID: last-cigarette-title
+				17 text Is the last cigarette already behind you?
+			18 text This starts the count from a time that already happened. You do not need to smoke another cigarette to go on.
+			32 text record "progress" has no field "can_advance"
+			19 button Yes, start the count now
+			20 container
+				21 text Enter the time of my last cigarette
+				22 date field (settable) Enter the time of my last cigarette
+					23 container
+						24 stepper
+						25 stepper
+						26 stepper
+						27 stepper
+						28 stepper
+					29 pop up button Show local date and time picker Show local date and time picker
+			30 button Use this time
+			31 button Not yet
+		12 container
+			13 text entry area (settable) Your reply
+			14 button (disabled) Send
+
+The focused UI element is 1 AXWebArea ZeroSmokeWay — why you still smoke, URL: zerosmokeway.life/

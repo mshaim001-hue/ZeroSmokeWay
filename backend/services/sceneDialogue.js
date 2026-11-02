@@ -72,12 +72,6 @@ export function playerFacingReply(content) {
 export function validateSceneInput(body) {
   const invalid = (message) => { const error = new Error(message); error.status = 400; throw error; };
   if (!body || typeof body !== 'object' || Array.isArray(body)) invalid('Expected a JSON object');
-  if (body.appStage === 'support') {
-    const error = new Error('Scenes are closed after support starts');
-    error.status = 409;
-    error.issue = 'scenes_closed';
-    throw error;
-  }
   const { sceneId, message, history = [], memory = [], canAdvance = false, offerOpen = false } = body;
   if (!Object.hasOwn(SCENE_JOBS, sceneId)) invalid('Unknown sceneId');
   const validText = (text, limit) => typeof text === 'string' && text.trim().length > 0 && text.length <= limit;
@@ -210,6 +204,13 @@ function decisionFromCompletion(completion, input) {
 }
 
 export async function handleSceneRequest(body, dependencies = {}) {
+  const resolved = dependencies.resolvedAppStage ?? '';
+  if (resolved === 'support') {
+    const error = new Error('Scenes are closed after support starts');
+    error.status = 409;
+    error.issue = 'scenes_closed';
+    throw error;
+  }
   const input = validateSceneInput(body);
   const env = dependencies.env ?? process.env;
   const apiKey = env.MODEL_API_KEY?.trim();

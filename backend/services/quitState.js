@@ -1,6 +1,9 @@
 export const STAGES = Object.freeze(['journey', 'preparing_to_start', 'support']);
 export const SMOKING = Object.freeze(['abstaining', 'smoking']);
+// Entered times may be up to two minutes ahead of server now (device clock skew).
+// source=now always uses the server clock, not the client timestamp.
 const SKEW_MS = 120000;
+const RESTART_REPLAY_MS = 2000;
 
 export function defaultQuitState() {
   return {
@@ -42,9 +45,9 @@ export function declareIntent(state, now = new Date()) {
 }
 
 export function confirmLastCigarette(state, at, source = 'now', now = new Date()) {
-  const when = asDate(at, now);
+  const when = source === 'now' ? now : asDate(at, now);
   if (!when) return { ok: false, error: 'invalid_time' };
-  if (when.getTime() > now.getTime() + SKEW_MS) return { ok: false, error: 'future_time' };
+  if (source === 'entered' && when.getTime() > now.getTime() + SKEW_MS) return { ok: false, error: 'future_time' };
   const open = state.intervals.find(item => !item.endedAt);
   if (state.appStage === 'support' && open) {
     return { ok: true, unchanged: true, state };
@@ -75,17 +78,35 @@ export function recordSmoked(state, at, restart = false, now = new Date()) {
   const endAt = asDate(at, now);
   if (!endAt) return { ok: false, error: 'invalid_time' };
   if (endAt.getTime() > now.getTime() + SKEW_MS) return { ok: false, error: 'future_time' };
-  const intervals = state.intervals.map(item => (
-    item.endedAt ? item : { ...item, endedAt: endAt.toISOString() }
-  ));
+  const open = state.intervals.find(item => !item.endedAt);
+  if (!restart) {
+    if (!open && state.smokingStatus === 'smoking') return { ok: true, unchanged: true, state };
+    const intervals = state.intervals.map(item => (
+      item.endedAt ? item : { ...item, endedAt: endAt.toISOString() }
+    ));
+    return {
+      ok: true,
+      unchanged: false,
+      state: {
+        ...state,
+        intervals,
+        currentIntervalId: null,
+        smokingStatus: 'smoking',
+      },
+    };
+  }
+  if (open && Math.abs(new Date(open.startedAt).getTime() - endAt.getTime()) < RESTART_REPLAY_MS) {
+    return { ok: true, unchanged: true, state };
+  }
   const closed = {
     ...state,
-    intervals,
+    intervals: state.intervals.map(item => (
+      item.endedAt ? item : { ...item, endedAt: endAt.toISOString() }
+    )),
     currentIntervalId: null,
     smokingStatus: 'smoking',
   };
-  if (restart) return confirmLastCigarette(closed, endAt, 'entered', now);
-  return { ok: true, unchanged: false, state: closed };
+  return confirmLastCigarette(closed, endAt, 'entered', now);
 }
 
 export function protectSceneWrite(current, incoming) {

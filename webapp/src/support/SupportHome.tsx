@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { currentOpenInterval, newMessageId, type PlayerProgress } from '../auth/progressModel';
-import { saveProgress } from '../auth/progress';
+import { applyLifecycle, currentOpenInterval, mergeSupportSnapshot, newMessageId, type PlayerProgress } from '../auth/progressModel';
 import { LastCigaretteDialog } from './LastCigaretteDialog';
 import { visibleBodyCards, usesNrtFromMemory } from './bodyCards';
-import { confirmLastCigarette, recordSmoked, saveSupportChat } from './quitApi';
+import { confirmLastCigarette, recordSmoked, saveSupportContent } from './quitApi';
 import { askSupport } from './supportApi';
 import { formatSmokeFree } from './timer';
 import type { ChatLine } from '../scenes/act1/api';
@@ -51,19 +50,26 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     if (open) end.current?.scrollIntoView({ block: 'nearest' });
   }, [chat.length, busy, open]);
   useEffect(() => {
+    const preserveChat = busy || Boolean(draft.trim()) || Boolean(request.current);
+    setProgress(current => {
+      const next = mergeSupportSnapshot(current, initial, { preserveChat });
+      if (
+        current.smokingStatus === next.smokingStatus
+        && current.currentIntervalId === next.currentIntervalId
+        && current.supportChat === next.supportChat
+        && current.memory === next.memory
+      ) return current;
+      return next;
+    });
+  }, [initial, busy, draft]);
+  useEffect(() => {
     const timer = window.setTimeout(() => {
-      void saveProgress(userId, progress);
-      if (progress.appStage === 'support') {
-        void saveSupportChat(userId, progress.supportChat).catch(() => undefined);
-      }
+      void saveSupportContent(userId, progress).catch(error => {
+        setIssue(error instanceof Error ? error.message : 'Could not save this talk.');
+      });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [userId, progress]);
-
-  function replace(next: PlayerProgress) {
-    setProgress(next);
-    onProgress(next);
-  }
+  }, [userId, progress.supportChat, progress.memory]);
 
   async function speak(message: string, history: ChatLine[]) {
     setIssue('');
@@ -78,10 +84,14 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
       });
       if (request.current !== control) return;
       setOfferRecord(reply.recordSmoked === true);
-      replace({
-        ...progress,
-        memory: Array.isArray(reply.memory) ? reply.memory : progress.memory,
-        supportChat: [...history, line('user', message), line('assistant', reply.response)].slice(-40),
+      setProgress(current => {
+        const next = {
+          ...current,
+          memory: Array.isArray(reply.memory) ? reply.memory : current.memory,
+          supportChat: [...history, line('user', message), line('assistant', reply.response)].slice(-40),
+        };
+        onProgress(next);
+        return next;
       });
     } catch {
       if (request.current === control) setIssue('The model did not answer. You can retry.');
@@ -100,7 +110,11 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     setOpen(true);
     setDraft('');
     const history = progress.supportChat;
-    replace({ ...progress, supportChat: [...history, line('user', message)] });
+    setProgress(current => {
+      const next = { ...current, supportChat: [...current.supportChat, line('user', message)].slice(-40) };
+      onProgress(next);
+      return next;
+    });
     await speak(message, history);
   }
 
@@ -114,7 +128,12 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     setBusy(true);
     setIssue('');
     try {
-      replace(await recordSmoked(userId, when, restart));
+      const snapshot = await recordSmoked(userId, when, restart);
+      setProgress(current => {
+        const next = applyLifecycle(current, snapshot);
+        onProgress(next);
+        return next;
+      });
       setRecordOpen(false);
       setOfferRecord(false);
     } catch (error) {
@@ -128,7 +147,12 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     setBusy(true);
     setIssue('');
     try {
-      replace(await confirmLastCigarette(userId, new Date(), 'now'));
+      const snapshot = await confirmLastCigarette(userId, new Date(), 'now');
+      setProgress(current => {
+        const next = applyLifecycle(current, snapshot);
+        onProgress(next);
+        return next;
+      });
       setRecordOpen(false);
     } catch (error) {
       setIssue(error instanceof Error ? error.message : 'Could not start a new count.');

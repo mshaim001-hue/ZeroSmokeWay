@@ -7,47 +7,63 @@ export type BodyCard = {
   source: { name: string; url: string };
 };
 
+const NHS = {
+  name: 'NHS Better Health — Quit smoking',
+  url: 'https://www.nhs.uk/better-health/quit-smoking/',
+};
+
+const CDC = {
+  name: 'CDC — Benefits of quitting',
+  url: 'https://www.cdc.gov/tobacco/about/benefits-of-quitting.html',
+};
+
 export const BODY_CARDS: BodyCard[] = [
   {
     id: '20min',
-    afterHours: 0,
+    afterHours: 20 / 60,
     title: 'Around 20 minutes',
-    body: 'Heart rate and blood pressure often start to fall toward the person’s usual range. This is a general pattern in populations, not a reading of your body.',
-    source: {
-      name: 'NHS — What happens when you quit',
-      url: 'https://www.nhs.uk/better-health/quit-smoking/what-happens-when-you-quit-smoking/',
-    },
+    body: 'NHS describes pulse rate starting to return toward usual around this time. This is a general pattern, not a reading of your body.',
+    nrtNote: 'Nicotine gum or patches still deliver nicotine, so heart-rate change from stopping smoke may not match a nicotine-free timeline.',
+    source: NHS,
   },
   {
-    id: '12h',
-    afterHours: 12,
-    title: 'Around 12 hours',
-    body: 'Carbon monoxide from smoke typically falls in the blood, and oxygen can be carried more normally. This is about smoke, not a personal lab result.',
-    nrtNote: 'Nicotine gum, patches, or similar help do not put smoke in the lungs. This carbon monoxide note still applies if you have stopped smoking.',
-    source: {
-      name: 'CDC — Benefits of quitting',
-      url: 'https://www.cdc.gov/tobacco/about/benefits-of-quitting.html',
-    },
+    id: '8h',
+    afterHours: 8,
+    title: 'Around 8 hours',
+    body: 'NHS describes oxygen in the blood returning toward usual around this time. This is a general pattern, not a reading of your body.',
+    nrtNote: 'This is about stopping smoke. Nicotine replacement does not put carbon monoxide in the blood the way smoking does.',
+    source: NHS,
+  },
+  {
+    id: '48h',
+    afterHours: 48,
+    title: 'Around 48 hours',
+    body: 'NHS describes carbon monoxide falling to the level of someone who does not smoke by about this time. This is about smoke in the blood, not a personal lab result.',
+    nrtNote: 'Nicotine replacement does not put smoke in the lungs, so this carbon monoxide note still applies if you have stopped smoking.',
+    source: NHS,
   },
   {
     id: '2-12w',
     afterHours: 24 * 14,
-    title: 'Over the following weeks',
-    body: 'Circulation and lung function often improve over weeks to months after stopping smoking. Timing varies widely. This is not a schedule of symptoms you must feel.',
-    source: {
-      name: 'NHS — What happens when you quit',
-      url: 'https://www.nhs.uk/better-health/quit-smoking/what-happens-when-you-quit-smoking/',
-    },
+    title: 'After 2 to 12 weeks',
+    body: 'NHS describes circulation to the heart and muscles often improving over this stretch. Timing varies widely. This is not a schedule of symptoms you must feel.',
+    nrtNote: 'This is about stopping smoke. Nicotine help, if you use it, is a separate medical matter.',
+    source: NHS,
   },
   {
     id: '1y',
     afterHours: 24 * 365,
     title: 'Around a year',
-    body: 'Risk of coronary heart disease is often described as about half that of a person who still smokes, as a population estimate — not a prediction for you.',
-    source: {
-      name: 'CDC — Benefits of quitting',
-      url: 'https://www.cdc.gov/tobacco/about/benefits-of-quitting.html',
-    },
+    body: 'NHS describes risk of heart attack as about half that of a person who still smokes, as a population estimate — not a prediction for you.',
+    nrtNote: 'This comparison is with continued smoking. Using prescribed nicotine help is not the same as smoking.',
+    source: NHS,
+  },
+  {
+    id: '3-6y',
+    afterHours: 24 * 365 * 3,
+    title: 'After 3 to 6 years',
+    body: 'CDC describes added risk of coronary heart disease dropping by about half over this span, compared with continued smoking. This is not a personal measurement.',
+    source: CDC,
   },
 ];
 

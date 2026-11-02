@@ -55,6 +55,7 @@ export type ProgressEnvelope = {
   userId: string;
   updatedAt: number;
   progress: PlayerProgress;
+  schemaComplete?: boolean;
 };
 
 export function newMessageId(): string {
@@ -254,17 +255,104 @@ export function parseProgress(raw: unknown): PlayerProgress {
   };
 }
 
+export function isLifecycleSnapshot(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
+  const row = raw as Record<string, unknown>;
+  const stage = row.app_stage ?? row.appStage;
+  return stage === 'support' || stage === 'preparing_to_start' || Array.isArray(row.intervals);
+}
+
 export function parseEnvelope(raw: unknown, userId: string): ProgressEnvelope | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
   if (row.userId !== userId) return null;
   const updatedAt = typeof row.updatedAt === 'number' ? row.updatedAt : Date.parse(String(row.updatedAt ?? ''));
   if (!Number.isFinite(updatedAt)) return null;
-  return { userId, updatedAt, progress: parseProgress(row.progress ?? row) };
+  return {
+    userId,
+    updatedAt,
+    progress: parseProgress(row.progress ?? row),
+    schemaComplete: row.schemaComplete === false ? false : true,
+  };
 }
 
 export function newerEnvelope(a: ProgressEnvelope | null, b: ProgressEnvelope | null): ProgressEnvelope | null {
   if (!a) return b;
   if (!b) return a;
   return a.updatedAt >= b.updatedAt ? a : b;
+}
+
+export function applyLifecycle(current: PlayerProgress, snapshot: PlayerProgress): PlayerProgress {
+  return {
+    ...current,
+    appStage: snapshot.appStage,
+    smokingStatus: snapshot.smokingStatus,
+    intervals: snapshot.intervals,
+    currentIntervalId: snapshot.currentIntervalId,
+    intendedAt: snapshot.intendedAt,
+    completionOffered: snapshot.completionOffered,
+    sceneId: snapshot.appStage === 'support' ? snapshot.sceneId : current.sceneId,
+    canAdvance: snapshot.appStage === 'support' ? false : current.canAdvance,
+    offerOpen: snapshot.appStage === 'support' ? false : current.offerOpen,
+  };
+}
+
+export function mergeSupportSnapshot(
+  current: PlayerProgress,
+  incoming: PlayerProgress,
+  options: { preserveChat?: boolean } = {},
+): PlayerProgress {
+  const next = applyLifecycle(current, incoming);
+  if (options.preserveChat) {
+    return { ...next, supportChat: current.supportChat, memory: current.memory };
+  }
+  return {
+    ...next,
+    supportChat: incoming.supportChat.length ? incoming.supportChat : current.supportChat,
+    memory: incoming.memory.length ? incoming.memory : current.memory,
+  };
+}
+
+export function mergeEnvelopes(local: ProgressEnvelope | null, remote: ProgressEnvelope | null): ProgressEnvelope | null {
+  if (!remote) return local;
+  if (!local) return remote;
+  if (remote.schemaComplete === false) {
+    if (lpHasLifecycle(local.progress)) {
+      return { ...local, updatedAt: Math.max(local.updatedAt, remote.updatedAt) };
+    }
+    return newerEnvelope(local, remote);
+  }
+  const rp = remote.progress;
+  const lp = local.progress;
+  const localNewer = local.updatedAt > remote.updatedAt;
+  const sameStage = lp.appStage === rp.appStage;
+  const chatFromLocal = localNewer && sameStage;
+  const progress: PlayerProgress = {
+    ...(chatFromLocal ? lp : rp),
+    appStage: rp.appStage,
+    smokingStatus: rp.smokingStatus,
+    intervals: rp.intervals,
+    currentIntervalId: rp.currentIntervalId,
+    intendedAt: rp.intendedAt,
+    completionOffered: rp.completionOffered || lp.completionOffered,
+  };
+  if (rp.appStage === 'support') {
+    progress.sceneId = rp.sceneId;
+    progress.phase = rp.phase;
+    progress.chat = rp.chat;
+    progress.canAdvance = false;
+    progress.offerOpen = false;
+    progress.supportChat = chatFromLocal ? lp.supportChat : rp.supportChat;
+    progress.memory = chatFromLocal ? lp.memory : rp.memory;
+  }
+  return {
+    userId: remote.userId,
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt),
+    progress,
+    schemaComplete: true,
+  };
+}
+
+function lpHasLifecycle(progress: PlayerProgress): boolean {
+  return progress.appStage === 'support' || progress.appStage === 'preparing_to_start' || progress.intervals.length > 0;
 }

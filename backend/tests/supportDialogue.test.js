@@ -15,11 +15,12 @@ test('support job does not reopen scenes or let chat change the timer', () => {
 
 test('support chat stays after they said they smoked, and only flags a product record', async () => {
   const result = await handleSupportRequest({
-    appStage: 'support',
     message: 'I smoked one in the car.',
     history: [{ role: 'assistant', content: 'What’s going on right now?' }],
     memory: [{ id: 'm-pause', source: 'player', status: 'current', summary: 'wants to keep the pause', quote: 'I want the minute' }],
   }, {
+    resolvedAppStage: 'support',
+    smokingStatus: 'abstaining',
     createCompletion: async params => {
       assert.match(params.messages[0].content, /a smoke-free count is running/);
       assert.match(params.messages[0].content, /I want the minute/);
@@ -33,12 +34,13 @@ test('support chat stays after they said they smoked, and only flags a product r
 
 test('journey users cannot use the support API', async () => {
   await assert.rejects(
-    handleSupportRequest({ appStage: 'journey', message: 'help', history: [] }, {
+    handleSupportRequest({ appStage: 'support', message: 'help', history: [] }, {
       createCompletion: async () => ({ choices: [{ message: { content: '{"reply":"Hi","stance":"hold"}' } }] }),
     }),
     e => e.status === 409 && e.issue === 'not_in_support',
   );
   const closed = response();
-  await handler({ method: 'POST', body: { appStage: 'journey', message: 'help' } }, closed);
-  assert.equal(closed.code, 409);
+  await handler({ method: 'POST', body: { appStage: 'support', message: 'help' } }, closed);
+  assert.equal(closed.code, 503);
+  assert.equal(closed.body.issue, 'not_configured');
 });

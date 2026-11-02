@@ -41,7 +41,7 @@ test('a future last-cigarette time is rejected', () => {
 });
 
 test('I smoked closes the live timer and keeps the earlier stretch', () => {
-  const started = confirmLastCigarette(defaultQuitState(), new Date('2026-11-01T08:00:00.000Z'), 'now', now).state;
+  const started = confirmLastCigarette(defaultQuitState(), new Date('2026-11-01T08:00:00.000Z'), 'entered', now).state;
   const smoked = recordSmoked(started, now, false, now);
   assert.equal(smoked.state.smokingStatus, 'smoking');
   assert.equal(smoked.state.currentIntervalId, null);
@@ -59,6 +59,26 @@ test('a support row cannot be written back onto a scene', () => {
   assert.equal(frozen.appStage, 'support');
   assert.equal(frozen.sceneId, support.sceneId);
   assert.equal(frozen.smokingStatus, 'abstaining');
+});
+
+test('the now action uses server time, and two minutes of entered-clock skew is allowed', () => {
+  const clientClock = new Date('2026-11-02T12:03:00.000Z');
+  const started = confirmLastCigarette(defaultQuitState(), clientClock, 'now', now);
+  assert.equal(started.state.intervals[0].startedAt, now.toISOString());
+  const skew = confirmLastCigarette(defaultQuitState(), new Date('2026-11-02T12:01:00.000Z'), 'entered', now);
+  assert.equal(skew.ok, true);
+});
+
+test('recording a smoke is idempotent, including a restart replay', () => {
+  const started = confirmLastCigarette(defaultQuitState(), now, 'now', now).state;
+  const smoked = recordSmoked(started, now, false, now);
+  const smokedAgain = recordSmoked(smoked.state, now, false, now);
+  assert.equal(smokedAgain.unchanged, true);
+  assert.equal(smokedAgain.state.intervals.filter(item => !item.endedAt).length, 0);
+  const restarted = recordSmoked(started, now, true, now);
+  const replay = recordSmoked(restarted.state, now, true, now);
+  assert.equal(replay.unchanged, true);
+  assert.equal(replay.state.intervals.filter(item => !item.endedAt).length, 1);
 });
 
 test('the timer is elapsed wall time, not ticks', () => {

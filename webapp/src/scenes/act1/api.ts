@@ -1,3 +1,4 @@
+import { authHeaders } from '../../auth/client';
 import type { MemoryEntry } from '../../auth/progressModel';
 
 export type Stance = 'hold' | 'probe' | 'release' | 'advance';
@@ -25,13 +26,13 @@ export async function askScene(
   message: string,
   history: ChatLine[],
   signal: AbortSignal,
-  extras: { memory: MemoryEntry[]; canAdvance: boolean; offerOpen: boolean; appStage?: string },
+  extras: { memory: MemoryEntry[]; canAdvance: boolean; offerOpen: boolean },
 ): Promise<SceneReply> {
   const root = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
   const bounded = history.length <= 20 ? history : [...history.slice(0, 3), ...history.slice(-17)];
   const response = await fetch(`${root}/api/scene`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({
       sceneId,
       message: message.slice(0, 2000),
@@ -43,7 +44,6 @@ export async function askScene(
       memory: extras.memory.slice(-40),
       canAdvance: extras.canAdvance === true,
       offerOpen: extras.offerOpen === true,
-      appStage: extras.appStage,
     }),
     signal,
   });

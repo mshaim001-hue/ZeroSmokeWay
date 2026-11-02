@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyLifecycle,
   currentOpenInterval,
   defaultProgress,
+  isLifecycleSnapshot,
+  mergeEnvelopes,
+  mergeSupportSnapshot,
   newerEnvelope,
   parseChat,
   parseMemory,
@@ -138,6 +142,96 @@ test('a confirmed last cigarette is support, and the client cannot reopen a scen
   const frozen = refuseSceneDowngrade(saved, { ...defaultProgress(), sceneId: 'pitcher' });
   assert.equal(frozen.appStage, 'support');
   assert.equal(frozen.sceneId, 'truth');
+});
+
+test('a newer journey cache cannot beat remote support, and a delayed chat save cannot restore a timer', () => {
+  const remote = {
+    userId: 'u',
+    updatedAt: 10,
+    progress: parseProgress({
+      scene_id: 'truth',
+      app_stage: 'support',
+      smoking_status: 'smoking',
+      seen_intro: true,
+      intervals: [{ id: 'old', started_at: '2026-11-01T00:00:00.000Z', ended_at: '2026-11-02T10:00:00.000Z', source: 'now' }],
+    }),
+  };
+  const local = {
+    userId: 'u',
+    updatedAt: 99,
+    progress: { ...defaultProgress(), seenIntro: true, sceneId: 'pitcher' },
+  };
+  const merged = mergeEnvelopes(local, remote);
+  assert.equal(merged?.progress.appStage, 'support');
+  assert.equal(merged?.progress.sceneId, 'truth');
+  assert.equal(merged?.progress.smokingStatus, 'smoking');
+
+  const chatting = { ...remote.progress, supportChat: [{ id: 'a', role: 'assistant', content: 'still going' }] };
+  const afterRecord = applyLifecycle(chatting, remote.progress);
+  assert.equal(afterRecord.supportChat[0].content, 'still going');
+  assert.equal(afterRecord.smokingStatus, 'smoking');
+  assert.equal(afterRecord.appStage, 'support');
+  assert.equal(isLifecycleSnapshot({ ok: true }), false);
+  assert.equal(isLifecycleSnapshot({ app_stage: 'support', intervals: [] }), true);
+
+  const incomplete = {
+    userId: 'u',
+    updatedAt: 200,
+    schemaComplete: false,
+    progress: defaultProgress(),
+  };
+  const fromLegacy = mergeEnvelopes({ ...remote, updatedAt: 1, schemaComplete: true }, incomplete);
+  assert.equal(fromLegacy?.progress.appStage, 'support');
+  assert.equal(fromLegacy?.progress.smokingStatus, 'smoking');
+});
+
+test('support memory stays after reload even when those turns have left the chat window', () => {
+  const saved = parseProgress({
+    scene_id: 'truth',
+    app_stage: 'support',
+    smoking_status: 'abstaining',
+    seen_intro: true,
+    support_chat: [{ id: 'later', role: 'assistant', content: 'What is this minute like?' }],
+    memory: [{
+      id: 'm-stay',
+      source: 'player',
+      status: 'revised',
+      summary: 'stayed and listened; thought about leaving',
+      quote: 'I stayed',
+    }],
+    intervals: [{ id: 'i1', started_at: '2026-11-02T06:00:00.000Z', source: 'now' }],
+  });
+  assert.equal(saved.memory[0].quote, 'I stayed');
+  assert.equal(saved.memory[0].status, 'revised');
+  assert.equal(saved.supportChat.length, 1);
+  assert.doesNotMatch(saved.supportChat[0].content, /I stayed/);
+});
+
+test('a mounted support view takes remote lifecycle and keeps in-flight chat', () => {
+  const local = parseProgress({
+    scene_id: 'truth',
+    app_stage: 'support',
+    smoking_status: 'abstaining',
+    support_chat: [{ id: 'a', role: 'user', content: 'wait' }],
+    memory: [{ id: 'm1', source: 'player', status: 'current', summary: 'wants the minute', quote: 'I want the minute' }],
+    intervals: [{ id: 'i1', started_at: '2026-11-02T06:00:00.000Z', source: 'now' }],
+  });
+  const remote = parseProgress({
+    scene_id: 'truth',
+    app_stage: 'support',
+    smoking_status: 'smoking',
+    support_chat: [],
+    memory: [],
+    intervals: [{ id: 'i1', started_at: '2026-11-02T06:00:00.000Z', ended_at: '2026-11-02T08:00:00.000Z', source: 'now' }],
+  });
+  const busy = mergeSupportSnapshot(local, remote, { preserveChat: true });
+  assert.equal(busy.smokingStatus, 'smoking');
+  assert.equal(busy.supportChat[0].content, 'wait');
+  assert.equal(busy.memory[0].quote, 'I want the minute');
+  assert.equal(currentOpenInterval(busy), null);
+  const idle = mergeSupportSnapshot(local, remote, { preserveChat: false });
+  assert.equal(idle.smokingStatus, 'smoking');
+  assert.equal(idle.supportChat[0].content, 'wait');
 });
 
 test('not yet is intention only: no live interval', () => {

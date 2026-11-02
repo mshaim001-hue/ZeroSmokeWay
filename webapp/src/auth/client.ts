@@ -14,6 +14,13 @@ export function isAuthConfigured(): boolean {
 
 let client: SupabaseClient | null = null;
 
+export async function authHeaders(): Promise<Record<string, string>> {
+  if (!isAuthConfigured()) return {};
+  const { data } = await supabase().auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export function supabase(): SupabaseClient {
   if (!isAuthConfigured()) {
     throw new Error('Supabase is not configured');

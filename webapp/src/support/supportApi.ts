@@ -1,3 +1,4 @@
+import { authHeaders } from '../auth/client';
 import type { MemoryEntry } from '../auth/progressModel';
 import type { ChatLine } from '../scenes/act1/api';
 
@@ -17,9 +18,8 @@ export async function askSupport(
   const bounded = history.length <= 20 ? history : [...history.slice(0, 3), ...history.slice(-17)];
   const response = await fetch(`${root}/api/support`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({
-      appStage: 'support',
       message: message.slice(0, 2000),
       history: bounded.map(({ id, role, content }) => ({
         id,
@@ -27,7 +27,6 @@ export async function askSupport(
         content: content.slice(0, 2000),
       })),
       memory: extras.memory.slice(-40),
-      smokingStatus: extras.smokingStatus,
     }),
     signal,
   });

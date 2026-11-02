@@ -232,7 +232,6 @@ export function Scene1App({ userId, initial, onSignOut, onEnteredSupport }: Prop
         memory: snapshot.current.memory,
         canAdvance: ready,
         offerOpen: open,
-        appStage,
       });
       if (request.current !== control) return;
       if (snapshot.current.sceneId !== forScene) return;

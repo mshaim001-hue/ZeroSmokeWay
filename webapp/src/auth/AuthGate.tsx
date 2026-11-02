@@ -40,7 +40,20 @@ export function AuthGate() {
     const { data } = supabase().auth.onAuthStateChange((_event, session) => {
       void applySession(session);
     });
-    return () => data.subscription.unsubscribe();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const id = readyUser.current;
+      if (!id) return;
+      void loadProgress(id).then(next => {
+        setProgress(next);
+        if (next.appStage === 'support') setView('home');
+      });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      data.subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   async function applySession(session: { user: { id: string } } | null) {

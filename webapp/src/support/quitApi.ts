@@ -1,5 +1,5 @@
 import { supabase } from '../auth/client';
-import { applyQuitSnapshot } from '../auth/progress';
+import { applyQuitSnapshot, cacheSupportContent } from '../auth/progress';
 import type { PlayerProgress } from '../auth/progressModel';
 
 function asError(error: { message?: string } | null, fallback: string): Error {
@@ -38,8 +38,13 @@ export async function recordSmoked(
   return applyQuitSnapshot(userId, data);
 }
 
-export async function saveSupportChat(userId: string, chat: PlayerProgress['supportChat']): Promise<PlayerProgress> {
-  const { data, error } = await supabase().rpc('save_support_chat', { p_chat: chat });
+export async function saveSupportContent(userId: string, progress: PlayerProgress): Promise<void> {
+  const chat = progress.supportChat.slice(-40);
+  const memory = progress.memory.slice(-40);
+  const { error } = await supabase().rpc('save_support_content', {
+    p_chat: chat,
+    p_memory: memory,
+  });
   if (error) throw asError(error, 'Could not save this talk.');
-  return applyQuitSnapshot(userId, data);
+  cacheSupportContent(userId, { ...progress, supportChat: chat, memory });
 }
