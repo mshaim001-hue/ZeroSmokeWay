@@ -68,10 +68,38 @@ export const BODY_CARDS: BodyCard[] = [
 ];
 
 export function visibleBodyCards(startedAt: string, usesNrt: boolean, nowMs = Date.now()): BodyCard[] {
-  const hours = Math.max(0, (nowMs - new Date(startedAt).getTime()) / 3600000);
-  return BODY_CARDS.filter(card => hours >= card.afterHours).map(card => (
-    usesNrt && card.nrtNote ? { ...card, body: `${card.body} ${card.nrtNote}` } : card
-  ));
+  return annotateNrt(reachedMilestones(startedAt, nowMs), usesNrt);
+}
+
+export function reachedMilestones(startedAt: string, nowMs = Date.now()): BodyCard[] {
+  const hours = liveHours(startedAt, nowMs);
+  return BODY_CARDS.filter(card => hours >= card.afterHours);
+}
+
+export function upcomingMilestone(startedAt: string | null, nowMs = Date.now()): BodyCard | null {
+  if (!startedAt) return BODY_CARDS[0] ?? null;
+  const hours = liveHours(startedAt, nowMs);
+  return BODY_CARDS.find(card => hours < card.afterHours) ?? null;
+}
+
+export function milestoneProgress(startedAt: string | null, nowMs = Date.now()) {
+  const next = upcomingMilestone(startedAt, nowMs);
+  const reached = startedAt ? reachedMilestones(startedAt, nowMs) : [];
+  const previous = reached[reached.length - 1] ?? null;
+  if (!next) return { next: null, previous, ratio: 1, reached };
+  const startHours = previous ? previous.afterHours : 0;
+  const hours = startedAt ? liveHours(startedAt, nowMs) : 0;
+  const span = next.afterHours - startHours;
+  const ratio = span <= 0 ? 1 : Math.min(1, Math.max(0, (hours - startHours) / span));
+  return { next, previous, ratio, reached };
+}
+
+export function annotateNrt(cards: BodyCard[], usesNrt: boolean): BodyCard[] {
+  return cards.map(card => (usesNrt && card.nrtNote ? { ...card, body: `${card.body} ${card.nrtNote}` } : card));
+}
+
+function liveHours(startedAt: string, nowMs: number) {
+  return Math.max(0, (nowMs - new Date(startedAt).getTime()) / 3600000);
 }
 
 export function usesNrtFromMemory(memory: { quote?: string; summary?: string; status?: string }[]) {

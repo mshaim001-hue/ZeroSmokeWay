@@ -1,6 +1,7 @@
 import { supabase } from '../auth/client';
 import { applyQuitSnapshot, cacheSupportContent } from '../auth/progress';
 import type { PlayerProgress } from '../auth/progressModel';
+import type { QuitEstimates } from './estimates';
 
 function asError(error: { message?: string } | null, fallback: string): Error {
   return new Error(error?.message || fallback);
@@ -47,4 +48,10 @@ export async function saveSupportContent(userId: string, progress: PlayerProgres
   });
   if (error) throw asError(error, 'Could not save this talk.');
   cacheSupportContent(userId, { ...progress, supportChat: chat, memory });
+}
+
+export async function saveQuitEstimates(userId: string, progress: PlayerProgress, estimates: QuitEstimates): Promise<void> {
+  const { error } = await supabase().rpc('save_quit_estimates', { p_estimates: estimates });
+  if (error) throw asError(error, 'Could not save those estimates.');
+  cacheSupportContent(userId, { ...progress, estimates });
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Scene1App } from '../scenes/act1/Scene1App';
 import { SupportHome } from '../support/SupportHome';
+import { previewProgress } from '../support/supportPreview';
 import { isAuthConfigured, supabase } from './client';
 import { Landing } from './Landing';
 import { Intro } from './Intro';
@@ -114,6 +115,19 @@ export function AuthGate() {
     setView('landing');
   }
 
+  if (import.meta.env.DEV) {
+    const preview = new URLSearchParams(window.location.search).get('supportPreview');
+    if (preview) {
+      return (
+        <SupportHome
+          userId="preview"
+          initial={previewProgress(preview)}
+          onSignOut={() => undefined}
+          onProgress={() => undefined}
+        />
+      );
+    }
+  }
   if (view === 'boot') return <main className="scene1-app" aria-busy="true" />;
   if (view === 'landing') return <Landing busy={busy} issue={issue} onGoogle={() => void signInGoogle()} />;
   if (view === 'intro') return <Intro busy={busy} onStart={() => void startPath()} onSignOut={() => void signOut()} />;

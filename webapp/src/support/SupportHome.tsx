@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { applyLifecycle, currentOpenInterval, mergeSupportSnapshot, newMessageId, type PlayerProgress } from '../auth/progressModel';
 import { LastCigaretteDialog } from './LastCigaretteDialog';
-import { visibleBodyCards, usesNrtFromMemory } from './bodyCards';
-import { confirmLastCigarette, recordSmoked, saveSupportContent } from './quitApi';
+import { TodayScreen } from './TodayScreen';
+import { ProgressScreen } from './ProgressScreen';
+import { confirmLastCigarette, recordSmoked, saveQuitEstimates, saveSupportContent } from './quitApi';
 import { askSupport } from './supportApi';
-import { formatSmokeFree } from './timer';
+import { smokeFreeClock } from './timer';
+import type { QuitEstimates } from './estimates';
 import type { ChatLine } from '../scenes/act1/api';
-import '../auth/gate.css';
-import '../scenes/act1/scene1.css';
 import './support.css';
 
 type Props = {
@@ -17,6 +17,9 @@ type Props = {
   onProgress: (progress: PlayerProgress) => void;
 };
 
+type Tab = 'today' | 'progress' | 'support';
+
+const KOFI = 'https://ko-fi.com/underdot';
 const CHIPS = [
   { id: 'want', label: 'I want a cigarette' },
   { id: 'think', label: 'I’m thinking about cigarettes' },
@@ -31,24 +34,27 @@ function line(role: ChatLine['role'], content: string): ChatLine {
 export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
   const [progress, setProgress] = useState(initial);
   const [now, setNow] = useState(Date.now());
-  const [open, setOpen] = useState(initial.supportChat.length > 0);
+  const [tab, setTab] = useState<Tab>('today');
+  const [menu, setMenu] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
   const [recordOpen, setRecordOpen] = useState(false);
   const [offerRecord, setOfferRecord] = useState(false);
+  const [editingEstimates, setEditingEstimates] = useState(false);
   const request = useRef<AbortController>();
   const end = useRef<HTMLDivElement>(null);
   const chat = progress.supportChat;
   const openInterval = currentOpenInterval(progress);
 
+  const tickFast = openInterval ? smokeFreeClock(openInterval.startedAt, now).showSeconds : false;
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    const timer = window.setInterval(() => setNow(Date.now()), tickFast ? 1000 : 30000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [tickFast, openInterval?.id]);
   useEffect(() => {
-    if (open) end.current?.scrollIntoView({ block: 'nearest' });
-  }, [chat.length, busy, open]);
+    if (tab === 'support') end.current?.scrollIntoView({ block: 'nearest' });
+  }, [chat.length, busy, tab]);
   useEffect(() => {
     const preserveChat = busy || Boolean(draft.trim()) || Boolean(request.current);
     setProgress(current => {
@@ -58,11 +64,13 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
         && current.currentIntervalId === next.currentIntervalId
         && current.supportChat === next.supportChat
         && current.memory === next.memory
+        && current.estimates === next.estimates
       ) return current;
       return next;
     });
   }, [initial, busy, draft]);
   useEffect(() => {
+    if (userId === 'preview') return;
     const timer = window.setTimeout(() => {
       void saveSupportContent(userId, progress).catch(error => {
         setIssue(error instanceof Error ? error.message : 'Could not save this talk.');
@@ -70,6 +78,11 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     }, 400);
     return () => window.clearTimeout(timer);
   }, [userId, progress.supportChat, progress.memory]);
+
+  function commit(next: PlayerProgress) {
+    setProgress(next);
+    onProgress(next);
+  }
 
   async function speak(message: string, history: ChatLine[]) {
     setIssue('');
@@ -107,7 +120,7 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
   async function send(text: string) {
     const message = text.trim();
     if (!message || busy) return;
-    setOpen(true);
+    setTab('support');
     setDraft('');
     const history = progress.supportChat;
     setProgress(current => {
@@ -161,96 +174,115 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     }
   }
 
-  const nrt = usesNrtFromMemory(progress.memory);
-  const cards = openInterval ? visibleBodyCards(openInterval.startedAt, nrt, now) : [];
+  async function onSaveEstimates(estimates: QuitEstimates) {
+    setBusy(true);
+    setIssue('');
+    try {
+      const next = { ...progress, estimates };
+      await saveQuitEstimates(userId, next, estimates);
+      commit(next);
+      setEditingEstimates(false);
+    } catch (error) {
+      setIssue(error instanceof Error ? error.message : 'Could not save those estimates.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <main className="scene1-app support-home">
-      <div className="support-sheet">
-        <div className="scene1-chat-head">
-          <p>Support</p>
-          <button type="button" className="gate-signout is-inline" onClick={onSignOut}>Sign out</button>
-        </div>
-        {openInterval ? (
-          <section className="support-timer" aria-live="polite">
-            <p className="gate-kicker">Smoke-free</p>
-            <p className="support-count">{formatSmokeFree(openInterval.startedAt, now)}</p>
-          </section>
-        ) : (
-          <section className="support-timer">
-            <p className="gate-kicker">Right now</p>
-            <p className="support-count">Smoking / getting ready again</p>
-            <p className="support-note">Past stretches stay in history. The live count is off until you name a last cigarette.</p>
-            <button type="button" className="scene1-next" onClick={() => setRecordOpen(true)}>Start a new count</button>
-          </section>
-        )}
-        {progress.intervals.some(item => item.endedAt) ? (
-          <ol className="support-history">
-            {progress.intervals.filter(item => item.endedAt).map(item => (
-              <li key={item.id}>Earlier stretch from {new Date(item.startedAt).toLocaleString()}</li>
-            ))}
-          </ol>
+    <main className="support-app has-dock">
+      <div className="support-body">
+        <header className="support-head">
+          <p className="support-brand">ZeroSmokeWay</p>
+          <button type="button" className="support-menu-btn" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu(open => !open)}>☰</button>
+        </header>
+        {menu ? (
+          <>
+            <button type="button" className="support-menu-backdrop" aria-label="Close menu" onClick={() => setMenu(false)} />
+            <nav className="support-menu" aria-label="More">
+              <a href="/about.html" onClick={() => setMenu(false)}>About</a>
+              <a href="/feedback.html" onClick={() => setMenu(false)}>Leave feedback</a>
+              <a href={KOFI} target="_blank" rel="noopener noreferrer" onClick={() => setMenu(false)}>Support the project ↗</a>
+              <button type="button" onClick={() => { setMenu(false); onSignOut(); }}>Sign out</button>
+            </nav>
+          </>
         ) : null}
-        <section className="support-cards">
-          <h2>What’s changing in the body</h2>
-          <p className="support-note">General notes from public health pages, not measurements of you, and not a symptom timetable.</p>
-          {openInterval ? cards.map(card => (
-            <article key={card.id}>
-              <h3>{card.title}</h3>
-              <p>{card.body}</p>
-              <a href={card.source.url} target="_blank" rel="noopener noreferrer">{card.source.name}</a>
-            </article>
-          )) : <p className="support-note">Cards follow a live smoke-free count.</p>}
-        </section>
-        <div className="support-actions">
-          <button type="button" className="scene1-next" onClick={() => setOpen(true)}>Support</button>
-          <a className="scene1-offer-stay" href="/feedback.html">Leave feedback</a>
-          <a className="scene1-offer-stay" href="/about.html">About</a>
-        </div>
-      </div>
-      <section className={`scene1-chat ${open ? 'is-open' : ''}`} aria-hidden={!open} {...(!open ? { inert: '' } : {})}>
-        <div className="scene1-chat-head">
-          <p>Support</p>
-          <button type="button" onClick={() => setOpen(false)}>Close</button>
-        </div>
-        <div className="support-chips">
-          {CHIPS.map(chip => (
-            <button key={chip.id} type="button" disabled={busy} onClick={() => void send(chip.label)}>{chip.label}</button>
-          ))}
-        </div>
-        <div className="scene1-messages" role="log" aria-label="Support conversation">
-          {chat.map(item => (
-            <article key={item.id} className={`scene1-message ${item.role}`}>
-              <span>{item.role === 'user' ? 'YOU' : ''}</span>
-              <p>{item.content}</p>
-            </article>
-          ))}
-          {busy && <p className="scene1-status" role="status">…</p>}
-          <div ref={end} />
-        </div>
-        {offerRecord && progress.smokingStatus !== 'smoking' ? (
-          <button type="button" className="scene1-next support-record" onClick={() => setRecordOpen(true)}>
-            Record that I smoked
-          </button>
-        ) : null}
-        {issue && (
-          <div className="scene1-status" role="status">
-            <p>{issue}</p>
-            <button type="button" onClick={retryLast} disabled={busy}>Retry</button>
-          </div>
-        )}
-        <form className="scene1-compose" onSubmit={(event: FormEvent) => { event.preventDefault(); void send(draft); }}>
-          <textarea
-            aria-label="Your reply"
-            placeholder="What’s going on right now?"
-            rows={2}
-            maxLength={2000}
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
+
+        {tab === 'today' ? (
+          <TodayScreen
+            progress={progress}
+            now={now}
+            busy={busy}
+            editingEstimates={editingEstimates}
+            onTalk={() => setTab('support')}
+            onStartCount={() => setRecordOpen(true)}
+            onSaveEstimates={estimates => void onSaveEstimates(estimates)}
+            onEditEstimates={() => setEditingEstimates(on => !on)}
           />
-          <button aria-label="Send" disabled={busy || !draft.trim()}>↑</button>
-        </form>
-      </section>
+        ) : null}
+        {tab === 'progress' ? (
+          <ProgressScreen
+            progress={progress}
+            now={now}
+            busy={busy}
+            editingEstimates={editingEstimates}
+            onSaveEstimates={estimates => void onSaveEstimates(estimates)}
+            onEditEstimates={() => setEditingEstimates(on => !on)}
+          />
+        ) : null}
+        {tab === 'support' ? (
+          <section className="support-chat" aria-label="Support conversation">
+            <div className="support-chips">
+              {CHIPS.map(chip => (
+                <button key={chip.id} type="button" disabled={busy} onClick={() => void send(chip.label)}>{chip.label}</button>
+              ))}
+            </div>
+            <div className="support-messages" role="log" aria-label="Support conversation">
+              {chat.map(item => (
+                <article key={item.id} className={`support-bubble ${item.role}`}>
+                  <span>{item.role === 'user' ? 'You' : 'Muse'}</span>
+                  <p>{item.content}</p>
+                </article>
+              ))}
+              {busy && <p className="support-status" role="status">…</p>}
+              <div ref={end} />
+            </div>
+            {offerRecord && progress.smokingStatus !== 'smoking' ? (
+              <button type="button" className="support-primary" style={{ margin: '4px 16px 8px', width: 'calc(100% - 32px)' }} onClick={() => setRecordOpen(true)}>
+                Record that I smoked
+              </button>
+            ) : null}
+            {issue && tab === 'support' ? (
+              <div className="support-status" role="status">
+                <p>{issue}</p>
+                <button type="button" onClick={retryLast} disabled={busy}>Retry</button>
+              </div>
+            ) : null}
+            <form className="support-compose" onSubmit={(event: FormEvent) => { event.preventDefault(); void send(draft); }}>
+              <textarea
+                aria-label="Your reply"
+                placeholder="What’s going on right now?"
+                rows={2}
+                maxLength={2000}
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+              />
+              <button aria-label="Send" disabled={busy || !draft.trim()}>↑</button>
+            </form>
+          </section>
+        ) : null}
+
+        {issue && tab !== 'support' ? (
+          <p className="support-status" role="status">{issue}</p>
+        ) : null}
+
+        <nav className="support-dock" aria-label="Support">
+          <button type="button" className={tab === 'today' ? 'is-on' : ''} onClick={() => setTab('today')}>Today</button>
+          <button type="button" className={tab === 'progress' ? 'is-on' : ''} onClick={() => setTab('progress')}>Progress</button>
+          <button type="button" className={tab === 'support' ? 'is-on' : ''} onClick={() => setTab('support')}>Support</button>
+        </nav>
+      </div>
+
       {recordOpen && (
         <div className="support-modal">
           {openInterval ? (

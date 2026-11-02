@@ -34,6 +34,7 @@ function storedProgress(progress: PlayerProgress): PlayerProgress {
     smokingStatus: progress.smokingStatus,
     supportChat: progress.appStage === 'support' ? progress.supportChat.slice(-40) : [],
     intervals: progress.intervals.slice(0, 40),
+    estimates: progress.estimates,
   };
 }
 
@@ -69,6 +70,7 @@ function asRemoteProgress(data: {
   smoking_status?: string | null;
   support_chat?: unknown;
   intervals?: unknown;
+  quit_estimates?: unknown;
 }, userId: string, schemaComplete = true): ProgressEnvelope {
   return {
     userId,
@@ -89,6 +91,7 @@ function asRemoteProgress(data: {
       smokingStatus: data.smoking_status,
       supportChat: data.support_chat,
       intervals: data.intervals,
+      estimates: data.quit_estimates,
     }),
   };
 }
@@ -97,10 +100,24 @@ async function readRemote(userId: string): Promise<ProgressEnvelope | null> {
   if (!isAuthConfigured()) return null;
   const full = await supabase()
     .from('player_progress')
-    .select('scene_id, phase, chat, seen_intro, can_advance, offer_open, memory, updated_at, app_stage, completion_offered, intended_at, current_interval_id, smoking_status, support_chat')
+    .select('scene_id, phase, chat, seen_intro, can_advance, offer_open, memory, updated_at, app_stage, completion_offered, intended_at, current_interval_id, smoking_status, support_chat, quit_estimates')
     .eq('user_id', userId)
     .maybeSingle();
-  if (!full.error && full.data) {
+  if (full.error) {
+    const prior = await supabase()
+      .from('player_progress')
+      .select('scene_id, phase, chat, seen_intro, can_advance, offer_open, memory, updated_at, app_stage, completion_offered, intended_at, current_interval_id, smoking_status, support_chat')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!prior.error && prior.data) {
+      const intervals = await supabase()
+        .from('abstinence_intervals')
+        .select('id, started_at, ended_at, source')
+        .eq('user_id', userId)
+        .order('started_at', { ascending: false });
+      return asRemoteProgress({ ...prior.data, intervals: intervals.data ?? [] }, userId, true);
+    }
+  } else if (full.data) {
     const intervals = await supabase()
       .from('abstinence_intervals')
       .select('id, started_at, ended_at, source')
@@ -192,7 +209,12 @@ export async function applyQuitSnapshot(userId: string, snapshot: unknown): Prom
   const progress = parseProgress(snapshot);
   const cached = readCache(userId)?.progress;
   const merged = cached
-    ? { ...applyLifecycle(cached, progress), supportChat: cached.supportChat, memory: cached.memory }
+    ? {
+      ...applyLifecycle(cached, progress),
+      supportChat: cached.supportChat,
+      memory: cached.memory,
+      estimates: cached.estimates ?? progress.estimates,
+    }
     : progress;
   const envelope: ProgressEnvelope = {
     userId,
@@ -215,6 +237,7 @@ export function cacheSupportContent(userId: string, progress: PlayerProgress): v
       appStage: 'support',
       supportChat: progress.supportChat.slice(-40),
       memory: progress.memory.slice(-40),
+      estimates: progress.estimates ?? cached?.estimates ?? null,
     }),
   });
 }

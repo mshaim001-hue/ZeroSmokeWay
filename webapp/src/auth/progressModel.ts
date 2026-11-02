@@ -1,5 +1,6 @@
 import { FIRST_SCENE, isSceneId, type Phase, type SceneId } from '../scenes/catalog.ts';
 import type { ChatLine } from '../scenes/act1/api.ts';
+import { parseEstimates, type QuitEstimates } from '../support/estimates.ts';
 
 export const PROGRESS_CACHE = 'zsw_progress_v3';
 
@@ -49,6 +50,7 @@ export type PlayerProgress = {
   smokingStatus: SmokingStatus;
   supportChat: ChatLine[];
   intervals: AbstinenceInterval[];
+  estimates: QuitEstimates | null;
 };
 
 export type ProgressEnvelope = {
@@ -79,6 +81,7 @@ export function defaultProgress(): PlayerProgress {
     smokingStatus: '',
     supportChat: [],
     intervals: [],
+    estimates: null,
   };
 }
 
@@ -131,6 +134,7 @@ export function refuseSceneDowngrade(current: PlayerProgress, incoming: PlayerPr
     intervals: current.intervals.length ? current.intervals : incoming.intervals,
     supportChat: incoming.supportChat.length ? incoming.supportChat : current.supportChat,
     memory: incoming.memory.length ? incoming.memory : current.memory,
+    estimates: incoming.estimates ?? current.estimates,
   };
 }
 
@@ -252,6 +256,7 @@ export function parseProgress(raw: unknown): PlayerProgress {
     smokingStatus: parseSmokingStatus(row.smokingStatus ?? row.smoking_status),
     supportChat,
     intervals: parseIntervals(row.intervals),
+    estimates: parseEstimates(row.estimates ?? row.quit_estimates),
   };
 }
 
@@ -303,13 +308,15 @@ export function mergeSupportSnapshot(
   options: { preserveChat?: boolean } = {},
 ): PlayerProgress {
   const next = applyLifecycle(current, incoming);
+  const estimates = incoming.estimates ?? current.estimates;
   if (options.preserveChat) {
-    return { ...next, supportChat: current.supportChat, memory: current.memory };
+    return { ...next, supportChat: current.supportChat, memory: current.memory, estimates };
   }
   return {
     ...next,
     supportChat: incoming.supportChat.length ? incoming.supportChat : current.supportChat,
     memory: incoming.memory.length ? incoming.memory : current.memory,
+    estimates,
   };
 }
 
@@ -335,6 +342,7 @@ export function mergeEnvelopes(local: ProgressEnvelope | null, remote: ProgressE
     currentIntervalId: rp.currentIntervalId,
     intendedAt: rp.intendedAt,
     completionOffered: rp.completionOffered || lp.completionOffered,
+    estimates: localNewer ? (lp.estimates ?? rp.estimates) : (rp.estimates ?? lp.estimates),
   };
   if (rp.appStage === 'support') {
     progress.sceneId = rp.sceneId;
