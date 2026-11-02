@@ -56,6 +56,18 @@ test('Meta Muse is the model and speech profile plus scene job go to the system 
   assert.equal(sent.messages.at(-1).content, request.message);
 });
 
+test('META_MODEL whitespace is trimmed before the provider call', async () => {
+  let sent;
+  await handleSceneRequest(request, {
+    env: { META_MODEL: '  muse-spark-1.3\n' },
+    createCompletion: async params => {
+      sent = params;
+      return { choices: [{ message: { content: '{"reply":"Hi","stance":"hold","next":"stay"}' } }] };
+    },
+  });
+  assert.equal(sent.model, 'muse-spark-1.3');
+});
+
 test('Muse JSON may offer the next scene; kickoff cannot', async () => {
   const offered = await handleSceneRequest({
     ...request,

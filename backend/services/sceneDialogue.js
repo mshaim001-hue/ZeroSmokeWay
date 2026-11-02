@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { speechSystemPrompt } from './speechProfile.js';
 import { SCENE_JOBS } from './sceneDossiers.js';
 import { compactMemory, mergeMemory, parseMemory } from './sceneMemory.js';
+import { logMetaFailure, resolveMetaModel } from './metaError.js';
 
 export { SCENE_JOBS };
 export const META_BASE_URL = 'https://api.meta.ai/v1';
@@ -108,12 +109,7 @@ function fail(issue, status = 503) {
 }
 
 function providerIssue(error) {
-  if (error?.status === 401 || error?.status === 403) return 'auth_error';
-  if (error?.status === 400) return 'invalid_request';
-  if (error?.status === 429) return 'rate_limit';
-  if (error?.status === 404 || error?.code === 'model_not_found') return 'model_unavailable';
-  if (error?.name === 'APIConnectionTimeoutError' || error?.code === 'ETIMEDOUT' || error?.name === 'AbortError') return 'timeout';
-  return 'provider_error';
+  return logMetaFailure('scene', error);
 }
 
 function extractObject(raw) {
@@ -219,7 +215,7 @@ export async function handleSceneRequest(body, dependencies = {}) {
     const client = new OpenAI({ apiKey, baseURL: META_BASE_URL, timeout: 25000, maxRetries: 0 });
     return client.chat.completions.create(params);
   });
-  const model = env.META_MODEL || META_MODEL;
+  const model = resolveMetaModel(env, META_MODEL);
   const lastScene = input.sceneId === LAST_SCENE_ID;
   const developer = [
     speechSystemPrompt(),
