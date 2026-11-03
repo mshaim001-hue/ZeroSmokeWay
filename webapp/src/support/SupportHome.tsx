@@ -104,7 +104,6 @@ export function SupportHome({ userId, initial, account, onSignOut, onProgress }:
     try {
       const reply = await askSupport(message, history, control.signal, {
         memory: progress.memory,
-        smokingStatus: progress.smokingStatus,
       });
       if (request.current !== control) return;
       commitFrom(current => ({

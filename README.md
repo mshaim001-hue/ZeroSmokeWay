@@ -1,12 +1,20 @@
 # ZeroSmokeWay
 
-Mobile cinematic path about the nicotine trap: a short film, then a live conversation with Meta Muse Spark. The model does not lecture and does not run a questionnaire. It stays with the player’s words and decides whether to hold, probe, or open the next scene.
+Mobile cinematic path about smoking: short films, then a live talk after each one. Production: [https://www.zerosmokeway.life](https://www.zerosmokeway.life).
 
-Not an “AI quit-smoking coach.” Existing apps already explain harm. This project uses fairy-tale images so a person can name the private reason they keep smoking.
+It is not a quit coach, not a questionnaire, and not medical advice. Effectiveness for quitting has not been tested with participants.
+
+## What the product does
+
+1. **Fifteen scenes** (4 acts). Watch a short film, then talk in full-screen chat. The next film opens when that scene’s main theme has been looked at — not via a skip button.
+2. **Last cigarette.** On the final scene the player can confirm a last cigarette (or say not yet). That opens the support home and can start a smoke-free count.
+3. **Support home** (Today / Progress / Support): live count, optional estimates, milestones with sources, free-text talk, and a Progress action to record that they smoked — without needing the model.
+
+Dialogue uses Meta Muse Spark (`muse-spark-1.3` at `https://api.meta.ai/v1`). Living memory and an internal player card (not shown in the UI) are stored in Supabase and loaded on the server for support. The client does not invent stage or timer from local cache alone.
 
 ## Run locally
 
-Node.js 22.18+ or 24+. Two terminals:
+Node.js 22+. Two terminals:
 
 ```bash
 npm ci --prefix backend
@@ -20,31 +28,55 @@ npm run dev --prefix webapp
 
 Open the Vite URL (usually http://localhost:5173). It proxies `/api` to localhost:3000.
 
-Put `MODEL_API_KEY` in `backend/.env` (Meta Model API, `muse-spark-1.3`). See `backend/env.example`. Never commit the key.
+Copy `backend/env.example` → `backend/.env`. Set at least:
+
+- `MODEL_API_KEY` — Meta Model API key
+- `META_MODEL=muse-spark-1.3` (optional; whitespace is trimmed)
+- `SUPABASE_URL` and `SUPABASE_ANON_KEY` — required for `/api/scene` and `/api/support` (stage is read from `player_progress`, not from the request body)
+
+Webapp: `VITE_SUPABASE_URL` and the anon/publishable key in `webapp/.env`. Never commit keys.
 
 ## Checks
 
 ```bash
+npm test --prefix backend
 npm test --prefix webapp
 npm run build --prefix webapp
-npm test --prefix backend
 ```
 
 ## Structure
 
-- `webapp/src/scenes/` — cinema + full-screen chat; live product starts here.
-- `backend/services/sceneDialogue.js` — Meta Muse dialogue and routing.
-- `backend/services/speechProfile.js` — hardcoded speech profile.
-- `api/scene.js` — Vercel entry; `vercel.json` builds `webapp/dist`.
-- `webapp/src/game/` — previous Labyrinth (Phaser rooms). Not shown in the live app.
-- `docs/design/` — current scene design; `docs/hackathon/` — submission notes; `docs/archive/` — history.
-- `webapp/public/llms.txt`, `robots.txt`, `sitemap.xml`, `about.html` — SEO / GEO crawl layer. Canonical host in those files is `https://zerosmokeway.vercel.app` until a custom domain exists.
+| Path | Role |
+|------|------|
+| `webapp/src/scenes/` | Films + scene chat |
+| `webapp/src/support/` | Post-quit home |
+| `webapp/src/auth/` | Google sign-in, progress load/save |
+| `backend/services/sceneDialogue.js` | Scene talk and offer/launch routing |
+| `backend/services/supportDialogue.js` | Support talk + player card from server memory |
+| `backend/services/playerCard.js` | Internal card built from living memory |
+| `api/scene.js`, `api/support.js` | Vercel entries (`maxDuration` 120s) |
+| `supabase/migrations/` | Progress, support stage, locks, estimates |
+| `docs/design/` | Per-scene design notes |
+| `docs/archive/` | Old Phaser labyrinth and earlier prototypes |
+| `docs/hackathon/` | Meta hackathon submission notes |
+| `webapp/public/about.html`, `feedback.html` | Static pages from the in-app menu |
 
-Google sign-in through Supabase. Progress is stored in `player_progress` (cloud source of truth) and cached on the phone. Effectiveness for quitting has not been tested with participants.
+## Progress and migrations
+
+Apply migrations in order under `supabase/migrations/` (SQL editor or CLI). At minimum for the current product:
+
+- `20261030000000_player_progress.sql`
+- `20261031120000_dialogue_memory.sql` (and later dialogue/offer migrations as present)
+- `20261102120000_support_stage.sql`
+- `20261102140000_support_locks.sql`
+- `20261102150000_save_support_content.sql`
+- `20261102160000_quit_estimates.sql`
+
+Signed-in progress lives in `player_progress` (source of truth) with a local cache on the phone. Support chat and memory persist via `save_support_content` without rewriting the timer.
 
 ## Google auth (Supabase)
 
-Google Cloud holds the OAuth *client*. Supabase is the callback. The app domain never goes in Google’s redirect list.
+Google Cloud holds the OAuth *client*. Supabase is the callback. The app domain does not go in Google’s redirect list.
 
 ### 1. Google Cloud → Credentials → Web client `ZeroSmokeWay`
 
@@ -60,62 +92,23 @@ Google Cloud holds the OAuth *client*. Supabase is the callback. The app domain 
 
 - `https://uakgprwpnrykzatqylhy.supabase.co/auth/v1/callback`
 
-Save. Changes can take a few minutes.
-
 ### 2. Supabase → Authentication
 
-Providers → Google: enable, paste the same Client ID and Secret, Save.
+Providers → Google: enable, paste the same Client ID and Secret.
 
 URL Configuration:
 
 - Site URL: `https://zerosmokeway.life`
 - Redirect URLs: `http://localhost:5173/**`, `http://localhost:5174/**`, `https://zerosmokeway.life/**`, `https://www.zerosmokeway.life/**`, `https://zerosmokeway.vercel.app/**`
 
-SQL editor: run `supabase/migrations/20261030000000_player_progress.sql`.
+New accounts see the intro, then scene 1. Returning accounts resume: chat restores dialogue; a film in progress plays again from the poster. After a confirmed last cigarette they land on the support home.
 
-Settings → API: `VITE_SUPABASE_URL` and the **anon** / **publishable** key in `webapp/.env` and in Vercel. Restart Vite after changing `.env`.
+## Deploy
 
-New Google accounts see the intro, then scene 1. Returning accounts resume the last scene: chat restores the dialogue; a film in progress plays again from the poster.
+Vercel builds `webapp` (`vercel.json`). Set the same env vars on the project. Scene and support functions use a longer Meta budget (about 100s) under a 120s `maxDuration` — confirm the Vercel plan allows it.
 
-## SEO operator (`seo_ai_agent`)
+## History
 
-The cinematic UI is not rewritten by the agent (no fix-loop on the films). After the site is live:
+An earlier Phaser labyrinth prototype is archived under `docs/archive/` and removed from the live app. Hackathon notes: [docs/hackathon/submission.md](docs/hackathon/submission.md).
 
-1. Add the production URL in `seo_ai_agent`.
-2. Connect Google Search Console.
-3. Settings: local repo `/Users/Guest/ZeroSmokeWay`, `git_content_path=content`, language `en`.
-4. Keep `make up` on that machine.
-
-New articles land as `content/<slug>.md`. They are not a live `/blog` route yet.
-
-## Hackathon work
-
-Meta Global AI Developer Hackathon 2026. Track: **Indie Developer**. Theme: **Build for Your World**. Bonus categories to mark: **Best Agent Use Case**, **Best Creative Build**.
-
-Deadline: 4 November 2026, 9:00 PM ET. Branch: `hackathon-2026`.
-
-### Prior work (before 26 October 2026)
-
-Concept, research, and the Labyrinth prototype already existed: Phaser gesture rooms, corridor map, OpenAI room chat with authored fallbacks. Last pre-hackathon commit on `main`: `2e1c89a`. That layer is frozen. Judges should not score it.
-
-### Built during the hackathon
-
-- Scene-by-scene mobile path (4 acts / 15 scenes planned). One scene finished before the next starts.
-- Act 1 Scene 1 — *Garden of the Pitcher Plant*: cinema, then full-screen Meta chat. Bee = “I only wanted to try / I can stop whenever I want.”
-- Act 1 Scene 2 — *The First Disgusting Cigarette*: flashback in a crowd — first drag, cough, they laugh, he keeps smoking so he will not look like the fool.
-- Act 1 Scene 3 — *The Brainwashing Labyrinth*: a city of giant ads; last-request, sport, and romance myths; the talk names the manipulation.
-- Act 1 Scene 4 — *The Tight Shoes Paradox*: the only pleasure is taking off shoes that hurt; that relief is the cigarette.
-- Act 2 Scene 5 — *Boss: Stress*: office crunch; a cigarette for calm; the anxiety graph climbs instead.
-- Meta Model API (`muse-spark-1.3` at `https://api.meta.ai/v1`) as the dialogue core. No prepared questions, no fake replies when the model fails.
-- Hardcoded assistant speech profile (peer, short, match user language).
-- Muse returns a **decision**, not only a line: `hold` / `probe` / `release` / `advance`. The server, not the client, decides whether the next scene may open.
-
-Draft for the submission form:
-
-> Existing project concept and a Phaser labyrinth existed before the event. During the hackathon I replaced that loop with cinematic scenes and a Meta Muse agent that talks after each film, tracks how to lead the player, and unlocks the next scene when they connect the image to their own smoking.
-
-Suggested one-line impact: people do not keep smoking because they lack facts; they keep a private story. ZeroSmokeWay makes that story visible.
-
-Submission checklist and credit links: [docs/hackathon/submission.md](docs/hackathon/submission.md). Demo voiceover: [docs/hackathon/demo-script.md](docs/hackathon/demo-script.md).
-
-[Scene 1](docs/design/act1-scene1.md) · [Scene 2](docs/design/act1-scene2.md) · [Dialogue](docs/design/scene-dialogue.md)
+Scene design index: [docs/design/act1-scene1.md](docs/design/act1-scene1.md) · [dialogue](docs/design/scene-dialogue.md) · [post-quit](docs/dialogue-and-post-quit-design.md)

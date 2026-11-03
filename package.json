@@ -5,8 +5,5 @@
   "description": "Root package.json enables ESM for Vercel api/*.js re-exports.",
   "devDependencies": {
     "playwright": "^1.63.0"
-  },
-  "scripts": {
-    "qa:core": "node docs/qa/playthrough-core.mjs"
   }
 }

@@ -5,14 +5,13 @@ import type { ChatLine } from '../scenes/act1/api';
 export type SupportReply = {
   response: string;
   memory: MemoryEntry[];
-  recordSmoked: boolean;
 };
 
 export async function askSupport(
   message: string,
   history: ChatLine[],
   signal: AbortSignal,
-  extras: { memory: MemoryEntry[]; smokingStatus: string },
+  extras: { memory: MemoryEntry[] },
 ): Promise<SupportReply> {
   const root = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
   const bounded = history.length <= 20 ? history : [...history.slice(0, 3), ...history.slice(-17)];
@@ -37,6 +36,5 @@ export async function askSupport(
   return {
     response: value.response.slice(0, 2000),
     memory: Array.isArray(value.memory) ? value.memory : extras.memory,
-    recordSmoked: value.recordSmoked === true,
   };
 }
