@@ -122,4 +122,6 @@ test('about no longer promises the first film or private-story server gating', (
 test('feedback page does not attach the conversation', () => {
   const page = readFileSync(join(root, '../public/feedback.html'), 'utf8');
   assert.match(page, /does not send your talk/);
+  assert.match(page, /box-sizing:\s*border-box/);
+  assert.match(page, /max-width:\s*100%/);
 });

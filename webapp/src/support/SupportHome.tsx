@@ -85,6 +85,16 @@ export function SupportHome({ userId, initial, account, onSignOut, onProgress }:
     onProgress(next);
   }
 
+  /** Never call onProgress inside a setState updater — that updates AuthGate while SupportHome is rendering. */
+  function commitFrom(updater: (current: PlayerProgress) => PlayerProgress) {
+    let nextValue: PlayerProgress | undefined;
+    setProgress(current => {
+      nextValue = updater(current);
+      return nextValue;
+    });
+    if (nextValue !== undefined) onProgress(nextValue);
+  }
+
   async function speak(message: string, history: ChatLine[]) {
     setIssue('');
     setBusy(true);
@@ -97,15 +107,11 @@ export function SupportHome({ userId, initial, account, onSignOut, onProgress }:
         smokingStatus: progress.smokingStatus,
       });
       if (request.current !== control) return;
-      setProgress(current => {
-        const next = {
-          ...current,
-          memory: Array.isArray(reply.memory) ? reply.memory : current.memory,
-          supportChat: [...history, line('user', message), line('assistant', reply.response)].slice(-40),
-        };
-        onProgress(next);
-        return next;
-      });
+      commitFrom(current => ({
+        ...current,
+        memory: Array.isArray(reply.memory) ? reply.memory : current.memory,
+        supportChat: [...history, line('user', message), line('assistant', reply.response)].slice(-40),
+      }));
     } catch {
       if (request.current === control) setIssue('The model did not answer. You can retry.');
     } finally {
@@ -123,11 +129,10 @@ export function SupportHome({ userId, initial, account, onSignOut, onProgress }:
     setTab('support');
     setDraft('');
     const history = progress.supportChat;
-    setProgress(current => {
-      const next = { ...current, supportChat: [...current.supportChat, line('user', message)].slice(-40) };
-      onProgress(next);
-      return next;
-    });
+    commitFrom(current => ({
+      ...current,
+      supportChat: [...current.supportChat, line('user', message)].slice(-40),
+    }));
     await speak(message, history);
   }
 
@@ -143,11 +148,7 @@ export function SupportHome({ userId, initial, account, onSignOut, onProgress }:
     setIssue('');
     try {
       const snapshot = await recordSmoked(userId, when, restart);
-      setProgress(current => {
-        const next = applyLifecycle(current, snapshot);
-        onProgress(next);
-        return next;
-      });
+      commitFrom(current => applyLifecycle(current, snapshot));
       setRecordOpen(false);
     } catch (error) {
       setIssue(error instanceof Error ? error.message : 'Could not record that cigarette.');
@@ -161,11 +162,7 @@ export function SupportHome({ userId, initial, account, onSignOut, onProgress }:
     setIssue('');
     try {
       const snapshot = await confirmLastCigarette(userId, new Date(), 'now');
-      setProgress(current => {
-        const next = applyLifecycle(current, snapshot);
-        onProgress(next);
-        return next;
-      });
+      commitFrom(current => applyLifecycle(current, snapshot));
       setRecordOpen(false);
     } catch (error) {
       setIssue(error instanceof Error ? error.message : 'Could not start a new count.');
