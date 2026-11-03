@@ -300,6 +300,11 @@ test('unknown scene, injected roles and oversized payloads never reach Meta', as
   assert.match(SCENE_JOBS.combo, /NEW here, not scenes 5–7/);
   assert.match(SCENE_JOBS.willpower, /Previous attempts and cutting down are efforts/);
   assert.match(SCENE_JOBS.willpower, /Do not say the method of willpower is doomed/);
+  assert.match(SCENE_JOBS.willpower, /irritability toward children/);
+  assert.match(SCENE_JOBS.stress, /substantive reading they can refuse/);
+  assert.match(SCENE_JOBS.combo, /answer with substance first/);
+  assert.match(SCENE_JOBS.weeks, /do not reopen that interview from zero/);
+  assert.match(SCENE_JOBS.truth, /Do not forecast that staying off cigarettes will be hard or easy/);
   assert.match(SCENE_JOBS.swamp, /do not devalue it/);
   assert.match(SCENE_JOBS.substitutes, /Do not analogize to heroin/);
   assert.match(SCENE_JOBS.substitutes, /Do not devalue medical or chosen help/);

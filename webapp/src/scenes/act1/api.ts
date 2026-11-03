@@ -11,6 +11,9 @@ export type SceneReply = {
 };
 export type ChatLine = { id: string; role: 'user' | 'assistant'; content: string };
 
+/** Must stay under Vercel maxDuration (120s) and above the server Meta budget (100s). */
+export const MUSE_REQUEST_TIMEOUT_MS = 110_000;
+
 function asStance(value: unknown): Stance {
   return value === 'probe' || value === 'release' || value === 'advance' || value === 'hold' ? value : 'hold';
 }

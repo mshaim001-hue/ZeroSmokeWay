@@ -8,9 +8,13 @@ function response() {
 }
 
 test('support job does not reopen scenes or let chat change the timer', () => {
-  assert.match(SUPPORT_JOB, /Do not change the timer/);
+  assert.match(SUPPORT_JOB, /Chat does not change that time|A date in this chat does not change the timer|Do not change the timer/);
   assert.match(SUPPORT_JOB, /Scenes do not reopen/);
   assert.match(SUPPORT_JOB, /no notifications, no diary, no savings/);
+  assert.match(SUPPORT_JOB, /keep the decision not to smoke/);
+  assert.match(SUPPORT_JOB, /Do not present smoking as an allowed step/);
+  assert.match(SUPPORT_JOB, /Progress setting/);
+  assert.doesNotMatch(SUPPORT_JOB, /The chips/);
 });
 
 test('support chat stays after they said they smoked, and only flags a product record', async () => {
@@ -23,13 +27,14 @@ test('support chat stays after they said they smoked, and only flags a product r
     smokingStatus: 'abstaining',
     createCompletion: async params => {
       assert.match(params.messages[0].content, /a smoke-free count is running/);
+      assert.match(params.messages[0].content, /Internal player card/);
       assert.match(params.messages[0].content, /I want the minute/);
-      return { choices: [{ message: { content: '{"reply":"What actually happened in the car? There is a way on screen to record it if you want.","stance":"probe","next":"stay","record_smoked":true,"memory_updates":[]}' } }] };
+      return { choices: [{ message: { content: '{"reply":"What actually happened in the car? You can correct the status in Progress if you need to.","stance":"probe","next":"stay","record_smoked":true,"memory_updates":[]}' } }] };
     },
   });
   assert.equal(result.next, 'stay');
   assert.equal(result.recordSmoked, true);
-  assert.match(result.response, /record it/);
+  assert.match(result.response, /Progress/);
 });
 
 test('journey users cannot use the support API', async () => {

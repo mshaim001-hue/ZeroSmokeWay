@@ -7,6 +7,16 @@ const env = { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'a
 test('scene and support gates use the server row, not the request body', async () => {
   const fetchImpl = async url => {
     if (String(url).includes('/auth/v1/user')) return { ok: true, json: async () => ({ id: 'user-1' }) };
+    if (String(url).includes('select=app_stage,smoking_status,memory')) {
+      return {
+        ok: true,
+        json: async () => [{
+          app_stage: 'support',
+          smoking_status: 'abstaining',
+          memory: [{ id: 'm1', source: 'player', status: 'current', summary: 'coffee cue', quote: 'coffee' }],
+        }],
+      };
+    }
     return { ok: true, json: async () => [{ app_stage: 'support', smoking_status: 'abstaining' }] };
   };
   const req = { headers: { authorization: 'Bearer token' } };
@@ -14,6 +24,7 @@ test('scene and support gates use the server row, not the request body', async (
   const support = await gateDialogueRequest('support', req, env, fetchImpl);
   assert.equal(support.appStage, 'support');
   assert.equal(support.smokingStatus, 'abstaining');
+  assert.equal(support.memory?.[0]?.summary, 'coffee cue');
 });
 
 test('a missing session is 401 when supabase is configured', async () => {

@@ -76,15 +76,21 @@ test('scene 15 has the last-cigarette CTA and confirmation, not a next film', ()
 test('home keeps support, about, and feedback without blocking support', () => {
   const home = readFileSync(join(root, '../src/support/SupportHome.tsx'), 'utf8');
   const today = readFileSync(join(root, '../src/support/TodayScreen.tsx'), 'utf8');
+  const progress = readFileSync(join(root, '../src/support/ProgressScreen.tsx'), 'utf8');
   const quit = readFileSync(join(root, '../src/support/quitApi.ts'), 'utf8');
   assert.match(home, />Today</);
   assert.match(home, />Progress</);
   assert.match(home, />Support</);
-  assert.match(today, /Talk to Muse/);
+  assert.match(today, /Talk it through/);
+  assert.doesNotMatch(today, /Talk to Muse/);
   assert.match(home, /\/feedback.html/);
   assert.match(home, /\/about.html/);
-  assert.match(home, /I smoked/);
-  assert.match(home, /Record that I smoked/);
+  assert.match(home, /support-account/);
+  assert.doesNotMatch(home, /I want a cigarette/);
+  assert.doesNotMatch(home, /I’m thinking about cigarettes/);
+  assert.doesNotMatch(home, /I’m having a hard time/);
+  assert.doesNotMatch(home, /Record that I smoked/);
+  assert.match(progress, /I smoked — update status/);
   assert.match(home, /Support the project/);
   assert.match(home, /ko-fi.com\/underdot/);
   assert.match(home, /noopener noreferrer/);
@@ -96,13 +102,21 @@ test('home keeps support, about, and feedback without blocking support', () => {
   assert.doesNotMatch(quit, /saveSupportContent[\s\S]*applyQuitSnapshot/);
 });
 
-test('talk to Muse stays separate from supporting the project', () => {
+test('talk it through stays separate from supporting the project', () => {
   const today = readFileSync(join(root, '../src/support/TodayScreen.tsx'), 'utf8');
   const chat = readFileSync(join(root, '../src/support/SupportHome.tsx'), 'utf8');
-  assert.match(today, /Talk to Muse/);
+  assert.match(today, /Talk it through/);
   assert.match(today, /ko-fi.com\/underdot/);
   assert.doesNotMatch(chat.split('support-chat')[1] ?? '', /ko-fi/);
   assert.doesNotMatch(chat.split('LastCigaretteDialog')[1] ?? '', /ko-fi/);
+});
+
+test('about no longer promises the first film or private-story server gating', () => {
+  const about = readFileSync(join(root, '../public/about.html'), 'utf8');
+  assert.doesNotMatch(about, /Watch the first film/);
+  assert.doesNotMatch(about, /private story/);
+  assert.doesNotMatch(about, /The server — not the button/);
+  assert.match(about, /Back to ZeroSmokeWay/);
 });
 
 test('feedback page does not attach the conversation', () => {

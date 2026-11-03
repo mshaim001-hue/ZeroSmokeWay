@@ -7,12 +7,18 @@ import { confirmLastCigarette, recordSmoked, saveQuitEstimates, saveSupportConte
 import { askSupport } from './supportApi';
 import { smokeFreeClock } from './timer';
 import type { QuitEstimates } from './estimates';
-import type { ChatLine } from '../scenes/act1/api';
+import { MUSE_REQUEST_TIMEOUT_MS, type ChatLine } from '../scenes/act1/api';
 import './support.css';
+
+export type AccountInfo = {
+  email?: string;
+  name?: string;
+};
 
 type Props = {
   userId: string;
   initial: PlayerProgress;
+  account?: AccountInfo;
   onSignOut: () => void;
   onProgress: (progress: PlayerProgress) => void;
 };
@@ -20,18 +26,12 @@ type Props = {
 type Tab = 'today' | 'progress' | 'support';
 
 const KOFI = 'https://ko-fi.com/underdot';
-const CHIPS = [
-  { id: 'want', label: 'I want a cigarette' },
-  { id: 'think', label: 'I’m thinking about cigarettes' },
-  { id: 'hard', label: 'I’m having a hard time' },
-  { id: 'smoked', label: 'I smoked' },
-];
 
 function line(role: ChatLine['role'], content: string): ChatLine {
   return { id: newMessageId(), role, content };
 }
 
-export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
+export function SupportHome({ userId, initial, account, onSignOut, onProgress }: Props) {
   const [progress, setProgress] = useState(initial);
   const [now, setNow] = useState(Date.now());
   const [tab, setTab] = useState<Tab>('today');
@@ -40,12 +40,13 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
   const [recordOpen, setRecordOpen] = useState(false);
-  const [offerRecord, setOfferRecord] = useState(false);
   const [editingEstimates, setEditingEstimates] = useState(false);
   const request = useRef<AbortController>();
   const end = useRef<HTMLDivElement>(null);
   const chat = progress.supportChat;
   const openInterval = currentOpenInterval(progress);
+  const accountName = account?.name?.trim() || '';
+  const accountEmail = account?.email?.trim() || '';
 
   const tickFast = openInterval ? smokeFreeClock(openInterval.startedAt, now).showSeconds : false;
   useEffect(() => {
@@ -89,14 +90,13 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
     setBusy(true);
     const control = new AbortController();
     request.current = control;
-    const timeout = window.setTimeout(() => control.abort(), 28000);
+    const timeout = window.setTimeout(() => control.abort(), MUSE_REQUEST_TIMEOUT_MS);
     try {
       const reply = await askSupport(message, history, control.signal, {
         memory: progress.memory,
         smokingStatus: progress.smokingStatus,
       });
       if (request.current !== control) return;
-      setOfferRecord(reply.recordSmoked === true);
       setProgress(current => {
         const next = {
           ...current,
@@ -132,6 +132,7 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
   }
 
   function retryLast() {
+    if (busy) return;
     const index = chat.map(item => item.role).lastIndexOf('user');
     if (index < 0) return;
     void speak(chat[index].content, chat.slice(0, index));
@@ -148,7 +149,6 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
         return next;
       });
       setRecordOpen(false);
-      setOfferRecord(false);
     } catch (error) {
       setIssue(error instanceof Error ? error.message : 'Could not record that cigarette.');
     } finally {
@@ -200,6 +200,12 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
           <>
             <button type="button" className="support-menu-backdrop" aria-label="Close menu" onClick={() => setMenu(false)} />
             <nav className="support-menu" aria-label="More">
+              {(accountName || accountEmail) ? (
+                <div className="support-account" aria-label="Signed-in account">
+                  {accountName ? <strong>{accountName}</strong> : null}
+                  {accountEmail ? <span>{accountEmail}</span> : null}
+                </div>
+              ) : null}
               <a href="/about.html" onClick={() => setMenu(false)}>About</a>
               <a href="/feedback.html" onClick={() => setMenu(false)}>Leave feedback</a>
               <a href={KOFI} target="_blank" rel="noopener noreferrer" onClick={() => setMenu(false)}>Support the project ↗</a>
@@ -228,30 +234,21 @@ export function SupportHome({ userId, initial, onSignOut, onProgress }: Props) {
             editingEstimates={editingEstimates}
             onSaveEstimates={estimates => void onSaveEstimates(estimates)}
             onEditEstimates={() => setEditingEstimates(on => !on)}
+            onCorrectStatus={() => setRecordOpen(true)}
           />
         ) : null}
         {tab === 'support' ? (
           <section className="support-chat" aria-label="Support conversation">
-            <div className="support-chips">
-              {CHIPS.map(chip => (
-                <button key={chip.id} type="button" disabled={busy} onClick={() => void send(chip.label)}>{chip.label}</button>
-              ))}
-            </div>
             <div className="support-messages" role="log" aria-label="Support conversation">
               {chat.map(item => (
                 <article key={item.id} className={`support-bubble ${item.role}`}>
-                  <span>{item.role === 'user' ? 'You' : 'Muse'}</span>
+                  <span>{item.role === 'user' ? 'You' : ''}</span>
                   <p>{item.content}</p>
                 </article>
               ))}
-              {busy && <p className="support-status" role="status">…</p>}
+              {busy && <p className="support-status" role="status">Writing a reply…</p>}
               <div ref={end} />
             </div>
-            {offerRecord && progress.smokingStatus !== 'smoking' ? (
-              <button type="button" className="support-primary" style={{ margin: '4px 16px 8px', width: 'calc(100% - 32px)' }} onClick={() => setRecordOpen(true)}>
-                Record that I smoked
-              </button>
-            ) : null}
             {issue && tab === 'support' ? (
               <div className="support-status" role="status">
                 <p>{issue}</p>

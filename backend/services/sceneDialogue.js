@@ -2,7 +2,13 @@ import OpenAI from 'openai';
 import { speechSystemPrompt } from './speechProfile.js';
 import { SCENE_JOBS } from './sceneDossiers.js';
 import { compactMemory, mergeMemory, parseMemory } from './sceneMemory.js';
-import { logMetaFailure, resolveMetaModel } from './metaError.js';
+import {
+  META_CALL_TIMEOUT_MS,
+  META_MIN_ATTEMPT_MS,
+  callMetaWithTransientRetry,
+  createMetaBudget,
+  resolveMetaModel,
+} from './metaError.js';
 
 export { SCENE_JOBS };
 export const META_BASE_URL = 'https://api.meta.ai/v1';
@@ -108,10 +114,6 @@ function fail(issue, status = 503) {
   throw error;
 }
 
-function providerIssue(error) {
-  return logMetaFailure('scene', error);
-}
-
 function extractObject(raw) {
   const text = String(raw ?? '').trim();
   const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -211,10 +213,17 @@ export async function handleSceneRequest(body, dependencies = {}) {
   const env = dependencies.env ?? process.env;
   const apiKey = env.MODEL_API_KEY?.trim();
   if (!apiKey && !dependencies.createCompletion) fail('missing_key');
-  const createCompletion = dependencies.createCompletion ?? ((params) => {
-    const client = new OpenAI({ apiKey, baseURL: META_BASE_URL, timeout: 25000, maxRetries: 0 });
-    return client.chat.completions.create(params);
+  const createCompletion = dependencies.createCompletion ?? ((params, requestOptions) => {
+    const client = new OpenAI({
+      apiKey,
+      baseURL: META_BASE_URL,
+      timeout: META_CALL_TIMEOUT_MS,
+      maxRetries: 0,
+    });
+    return client.chat.completions.create(params, requestOptions);
   });
+  const budget = createMetaBudget(dependencies.now ?? Date.now);
+  const sleep = dependencies.sleep ?? ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
   const model = resolveMetaModel(env, META_MODEL);
   const lastScene = input.sceneId === LAST_SCENE_ID;
   const developer = [
@@ -235,8 +244,12 @@ export async function handleSceneRequest(body, dependencies = {}) {
   ].filter(Boolean).join('\n');
 
   async function once(hint) {
-    try {
-      return await createCompletion({
+    return callMetaWithTransientRetry({
+      source: 'scene',
+      createCompletion,
+      budget,
+      sleep,
+      params: {
         model,
         max_completion_tokens: 2000,
         reasoning_effort: 'low',
@@ -245,11 +258,8 @@ export async function handleSceneRequest(body, dependencies = {}) {
           ...input.history.map(({ role, content }) => ({ role, content })),
           { role: 'user', content: input.message },
         ],
-      });
-    } catch (error) {
-      if (error?.status === 400 && error?.issue) throw error;
-      fail(providerIssue(error));
-    }
+      },
+    });
   }
 
   const first = await once('');
@@ -257,6 +267,7 @@ export async function handleSceneRequest(body, dependencies = {}) {
     return decisionFromCompletion(first, input);
   } catch (error) {
     if (!['truncated_response', 'invalid_response', 'empty_response'].includes(error?.issue)) throw error;
+    if (budget.remaining() < META_MIN_ATTEMPT_MS) throw error;
     const retry = await once('Previous output was invalid, empty, or cut off. Reply with one complete JSON object. Put only changed notes in memory_updates. Keep reply under 700 characters.');
     return decisionFromCompletion(retry, input);
   }

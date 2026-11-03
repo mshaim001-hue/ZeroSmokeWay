@@ -12,9 +12,12 @@ type Props = {
   busy?: boolean;
   onSaveEstimates: (estimates: QuitEstimates) => void;
   onEditEstimates: () => void;
+  onCorrectStatus?: () => void;
 };
 
-export function ProgressScreen({ progress, now, editingEstimates, busy, onSaveEstimates, onEditEstimates }: Props) {
+export function ProgressScreen({
+  progress, now, editingEstimates, busy, onSaveEstimates, onEditEstimates, onCorrectStatus,
+}: Props) {
   const open = currentOpenInterval(progress);
   const nrt = usesNrtFromMemory(progress.memory);
   const reached = open ? new Set(reachedMilestones(open.startedAt, now).map(item => item.id)) : new Set<string>();
@@ -44,7 +47,7 @@ export function ProgressScreen({ progress, now, editingEstimates, busy, onSaveEs
       ) : (
         <section className="support-card">
           <h2>Set up your estimates</h2>
-          <p className="support-note">These numbers stay yours. Muse’s notes are not used as settings.</p>
+          <p className="support-note">These numbers stay yours. Chat notes are not used as settings.</p>
           <EstimateForm initial={estimates} busy={busy} onSave={onSaveEstimates} onCancel={editingEstimates ? onEditEstimates : undefined} />
         </section>
       )}
@@ -83,6 +86,20 @@ export function ProgressScreen({ progress, now, editingEstimates, busy, onSaveEs
       ) : (
         <p className="support-note">No earlier stretches yet.</p>
       )}
+
+      {onCorrectStatus ? (
+        <section className="support-card">
+          <h2>Status</h2>
+          <p className="support-note">
+            {open
+              ? 'If you smoked and need to correct the live count, you can record it here. This does not need the talk.'
+              : 'The live count is off. You can start a new count when a last cigarette is already behind you.'}
+          </p>
+          <button type="button" className="support-ghost" style={{ marginTop: 10 }} disabled={busy} onClick={onCorrectStatus}>
+            {open ? 'I smoked — update status' : 'Start a new count'}
+          </button>
+        </section>
+      ) : null}
     </div>
   );
 }

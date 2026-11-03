@@ -1,5 +1,6 @@
 import { handleSceneRequest } from '../services/sceneDialogue.js';
 import { gateDialogueRequest } from '../services/playerStage.js';
+import { VERCEL_META_MAX_DURATION_S } from '../services/metaError.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -23,4 +24,4 @@ export default async function handler(req, res) {
     return res.status(error.status === 503 ? 503 : 500).json({ error: 'unavailable', issue: error.issue || 'provider_error' });
   }
 }
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: VERCEL_META_MAX_DURATION_S };

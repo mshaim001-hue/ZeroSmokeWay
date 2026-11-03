@@ -1,3 +1,5 @@
+import { parseMemory } from './sceneMemory.js';
+
 function fail(issue, status, message) {
   const error = new Error(message || issue);
   error.status = status;
@@ -27,7 +29,8 @@ async function readJson(response) {
   }
 }
 
-export async function readAuthoritativeStage(req, env = process.env, fetchImpl = fetch) {
+export async function readAuthoritativeStage(req, env = process.env, fetchImpl = fetch, options = {}) {
+  const includeMemory = options.includeMemory === true;
   const config = supabaseConfig(env);
   if (!config) fail('not_configured', 503, 'Progress store is not configured');
   const token = bearerToken(req);
@@ -44,10 +47,11 @@ export async function readAuthoritativeStage(req, env = process.env, fetchImpl =
   const user = await readJson(userRes);
   const userId = typeof user?.id === 'string' ? user.id : '';
   if (!userId) fail('auth_required', 401, 'Sign in required');
+  const select = includeMemory ? 'app_stage,smoking_status,memory' : 'app_stage,smoking_status';
   let progressRes;
   try {
     progressRes = await fetchImpl(
-      `${config.url}/rest/v1/player_progress?select=app_stage,smoking_status&user_id=eq.${encodeURIComponent(userId)}`,
+      `${config.url}/rest/v1/player_progress?select=${select}&user_id=eq.${encodeURIComponent(userId)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -64,14 +68,30 @@ export async function readAuthoritativeStage(req, env = process.env, fetchImpl =
   const rows = await readJson(progressRes);
   if (!Array.isArray(rows)) fail('stage_unavailable', 503, 'Could not read progress');
   const row = rows[0] || null;
-  if (!row) return { configured: true, appStage: 'journey', smokingStatus: '', schemaComplete: true };
+  if (!row) {
+    return {
+      configured: true,
+      appStage: 'journey',
+      smokingStatus: '',
+      schemaComplete: true,
+      memory: includeMemory ? [] : undefined,
+    };
+  }
   const appStage = row.app_stage === 'support' || row.app_stage === 'preparing_to_start' ? row.app_stage : 'journey';
   const smokingStatus = row.smoking_status === 'smoking' || row.smoking_status === 'abstaining' ? row.smoking_status : '';
-  return { configured: true, appStage, smokingStatus, schemaComplete: true };
+  return {
+    configured: true,
+    appStage,
+    smokingStatus,
+    schemaComplete: true,
+    memory: includeMemory ? parseMemory(row.memory) : undefined,
+  };
 }
 
 export async function gateDialogueRequest(kind, req, env = process.env, fetchImpl = fetch) {
-  const stage = await readAuthoritativeStage(req, env, fetchImpl);
+  const stage = await readAuthoritativeStage(req, env, fetchImpl, {
+    includeMemory: kind === 'support',
+  });
   if (kind === 'scene' && stage.appStage === 'support') {
     fail('scenes_closed', 409, 'Scenes are closed after support starts');
   }

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { FIRST_SCENE, neighbor, sceneOf, type SceneId, type Phase } from '../catalog';
-import { askScene, type ChatLine } from './api';
+import { askScene, MUSE_REQUEST_TIMEOUT_MS, type ChatLine } from './api';
 import { gateAfterKeepTalking, gateAfterModel, gateAfterUserTalk } from './offerState';
 import { saveProgress } from '../../auth/progress';
 import { newMessageId, persistPhase, type MemoryEntry, type PlayerProgress } from '../../auth/progressModel';
@@ -224,7 +224,7 @@ export function Scene1App({ userId, initial, onSignOut, onEnteredSupport }: Prop
     setBusy(true);
     const control = new AbortController();
     request.current = control;
-    const timeout = window.setTimeout(() => control.abort(), 28000);
+    const timeout = window.setTimeout(() => control.abort(), MUSE_REQUEST_TIMEOUT_MS);
     try {
       const ready = extras?.canAdvance ?? snapshot.current.canAdvance;
       const open = extras?.offerOpen ?? snapshot.current.offerOpen;
@@ -330,7 +330,7 @@ export function Scene1App({ userId, initial, onSignOut, onEnteredSupport }: Prop
               <p>{m.content}</p>
             </article>
           ))}
-          {busy && <p className="scene1-status" role="status">…</p>}
+          {busy && <p className="scene1-status" role="status">Writing a reply…</p>}
           <div ref={end} />
         </div>
         {issue && (

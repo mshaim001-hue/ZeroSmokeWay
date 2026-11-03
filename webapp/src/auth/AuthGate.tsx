@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Scene1App } from '../scenes/act1/Scene1App';
-import { SupportHome } from '../support/SupportHome';
+import { SupportHome, type AccountInfo } from '../support/SupportHome';
 import { previewProgress } from '../support/supportPreview';
 import { isAuthConfigured, supabase } from './client';
 import { Landing } from './Landing';
@@ -11,6 +11,22 @@ import { enterFullscreen } from '../fullscreen';
 import './gate.css';
 
 type View = 'boot' | 'landing' | 'intro' | 'play' | 'home';
+
+function accountFromUser(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+} | null | undefined): AccountInfo {
+  const meta = user?.user_metadata || {};
+  const name = typeof meta.full_name === 'string'
+    ? meta.full_name
+    : typeof meta.name === 'string'
+      ? meta.name
+      : '';
+  return {
+    email: typeof user?.email === 'string' ? user.email : '',
+    name: name.trim(),
+  };
+}
 
 function cleanAuthParams() {
   const url = new URL(window.location.href);
@@ -23,6 +39,7 @@ function cleanAuthParams() {
 export function AuthGate() {
   const [view, setView] = useState<View>('boot');
   const [userId, setUserId] = useState<string | null>(null);
+  const [account, setAccount] = useState<AccountInfo>({});
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
@@ -57,15 +74,23 @@ export function AuthGate() {
     };
   }, []);
 
-  async function applySession(session: { user: { id: string } } | null) {
+  async function applySession(session: {
+    user: {
+      id: string;
+      email?: string | null;
+      user_metadata?: Record<string, unknown> | null;
+    };
+  } | null) {
     if (!session) {
       readyUser.current = null;
       setUserId(null);
+      setAccount({});
       setProgress(null);
       setBusy(false);
       setView('landing');
       return;
     }
+    setAccount(accountFromUser(session.user));
     if (readyUser.current === session.user.id) return;
     const next = await loadProgress(session.user.id);
     readyUser.current = session.user.id;
@@ -111,6 +136,7 @@ export function AuthGate() {
     readyUser.current = null;
     if (isAuthConfigured()) await supabase().auth.signOut();
     setUserId(null);
+    setAccount({});
     setProgress(null);
     setView('landing');
   }
@@ -122,6 +148,7 @@ export function AuthGate() {
         <SupportHome
           userId="preview"
           initial={previewProgress(preview)}
+          account={{ name: 'Preview', email: 'preview@zerosmokeway.life' }}
           onSignOut={() => undefined}
           onProgress={() => undefined}
         />
@@ -137,6 +164,7 @@ export function AuthGate() {
       <SupportHome
         userId={userId}
         initial={progress}
+        account={account}
         onSignOut={() => void signOut()}
         onProgress={next => { setProgress(next); setView('home'); }}
       />

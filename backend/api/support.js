@@ -1,5 +1,6 @@
 import { handleSupportRequest } from '../services/supportDialogue.js';
 import { gateDialogueRequest } from '../services/playerStage.js';
+import { VERCEL_META_MAX_DURATION_S } from '../services/metaError.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
     return res.status(200).json(await handleSupportRequest(req.body, {
       resolvedAppStage: stage.appStage,
       smokingStatus: stage.smokingStatus,
+      authoritativeMemory: stage.memory,
     }));
   } catch (error) {
     if (error.status === 400) return res.status(400).json({ error: error.message });
@@ -24,4 +26,4 @@ export default async function handler(req, res) {
     return res.status(error.status === 503 ? 503 : 500).json({ error: 'unavailable', issue: error.issue || 'provider_error' });
   }
 }
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: VERCEL_META_MAX_DURATION_S };

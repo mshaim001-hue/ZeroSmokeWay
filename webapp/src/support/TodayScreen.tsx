@@ -105,8 +105,8 @@ export function TodayScreen({
 
       <section className="support-card support-muse">
         <h2>Need a moment?</h2>
-        <p>Talk to Muse. You don’t have to work it out alone.</p>
-        <button type="button" className="support-primary" onClick={onTalk}>Talk to Muse</button>
+        <p>Talk it through. You don’t have to work it out alone.</p>
+        <button type="button" className="support-primary" onClick={onTalk}>Talk it through</button>
       </section>
 
       <section className="support-card">
