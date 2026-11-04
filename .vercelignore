@@ -4,3 +4,11 @@ backend/.env
 node_modules/
 output/
 .playwright-cli/
+
+# Local tools, production renders, and repository-only documentation
+OpenCut-Classic/
+VoiceStudio/
+workspace/
+media/
+docs/
+.git/

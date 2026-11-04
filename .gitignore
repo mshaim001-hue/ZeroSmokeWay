@@ -1,31 +1,3 @@
-# Flutter
-frontend/.dart_tool/
-frontend/.flutter-plugins
-frontend/.flutter-plugins-dependencies
-frontend/.packages
-frontend/.pub-cache/
-frontend/.pub/
-frontend/build/
-frontend/.flutter-plugins-dependencies
-frontend/ios/Pods/
-frontend/ios/.symlinks/
-frontend/ios/Flutter/Flutter.framework
-frontend/ios/Flutter/Flutter.podspec
-frontend/ios/Flutter/Generated.xcconfig
-frontend/ios/Flutter/app.flx
-frontend/ios/Flutter/app.zip
-frontend/ios/Flutter/flutter_assets/
-frontend/ios/Flutter/flutter_export_environment.sh
-frontend/ios/ServiceDefinitions.json
-frontend/ios/Runner/GeneratedPluginRegistrant.*
-frontend/android/.gradle/
-frontend/android/app/build/
-frontend/android/.idea/
-frontend/android/local.properties
-frontend/android/.settings/
-frontend/android/.classpath
-frontend/android/.project
-
 # Web (Vite)
 webapp/node_modules/
 webapp/dist/
@@ -74,3 +46,9 @@ knowledge-base/
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# Local video-production tools and generated presentation assets
+/OpenCut-Classic/
+/VoiceStudio/
+/media/presentation-2026/
+/docs/hackathon/evidence-*/

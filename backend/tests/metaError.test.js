@@ -68,10 +68,12 @@ test('every Meta failure is logged with a cleaned cause, including provider_erro
       type: 'server_error',
       message: 'upstream failed Bearer sk-live-secret',
       headers: { 'x-request-id': 'req_provider' },
-    }), 'provider_error');
+    }, { model: 'muse-wonder-1.0', baseURL: 'https://api.meta.ai/v1' }), 'provider_error');
     assert.equal(lines.length, 1);
     assert.match(lines[0], /"source":"scene"/);
     assert.match(lines[0], /"issue":"provider_error"/);
+    assert.match(lines[0], /"model":"muse-wonder-1.0"/);
+    assert.match(lines[0], /"baseURL":"https:\/\/api.meta.ai\/v1"/);
     assert.match(lines[0], /"status":500/);
     assert.match(lines[0], /req_provider/);
     assert.doesNotMatch(lines[0], /sk-live-secret/);
@@ -139,26 +141,38 @@ test('only network and 502/503/504 are transient; auth and bad requests are not'
 test('transient Meta errors retry once inside the budget, without multiplying attempts', async () => {
   const attempts = [];
   const sleeps = [];
-  const result = await callMetaWithTransientRetry({
-    source: 'scene',
-    budget: createMetaBudget(() => 0, META_HANDLER_BUDGET_MS),
-    sleep: async (ms) => { sleeps.push(ms); },
-    createCompletion: async (params, options) => {
-      attempts.push({ params, options });
-      if (attempts.length === 1) {
-        const error = new Error('bad gateway');
-        error.status = 502;
-        throw error;
-      }
-      return okCompletion;
-    },
-  });
-  assert.equal(result, okCompletion);
-  assert.equal(attempts.length, 2);
-  assert.equal(sleeps.length, 1);
-  assert.equal(sleeps[0], META_TRANSIENT_DELAY_MS);
-  assert.equal(attempts[0].options.timeout, META_CALL_TIMEOUT_MS);
-  assert.equal(attempts[1].options.timeout, META_CALL_TIMEOUT_MS);
+  const lines = [];
+  const warn = console.warn;
+  console.warn = (...args) => { lines.push(args.map(String).join(' ')); };
+  try {
+    const result = await callMetaWithTransientRetry({
+      source: 'scene',
+      budget: createMetaBudget(() => 0, META_HANDLER_BUDGET_MS),
+      baseURL: 'https://api.meta.ai/v1',
+      sleep: async (ms) => { sleeps.push(ms); },
+      createCompletion: async (params, options) => {
+        attempts.push({ params, options });
+        if (attempts.length === 1) {
+          const error = new Error('bad gateway');
+          error.status = 502;
+          throw error;
+        }
+        return okCompletion;
+      },
+      params: { model: 'muse-wonder-1.0' },
+    });
+    assert.equal(result, okCompletion);
+    assert.equal(attempts.length, 2);
+    assert.equal(sleeps.length, 1);
+    assert.equal(sleeps[0], META_TRANSIENT_DELAY_MS);
+    assert.equal(attempts[0].options.timeout, META_CALL_TIMEOUT_MS);
+    assert.equal(attempts[1].options.timeout, META_CALL_TIMEOUT_MS);
+    assert.equal(lines.length, 1);
+    assert.match(lines[0], /"model":"muse-wonder-1.0"/);
+    assert.match(lines[0], /"baseURL":"https:\/\/api.meta.ai\/v1"/);
+  } finally {
+    console.warn = warn;
+  }
 });
 
 test('auth and invalid_request Meta errors are not retried', async () => {

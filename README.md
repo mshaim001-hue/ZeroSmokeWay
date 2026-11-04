@@ -4,6 +4,8 @@ Mobile cinematic path about smoking: short films, then a live talk after each on
 
 It is not a quit coach, not a questionnaire, and not medical advice. Effectiveness for quitting has not been tested with participants.
 
+[Watch the three-minute demo](https://youtu.be/4fCHfgi8CLM) · [Hackathon submission](docs/hackathon/submission.md) · [Architecture](docs/hackathon/architecture.md)
+
 ## What the product does
 
 1. **Fifteen scenes** (4 acts). Watch a short film, then talk in full-screen chat. The next film opens when that scene’s main theme has been looked at — not via a skip button.
@@ -57,16 +59,16 @@ npm run build --prefix webapp
 | `api/scene.js`, `api/support.js` | Vercel entries (`maxDuration` 120s) |
 | `supabase/migrations/` | Progress, support stage, locks, estimates |
 | `docs/design/` | Per-scene design notes |
-| `docs/archive/` | Old Phaser labyrinth and earlier prototypes |
 | `docs/hackathon/` | Meta hackathon submission notes |
 | `webapp/public/about.html`, `feedback.html` | Static pages from the in-app menu |
 
 ## Progress and migrations
 
-Apply migrations in order under `supabase/migrations/` (SQL editor or CLI). At minimum for the current product:
+For the current cinematic app, apply these migrations in order (Supabase SQL editor or CLI). See [migration guide](supabase/MIGRATION_GUIDE.md). Earlier migrations are retained as historical records; they belong to the previous prototype.
 
 - `20261030000000_player_progress.sql`
-- `20261031120000_dialogue_memory.sql` (and later dialogue/offer migrations as present)
+- `20261031120000_dialogue_memory.sql`
+- `20261101170000_offer_open.sql`
 - `20261102120000_support_stage.sql`
 - `20261102140000_support_locks.sql`
 - `20261102150000_save_support_content.sql`
@@ -109,6 +111,6 @@ Vercel builds `webapp` (`vercel.json`). Set the same env vars on the project. Sc
 
 ## History
 
-An earlier Phaser labyrinth prototype is archived under `docs/archive/` and removed from the live app. Hackathon notes: [docs/hackathon/submission.md](docs/hackathon/submission.md).
+Earlier Flutter and Phaser prototypes remain in Git history; their unused source and tooling are removed from the current tree. Hackathon notes: [docs/hackathon/submission.md](docs/hackathon/submission.md).
 
 Scene design index: [docs/design/act1-scene1.md](docs/design/act1-scene1.md) · [dialogue](docs/design/scene-dialogue.md) · [post-quit](docs/dialogue-and-post-quit-design.md)

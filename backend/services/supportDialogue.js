@@ -150,6 +150,7 @@ export async function handleSupportRequest(body, dependencies = {}) {
       createCompletion,
       budget,
       sleep,
+      baseURL: META_BASE_URL,
       params: {
         model,
         max_completion_tokens: 2000,

@@ -71,9 +71,21 @@ export function metaErrorFields(error) {
   };
 }
 
-export function logMetaFailure(source, error) {
+export function logMetaFailure(source, error, context = {}) {
   const issue = providerIssue(error);
-  console.warn('[meta]', JSON.stringify({ source, issue, ...metaErrorFields(error) }));
+  const model = typeof context.model === 'string' && context.model.trim()
+    ? context.model.trim().slice(0, 120)
+    : null;
+  const baseURL = typeof context.baseURL === 'string' && context.baseURL.trim()
+    ? context.baseURL.trim().slice(0, 200)
+    : null;
+  console.warn('[meta]', JSON.stringify({
+    source,
+    issue,
+    model,
+    baseURL,
+    ...metaErrorFields(error),
+  }));
   return issue;
 }
 
@@ -102,11 +114,16 @@ export async function callMetaWithTransientRetry({
   createCompletion,
   params,
   budget,
+  baseURL = null,
   sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms)),
   callTimeoutMs = META_CALL_TIMEOUT_MS,
   delayMs = META_TRANSIENT_DELAY_MS,
   minAttemptMs = META_MIN_ATTEMPT_MS,
 }) {
+  const logContext = {
+    model: typeof params?.model === 'string' ? params.model : null,
+    baseURL,
+  };
   let attempt = 0;
   while (attempt < 2) {
     attempt += 1;
@@ -117,7 +134,7 @@ export async function callMetaWithTransientRetry({
       return await createCompletion(params, { timeout });
     } catch (error) {
       if (error?.status === 400 && error?.issue) throw error;
-      const issue = logMetaFailure(source, error);
+      const issue = logMetaFailure(source, error, logContext);
       const retry = attempt === 1 && isTransientMetaError(error);
       if (!retry) throwIssue(issue);
       if (budget.remaining() - delayMs < minAttemptMs) throwIssue(issue);
